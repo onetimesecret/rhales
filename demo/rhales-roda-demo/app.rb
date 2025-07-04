@@ -93,9 +93,9 @@ class RhalesDemo < Roda
     require_bcrypt? false  # We'll handle password hashing ourselves
 
     # Use our Rhales templates instead of ERB
-    # Note: In Rodauth view blocks, we have access to scope which has the rhales_render method
-    login_view { scope.rhales_render('login', { page_title: 'Login' }) }
-    create_account_view { scope.rhales_render('register', { page_title: 'Create Account' }) }
+    # Using the rodauth_view helper for cleaner configuration
+    login_view(&rodauth_view('login', page_title: 'Login'))
+    create_account_view(&rodauth_view('register_simple', title: 'Sign Up for Demo'))
   end
 
   # Configure Rhales
@@ -113,6 +113,12 @@ class RhalesDemo < Roda
 
   def logged_in?
     !current_user.nil?
+  end
+
+  # Helper method for Rodauth view configuration
+  # Makes it easier to configure views: rodauth_view('login', title: 'Login')
+  def rodauth_view(template_name, **data)
+    proc { scope.rhales_render(template_name, data) }
   end
 
   # Rhales render helper using adapter classes
