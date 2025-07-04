@@ -1,167 +1,207 @@
 require 'roda'
 require 'sequel'
-require 'rhales'
-require 'rodauth'
+require 'securerandom'
 require 'bcrypt'
 require 'rack/session'
 
-# Database setup
-DB = Sequel.sqlite('db/demo.db')
+# Add the lib directory to the load path
+$:.unshift(File.expand_path('../../lib', __dir__))
+require 'rhales'
 
-# Create simple accounts table for demo
-DB.create_table?(:accounts) do
-  primary_key :id
-  String :email, null: false, unique: true
-  String :password_hash, null: false
-  String :name
-  DateTime :created_at, default: Sequel::CURRENT_TIMESTAMP
+# Simple adapter classes for Rhales context objects
+class SimpleRequest
+  attr_reader :path, :method, :ip, :params
+
+  def initialize(path:, method:, ip:, params:)
+    @path = path
+    @method = method
+    @ip = ip
+    @params = params
+  end
 end
 
-# Simple Account model
-class Account < Sequel::Model
-end
+class SimpleSession
+  attr_reader :authenticated, :csrf_token
 
-# Configure Rhales for basic demo
-Rhales.configure do |config|
-  config.cache_templates = false # Development mode
-  config.default_locale  = 'en'
-end
-
-# Simple authentication helper for demo
-class SimpleAuth
-  def initialize(rodauth_instance)
-    @rodauth = rodauth_instance
+  def initialize(authenticated:, csrf_token:)
+    @authenticated = authenticated
+    @csrf_token = csrf_token
   end
 
   def authenticated?
-    @rodauth.logged_in?
-  end
-
-  def current_user
-    return nil unless authenticated?
-
-    Account[@rodauth.session_value]
-  end
-
-  def user_data
-    user = current_user
-    return {} unless user
-
-    {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      member_since: user.created_at.strftime('%B %Y'),
-    }
+    @authenticated
   end
 end
 
-class App < Roda
-  use Rack::Session::Cookie, secret: 'demo_secret_key_change_in_production_this_must_be_at_least_64_bytes_long_for_security', key: '_rhales_demo_session'
+class SimpleAuth < Rhales::Adapters::BaseAuth
+  attr_reader :authenticated, :email, :user_data
 
-  plugin :route_csrf
+  def initialize(authenticated:, email:, user_data:)
+    @authenticated = authenticated
+    @email = email
+    @user_data = user_data
+  end
+
+  def anonymous?
+    !@authenticated
+  end
+
+  def theme_preference
+    'light'
+  end
+
+  def user_id
+    @user_data&.dig(:id)
+  end
+
+  def display_name
+    @user_data&.dig(:email)
+  end
+end
+
+class RhalesDemo < Roda
+  # Database setup - use simple SQLite
+  DB = Sequel.sqlite
+
+  # Run basic migration for accounts table
+  DB.create_table?(:accounts) do
+    primary_key :id
+    String :email, null: false, unique: true
+    String :password_hash, null: false
+  end
+
+  # Create demo user if it doesn't exist
+  unless DB[:accounts].where(email: 'demo@example.com').first
+    password_hash = BCrypt::Password.create('demo123')
+    DB[:accounts].insert(email: 'demo@example.com', password_hash: password_hash)
+  end
+
+  opts[:root] = File.dirname(__FILE__)
+
+  # We're using Rhales instead of Roda's render plugin
   plugin :flash
+  plugin :sessions, secret: SecureRandom.hex(64), key: 'rhales-demo.session'
 
+  # Simple Rodauth configuration
   plugin :rodauth do
-    enable :login, :logout
-
     db DB
     accounts_table :accounts
-    account_password_hash_column :password_hash
-
-    login_route 'login'
-    logout_route 'logout'
-
+    enable :login, :logout, :create_account
     login_redirect '/'
     logout_redirect '/'
+    create_account_redirect '/'
+    require_bcrypt? false  # We'll handle password hashing ourselves
 
-    login_view { rhales_render('login') }
+    # Use our Rhales templates instead of ERB
+    login_view { rhales_render('login', { page_title: 'Login' }) }
+    create_account_view { rhales_render('register', { page_title: 'Create Account' }) }
   end
 
-  # Helper method to render Rhales templates
-  def rhales_render(template_name, locals = {})
-    auth  = SimpleAuth.new(rodauth)
-    nonce = SecureRandom.hex(16)
-
-    # Create runtime data
-    runtime = {
-      csrf_token: csrf_token,
-      csrf_field: csrf_field,
-      nonce: nonce,
-      flash: flash,
-    }
-
-    # Create business data
-    business = {
-      authenticated: auth.authenticated?,
-      current_user: auth.current_user,
-    }.merge(locals)
-
-    # Render the main template
-    content_html = render_template(template_name, runtime, business, nonce)
-
-    # Wrap in layout
-    render_template('layouts/main', runtime, business.merge(content: content_html), nonce)
+  # Configure Rhales
+  Rhales.configure do |config|
+    config.template_paths = [File.join(opts[:root], 'templates')]
+    config.default_locale = 'en'
+    config.cache_templates = false  # Disable for demo
   end
 
-  private
+  # Simple auth helper
+  def current_user
+    return nil unless session[:user_id]
+    @current_user ||= DB[:accounts].where(id: session[:user_id]).first
+  end
 
-  def render_template(template_name, runtime, business, nonce)
-    # Load template file with full path
-    template_path = File.expand_path(File.join('templates', "#{template_name}.rue"), __dir__)
-    raise "Template not found: #{template_path}" unless File.exist?(template_path)
+  def logged_in?
+    !current_user.nil?
+  end
 
-    template_content = File.read(template_path)
+  # Rhales render helper using adapter classes
+  def rhales_render(template_name, business_data = {})
+    # Create adapter instances for Rhales context
+    request_data = SimpleRequest.new(
+      path: request.path,
+      method: request.request_method,
+      ip: request.ip,
+      params: request.params
+    )
 
-    # Parse template content
-    parser = Rhales::Parser.new(template_content)
+    session_data = SimpleSession.new(
+      authenticated: logged_in?,
+      csrf_token: 'demo_csrf_token'
+    )
 
-    # Create context
-    context = Rhales::Context.new(runtime, business, {})
-
-    # Partial resolver
-    partial_resolver = lambda do |partial_name|
-      partial_path = File.expand_path(File.join('templates', 'partials', "#{partial_name}.rue"), __dir__)
-      raise "Partial not found: #{partial_name}" unless File.exist?(partial_path)
-
-      partial_content = File.read(partial_path)
-      partial_parser  = Rhales::Parser.new(partial_content)
-      partial_parser.template_content
-    end
-
-    # Render template
-    engine        = Rhales::TemplateEngine.new(parser.template_content, context, partial_resolver: partial_resolver)
-    template_html = engine.render
-
-    # Add hydration if data section exists
-    if parser.data_content && !parser.data_content.strip.empty?
-      hydrator = Rhales::Hydrator.new(parser.data_content, context, parser.window_name, nonce)
-      template_html + hydrator.render
+    # Create auth adapter object
+    auth_data = if logged_in?
+      SimpleAuth.new(
+        authenticated: true,
+        email: current_user[:email],
+        user_data: {
+          id: current_user[:id],
+          email: current_user[:email]
+        }
+      )
     else
-      template_html
+      SimpleAuth.new(
+        authenticated: false,
+        email: nil,
+        user_data: nil
+      )
     end
+
+    # Create and render view using the View class
+    view = Rhales::View.new(
+      request_data,
+      session_data,
+      auth_data,
+      nil, # locale_override
+      business_data: business_data
+    )
+    view.render(template_name)
   end
 
   route do |r|
     r.rodauth
 
-    # Homepage - shows public vs private data boundary
+    # Home route - shows different content based on auth state
     r.root do
-      if rodauth.logged_in?
-        auth = SimpleAuth.new(rodauth)
-        rhales_render('dashboard', user_data: auth.user_data)
+      if logged_in?
+        rhales_render('dashboard', {
+          welcome_message: "Welcome back, #{current_user[:email]}!",
+          login_time: Time.now.strftime('%Y-%m-%d %H:%M:%S')
+        })
       else
-        rhales_render('home')
+        rhales_render('home', {
+          demo_credentials: {
+            email: 'demo@example.com',
+            password: 'demo123'
+          }
+        })
       end
     end
 
-    # Simple API endpoint to demonstrate hydration
+    # Simple API endpoint for RSFC hydration demo
     r.get 'api/user' do
-      rodauth.require_authentication
-      auth = SimpleAuth.new(rodauth)
-
       response['Content-Type'] = 'application/json'
-      auth.user_data.to_json
+
+      if logged_in?
+        {
+          authenticated: true,
+          user: current_user,
+          server_time: Time.now.iso8601
+        }.to_json
+      else
+        { authenticated: false }.to_json
+      end
+    end
+
+    # Demo data endpoint
+    r.get 'api/demo-data' do
+      response['Content-Type'] = 'application/json'
+
+      {
+        message: "This data was loaded dynamically via JavaScript!",
+        timestamp: Time.now.to_i,
+        random_number: rand(1000)
+      }.to_json
     end
   end
 end

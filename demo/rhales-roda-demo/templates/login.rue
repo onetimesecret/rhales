@@ -3,7 +3,7 @@
   "page_title": "Login to Rhales Demo",
   "demo_credentials": {
     "email": "demo@example.com",
-    "password": "password123"
+    "password": "demo123"
   }
 }
 </data>

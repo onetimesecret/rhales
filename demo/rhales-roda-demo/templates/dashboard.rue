@@ -1,6 +1,7 @@
 <data window="userDashboard">
 {
-  "welcome_message": "Welcome to your private dashboard, {{current_user.name}}!",
+  "welcome_message": "{{welcome_message}}",
+  "login_time": "{{login_time}}",
   "features": [
     {
       "title": "Secure Data Boundary",
@@ -18,114 +19,141 @@
       "icon": "💧"
     }
   ],
-  "api_endpoint": "/api/user",
-  "user_info": {
-    "email": "{{user_data.email}}",
-    "member_since": "{{user_data.member_since}}",
-    "id": "{{user_data.id}}"
-  }
+  "api_endpoints": {
+    "user": "/api/user",
+    "demo_data": "/api/demo-data"
+  },
+  "authenticated": true
 }
 </data>
 
 <template>
-<div style="max-width: 800px; margin: 0 auto;">
-  <h1>{{welcome_message}}</h1>
+<div style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+  <h1 style="color: #2c3e50; margin-bottom: 2rem;">🎯 {{welcome_message}}</h1>
 
-  <div class="card" style="margin: 2rem 0;">
+  <div style="background: #e8f5e8; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h3>✅ Authentication Successful</h3>
+    <p><strong>Login Time:</strong> {{login_time}}</p>
+    <p>You're now viewing the authenticated section of the Rhales RSFC demo!</p>
+  </div>
+
+  <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
     <h2>🎯 RSFC Demo Features</h2>
     <p>This page demonstrates Ruby Single File Components with authentication boundaries:</p>
 
-    <div class="stats">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
       {{#each features}}
-        <div class="stat-card">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;">{{icon}}</div>
-          <h3>{{title}}</h3>
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; text-align: center;">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">{{icon}}</div>
+          <h3 style="margin-bottom: 1rem;">{{title}}</h3>
           <p style="color: #666; font-size: 0.9rem;">{{description}}</p>
         </div>
       {{/each}}
     </div>
   </div>
 
-  <div class="card">
-    <h2>🔐 Your Private Data</h2>
-    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
-      <div style="margin-bottom: 1rem;">
-        <strong>Email:</strong> {{user_info.email}}
-      </div>
-      <div style="margin-bottom: 1rem;">
-        <strong>Member Since:</strong> {{user_info.member_since}}
-      </div>
-      <div style="margin-bottom: 1rem;">
-        <strong>User ID:</strong> {{user_info.id}}
-      </div>
+  <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+    <h2>⚡ Interactive Demo</h2>
+    <p>Click the buttons below to see RSFC hydration and API integration in action:</p>
+
+    <div style="margin: 1.5rem 0;">
+      <button id="fetch-user" style="background: #007bff; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; margin-right: 1rem; cursor: pointer;">
+        Fetch User Data
+      </button>
+      <button id="fetch-demo" style="background: #28a745; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; margin-right: 1rem; cursor: pointer;">
+        Fetch Demo Data
+      </button>
+      <button id="show-hydrated" style="background: #17a2b8; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">
+        Show Hydrated Data
+      </button>
     </div>
 
-    <p style="color: #666; font-size: 0.9rem;">
-      💡 This information was injected server-side into the JSON data section,
-      then interpolated into the template. It's also available to client-side JavaScript!
-    </p>
+    <div id="demo-result" style="margin-top: 1.5rem;"></div>
   </div>
 
-  <div class="card">
-    <h2>⚡ Live Demo</h2>
-    <p>Click the button below to fetch your data via API and see client-side hydration:</p>
-
-    <button id="fetch-data" class="btn">Fetch User Data</button>
-    <button id="show-hydrated" class="btn" style="margin-left: 1rem;">Show Hydrated Data</button>
-
-    <div id="result" style="margin-top: 1rem;"></div>
+  <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h3>💡 What's Happening Here?</h3>
+    <ul style="margin: 1rem 0; padding-left: 2rem;">
+      <li>The JSON data section above is populated with Ruby variables at render time</li>
+      <li>This data is then injected into the browser as <code>window.userDashboard</code></li>
+      <li>Client-side JavaScript can access this data without additional API calls</li>
+      <li>The API endpoints demonstrate fetching fresh data when needed</li>
+      <li>All inline scripts use CSP nonces for security</li>
+    </ul>
   </div>
 
-  <div style="text-align: center; margin: 2rem 0;">
-    <a href="/logout" class="btn">Logout</a>
+  <div style="text-align: center;">
+    <a href="/logout" style="background: #dc3545; color: white; padding: 0.75rem 2rem; text-decoration: none; border-radius: 4px; margin-right: 1rem;">Logout</a>
+    <a href="/" style="background: #6c757d; color: white; padding: 0.75rem 2rem; text-decoration: none; border-radius: 4px;">Back to Home</a>
   </div>
 </div>
 
-<script nonce="{{runtime.nonce}}">
-  document.addEventListener('DOMContentLoaded', function() {
-    // This data was hydrated from the server
-    const dashboardData = window.userDashboard;
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // This data was hydrated from the server-side Ruby context
+  const dashboardData = window.userDashboard;
 
-    console.log('🎉 RSFC Hydration Success!', dashboardData);
+  console.log('🎉 RSFC Hydration Success!', dashboardData);
+  console.log('🔐 Authenticated user viewing secure dashboard');
 
-    document.getElementById('fetch-data').addEventListener('click', async function() {
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = '<p>Loading...</p>';
+  const resultDiv = document.getElementById('demo-result');
 
-      try {
-        const response = await fetch(dashboardData.api_endpoint);
-        const data = await response.json();
+  document.getElementById('fetch-user').addEventListener('click', async function() {
+    showLoading();
 
-        resultDiv.innerHTML = `
-          <div style="background: #e8f5e8; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
-            <h4>✅ API Response:</h4>
-            <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
-          </div>
-        `;
-      } catch (error) {
-        resultDiv.innerHTML = '<p style="color: red;">❌ Error fetching data</p>';
-      }
-    });
+    try {
+      const response = await fetch(dashboardData.api_endpoints.user);
+      const data = await response.json();
 
-    document.getElementById('show-hydrated').addEventListener('click', function() {
-      const resultDiv = document.getElementById('result');
-
-      resultDiv.innerHTML = `
-        <div style="background: #e3f2fd; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
-          <h4>💧 Hydrated Data:</h4>
-          <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(dashboardData, null, 2)}</pre>
-        </div>
-      `;
-    });
+      showResult('User API Data', data, '#e8f5e8');
+    } catch (error) {
+      showError('Failed to fetch user data: ' + error.message);
+    }
   });
+
+  document.getElementById('fetch-demo').addEventListener('click', async function() {
+    showLoading();
+
+    try {
+      const response = await fetch(dashboardData.api_endpoints.demo_data);
+      const data = await response.json();
+
+      showResult('Demo API Data', data, '#e3f2fd');
+    } catch (error) {
+      showError('Failed to fetch demo data: ' + error.message);
+    }
+  });
+
+  document.getElementById('show-hydrated').addEventListener('click', function() {
+    showResult('Hydrated Dashboard Data', dashboardData, '#fff3cd');
+  });
+
+  function showLoading() {
+    resultDiv.innerHTML = '<p style="color: #666;">⏳ Loading...</p>';
+  }
+
+  function showResult(title, data, bgColor) {
+    resultDiv.innerHTML = `
+      <div style="background: ${bgColor}; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+        <h4>✅ ${title}:</h4>
+        <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem;">${JSON.stringify(data, null, 2)}</pre>
+      </div>
+    `;
+  }
+
+  function showError(message) {
+    resultDiv.innerHTML = `<p style="color: #dc3545; background: #f8d7da; padding: 1rem; border-radius: 4px;">❌ ${message}</p>`;
+  }
+});
 </script>
 </template>
 
 <logic>
 # Dashboard demonstrates:
 # - Secure authentication boundary (only shown when logged in)
-# - Server-side data interpolation in JSON
+# - Server-side data interpolation in JSON data section
 # - Client-side hydration with window object
-# - API integration showing same data via different path
-# - CSP nonce for secure inline scripts
+# - Multiple API integration examples
+# - CSP nonce support for secure inline scripts
+# - Interactive demo of RSFC features
 </logic>
