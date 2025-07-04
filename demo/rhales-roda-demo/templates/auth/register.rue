@@ -13,17 +13,17 @@
 <template>
 <div class="card" style="max-width: 400px; margin: 0 auto;">
   <h2>{{title}}</h2>
-  
+
   <form method="post" action="/register">
     {{{runtime.csrf_field}}}
-    
+
     {{#each fields}}
       <div class="form-group">
         <label for="{{name}}">{{label}}</label>
         <input type="{{type}}" name="{{name}}" id="{{name}}" placeholder="{{placeholder}}" required>
       </div>
     {{/each}}
-    
+
     <button type="submit" class="btn">Create Account</button>
     <a href="/login" style="margin-left: 1rem;">Already have an account?</a>
   </form>

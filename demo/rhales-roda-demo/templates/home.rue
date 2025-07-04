@@ -32,7 +32,7 @@
   <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">
     Experience the power of Ruby Single File Components
   </p>
-  
+
   <div class="stats" style="margin: 3rem 0;">
     {{#each features}}
       <div class="stat-card">
@@ -42,7 +42,7 @@
       </div>
     {{/each}}
   </div>
-  
+
   <div style="margin-top: 3rem;">
     <a href="/register" class="btn" style="margin-right: 1rem;">Get Started</a>
     <a href="/login" class="btn">Login</a>

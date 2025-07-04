@@ -1,22 +1,26 @@
 source 'https://rubygems.org'
 
 # Web framework
-gem 'roda', '~> 3.84'
 gem 'puma', '~> 6.4'
+gem 'rack-session', '~> 2.0'
+gem 'rackup'
+gem 'roda', '~> 3.84'
 
 # Authentication
-gem 'rodauth', '~> 2.36'
 gem 'bcrypt', '~> 3.1'
+gem 'rodauth', '~> 2.36'
 
 # Database
 gem 'sequel', '~> 5.85'
 gem 'sqlite3', '~> 2.0'
 
-# Templates
+# Templates and utilities
+gem 'mail'
 gem 'rhales', path: '../..'  # Using local gem
+gem 'tilt'
 
 # Development
 group :development do
-  gem 'rerun'
   gem 'pry'
+  gem 'rerun'
 end

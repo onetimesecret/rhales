@@ -16,18 +16,18 @@
   <div class="card">
     <h3 style="margin-bottom: 1rem;">Settings</h3>
     {{#each sections}}
-      <a href="#{{id}}" 
-         style="display: block; padding: 0.5rem; margin-bottom: 0.5rem; 
-                color: {{#if active}}#3498db{{else}}#666{{/if}}; 
+      <a href="#{{id}}"
+         style="display: block; padding: 0.5rem; margin-bottom: 0.5rem;
+                color: {{#if active}}#3498db{{else}}#666{{/if}};
                 text-decoration: none;">
         {{title}}
       </a>
     {{/each}}
   </div>
-  
+
   <div class="card">
     <h2>Account Information</h2>
-    
+
     <div style="margin: 2rem 0;">
       <div style="margin-bottom: 1rem;">
         <strong>Name:</strong> {{current_user.name}}
@@ -44,7 +44,7 @@
         </div>
       {{/if}}
     </div>
-    
+
     <div style="border-top: 1px solid #eee; padding-top: 2rem; margin-top: 2rem;">
       <h3>API Demo</h3>
       <p style="color: #666; margin: 1rem 0;">
@@ -59,15 +59,15 @@
 <script nonce="{{runtime.nonce}}">
   document.addEventListener('DOMContentLoaded', function() {
     const profileData = window.profileData;
-    
+
     document.getElementById('fetch-stats').addEventListener('click', async function() {
       const resultDiv = document.getElementById('stats-result');
       resultDiv.innerHTML = '<p>Loading...</p>';
-      
+
       try {
         const response = await fetch(profileData.api_endpoint);
         const data = await response.json();
-        
+
         resultDiv.innerHTML = `
           <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px;">
             <h4>API Response:</h4>
@@ -78,7 +78,7 @@
         resultDiv.innerHTML = '<p style="color: red;">Error fetching stats</p>';
       }
     });
-    
+
     // Tab navigation
     document.querySelectorAll('a[href^="#"]').forEach(link => {
       link.addEventListener('click', function(e) {

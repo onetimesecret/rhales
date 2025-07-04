@@ -9,7 +9,7 @@ demo_account = Account.create(
 )
 
 user_account = Account.create(
-  email: 'user@example.com', 
+  email: 'user@example.com',
   password_hash: BCrypt::Password.create('userpass'),
   name: 'Test User'
 )

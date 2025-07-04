@@ -34,7 +34,7 @@
     <h2>{{posts_title}}</h2>
     <a href="/posts/new" class="btn" style="margin-left: auto;">New Post</a>
   </div>
-  
+
   {{#if posts}}
     {{#each posts}}
       {{> post_item}}
@@ -49,7 +49,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     if (window.dashboardData) {
       console.log('Dashboard loaded with actions:', window.dashboardData.actions);
-      
+
       // Add delete confirmation
       document.querySelectorAll('.delete-form').forEach(form => {
         form.addEventListener('submit', function(e) {
