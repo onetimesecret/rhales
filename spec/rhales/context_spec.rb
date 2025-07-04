@@ -63,16 +63,16 @@ RSpec.describe Rhales::Context do
     end
   end
 
-  describe '#has_variable?' do
+  describe '#variable?' do
     subject { described_class.new(mock_request, mock_session, mock_user, 'en', business_data: business_data) }
 
     it 'returns true for existing variables' do
-      expect(subject.has_variable?('page_title')).to be(true)
-      expect(subject.has_variable?('csrf_token')).to be(true)
+      expect(subject.variable?('page_title')).to be(true)
+      expect(subject.variable?('csrf_token')).to be(true)
     end
 
     it 'returns false for non-existent variables' do
-      expect(subject.has_variable?('non_existent')).to be(false)
+      expect(subject.variable?('non_existent')).to be(false)
     end
   end
 

@@ -24,11 +24,11 @@ module Rhales
       OPTIONAL_SECTIONS = ['logic'].freeze
       ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
-      attr_reader :file_path, :content, :sections, :data_attributes
+      attr_reader :content, :file_path, :sections, :data_attributes
 
-      def initialize(file_path)
+      def initialize(content, file_path = nil)
+        @content         = content
         @file_path       = file_path
-        @content         = File.read(file_path)
         @sections        = {}
         @data_attributes = {}
         @partials        = []
@@ -53,7 +53,7 @@ module Rhales
           next if matches.empty?
 
           if matches.length > 1
-            raise SectionDuplicateError, "Duplicate <#{section_name}> section in #{@file_path}"
+            raise SectionDuplicateError, "Duplicate <#{section_name}> section"
           end
 
           attributes, section_content = matches.first
@@ -71,7 +71,7 @@ module Rhales
         missing_sections = REQUIRED_SECTIONS - @sections.keys
         return if missing_sections.empty?
 
-        raise SectionMissingError, "Missing required sections in #{@file_path}: #{missing_sections.join(', ')}"
+        raise SectionMissingError, "Missing required sections: #{missing_sections.join(', ')}"
       end
 
       # Parse attributes from section opening tags
@@ -110,7 +110,7 @@ module Rhales
 
         # Should start with { and end with }
         unless data_content.start_with?('{') && data_content.end_with?('}')
-          raise InvalidSyntaxError, "Data section must contain JSON object in #{@file_path}"
+          raise InvalidSyntaxError, 'Data section must contain JSON object'
         end
 
         # NOTE: We don't parse JSON here because it contains {{variable}} interpolations
@@ -138,7 +138,7 @@ module Rhales
       end
 
       # Check if section exists
-      def has_section?(name)
+      def section?(name)
         @sections.key?(name)
       end
 
@@ -179,7 +179,11 @@ module Rhales
       class << self
         # Parse a .rue file and return parser instance
         def parse_file(file_path)
-          new(file_path).parse!
+          raise ArgumentError, 'Not a .rue file' unless rue_file?(file_path)
+
+          file_content = File.read(file_path)
+
+          new(file_content, file_path).parse!
         end
 
         # Check if a file is a .rue file
