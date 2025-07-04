@@ -39,10 +39,10 @@ gem install rhales
 ### 1. Configure Rhales
 
 ```ruby
-# config/initializers/rhales.rb
+# Configure Rhales in your application initialization
 Rhales.configure do |config|
   config.default_locale = 'en'
-  config.template_paths = ['app/templates']
+  config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
   config.site_ssl_enabled = true
@@ -51,9 +51,9 @@ end
 
 ### 2. Create a .rue file
 
-Create `app/templates/welcome.rue`:
+Create `templates/welcome.rue`:
 
-```erb
+```xml
 <data>
 {
   "greeting": "{{page_title}}",
@@ -81,17 +81,153 @@ Create `app/templates/welcome.rue`:
 </template>
 ```
 
-### 3. Render the component
+### 3. Framework Integration
+
+#### Rails
 
 ```ruby
-# In your controller or view
-view = Rhales::View.new(request, session, current_user, locale)
-html = view.render('welcome', page_title: 'Welcome to Rhales')
+# config/initializers/rhales.rb
+Rhales.configure do |config|
+  config.template_paths = ['app/templates']
+  config.default_locale = 'en'
+end
+
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  def render_rhales(template_name, data = {})
+    view = Rhales::View.new(request, session, current_user, I18n.locale)
+    view.render(template_name, data)
+  end
+end
+
+# In your controller
+def index
+  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Our App')
+end
 ```
 
-Or use the convenience method:
+#### Sinatra
 
 ```ruby
+# app.rb
+require 'sinatra'
+require 'rhales'
+
+Rhales.configure do |config|
+  config.template_paths = ['templates']
+  config.default_locale = 'en'
+end
+
+helpers do
+  def render_rhales(template_name, data = {})
+    view = Rhales::View.new(request, session, current_user, 'en')
+    view.render(template_name, data)
+  end
+end
+
+get '/' do
+  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Sinatra')
+  erb :index
+end
+```
+
+#### Padrino
+
+```ruby
+# config/apps.rb
+Padrino.configure_apps do
+  Rhales.configure do |config|
+    config.template_paths = ['app/templates']
+    config.default_locale = 'en'
+  end
+end
+
+# app/helpers/application_helper.rb
+module ApplicationHelper
+  def render_rhales(template_name, data = {})
+    view = Rhales::View.new(request, session, current_user, locale)
+    view.render(template_name, data)
+  end
+end
+
+# app/controllers/application_controller.rb
+get :index do
+  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Padrino')
+  render :index
+end
+```
+
+#### Grape
+
+```ruby
+# config.ru or initializer
+require 'grape'
+require 'rhales'
+
+Rhales.configure do |config|
+  config.template_paths = ['templates']
+  config.default_locale = 'en'
+end
+
+# api.rb
+class MyAPI < Grape::API
+  helpers do
+    def render_rhales(template_name, data = {})
+      # Create mock request/session for Grape
+      mock_request = OpenStruct.new(env: env)
+      mock_session = {}
+
+      view = Rhales::View.new(mock_request, mock_session, current_user, 'en')
+      view.render(template_name, data)
+    end
+  end
+
+  get '/welcome' do
+    content_type 'text/html'
+    render_rhales('welcome', page_title: 'Welcome to Grape API')
+  end
+end
+```
+
+#### Roda
+
+```ruby
+# app.rb
+require 'roda'
+require 'rhales'
+
+class App < Roda
+  plugin :render
+
+  Rhales.configure do |config|
+    config.template_paths = ['templates']
+    config.default_locale = 'en'
+  end
+
+  def render_rhales(template_name, data = {})
+    view = Rhales::View.new(request, session, current_user, 'en')
+    view.render(template_name, data)
+  end
+
+  route do |r|
+    r.root do
+      @welcome_html = render_rhales('welcome', page_title: 'Welcome to Roda')
+      view('index')
+    end
+  end
+end
+```
+
+### 4. Basic Usage
+
+```ruby
+# Create a view instance
+view = Rhales::View.new(request, session, current_user, locale)
+
+# Render a template
+html = view.render('welcome', page_title: 'Welcome to Rhales')
+
+# Or use the convenience method
 html = Rhales.render('welcome',
   request: request,
   session: session,
@@ -190,16 +326,17 @@ window.myData = JSON.parse(document.getElementById('rsfc-data-abc123').textConte
 
 ## Testing
 
-Rhales includes comprehensive test helpers:
+Rhales includes comprehensive test helpers and is framework-agnostic:
 
 ```ruby
-# spec/spec_helper.rb
+# test/test_helper.rb or spec/spec_helper.rb
 require 'rhales'
 
 Rhales.configure do |config|
   config.default_locale = 'en'
   config.app_environment = 'test'
   config.cache_templates = false
+  config.template_paths = ['test/templates'] # or wherever your test templates are
 end
 
 # Test context creation
@@ -210,6 +347,12 @@ expect(context.get('user.name')).to eq('Test')
 template = '{{#if authenticated}}Welcome{{/if}}'
 result = Rhales.render_template(template, authenticated: true)
 expect(result).to eq('Welcome')
+
+# Test full template files
+mock_request = OpenStruct.new(env: {})
+mock_session = {}
+view = Rhales::View.new(mock_request, mock_session, nil, 'en')
+html = view.render('test_template', message: 'Hello World')
 ```
 
 ## Development
