@@ -33,17 +33,17 @@ module Rhales
 
     def initialize
       # Set sensible defaults
-      @default_locale = 'en'
-      @app_environment = 'development'
-      @development_enabled = false
-      @template_paths = []
-      @cache_templates = true
-      @csrf_token_name = 'csrf_token'
-      @nonce_header_name = 'nonce'
-      @features = {}
-      @site_ssl_enabled = false
+      @default_locale         = 'en'
+      @app_environment        = 'development'
+      @development_enabled    = false
+      @template_paths         = []
+      @cache_templates        = true
+      @csrf_token_name        = 'csrf_token'
+      @nonce_header_name      = 'nonce'
+      @features               = {}
+      @site_ssl_enabled       = false
       @cache_parsed_templates = true
-      @cache_ttl = 3600 # 1 hour
+      @cache_ttl              = 3600 # 1 hour
     end
 
     # Build API base URL from site configuration
@@ -77,7 +77,7 @@ module Rhales
 
       # Validate locale
       if @default_locale.nil? || @default_locale.empty?
-        errors << "default_locale cannot be empty"
+        errors << 'default_locale cannot be empty'
       end
 
       # Validate template paths exist if specified
@@ -89,7 +89,7 @@ module Rhales
 
       # Validate cache TTL
       if @cache_ttl && @cache_ttl <= 0
-        errors << "cache_ttl must be positive"
+        errors << 'cache_ttl must be positive'
       end
 
       raise ConfigurationError, "Configuration errors: #{errors.join(', ')}" unless errors.empty?

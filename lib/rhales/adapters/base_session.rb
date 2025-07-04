@@ -10,7 +10,7 @@ module Rhales
     class BaseSession
       # Check if session is authenticated
       def authenticated?
-        raise NotImplementedError, "Subclasses must implement #authenticated?"
+        raise NotImplementedError, 'Subclasses must implement #authenticated?'
       end
 
       # Get session identifier

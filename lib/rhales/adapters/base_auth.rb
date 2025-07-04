@@ -10,12 +10,12 @@ module Rhales
     class BaseAuth
       # Check if user is anonymous
       def anonymous?
-        raise NotImplementedError, "Subclasses must implement #anonymous?"
+        raise NotImplementedError, 'Subclasses must implement #anonymous?'
       end
 
       # Get user's theme preference
       def theme_preference
-        raise NotImplementedError, "Subclasses must implement #theme_preference"
+        raise NotImplementedError, 'Subclasses must implement #theme_preference'
       end
 
       # Get user identifier (optional)

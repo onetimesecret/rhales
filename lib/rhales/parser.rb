@@ -11,15 +11,15 @@ module Rhales
 
     REQUIRED_SECTIONS = %w[data template].freeze
     OPTIONAL_SECTIONS = ['logic'].freeze
-    ALL_SECTIONS = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+    ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
     attr_reader :content, :file_path, :grammar, :ast
 
     def initialize(content, file_path = nil)
-      @content = content
+      @content   = content
       @file_path = file_path
-      @grammar = RueGrammar.new(content, file_path)
-      @ast = nil
+      @grammar   = RueGrammar.new(content, file_path)
+      @ast       = nil
     end
 
     def parse!
@@ -27,8 +27,8 @@ module Rhales
       @ast = @grammar.ast
       parse_data_attributes!
       self
-    rescue RueGrammar::ParseError => e
-      raise ParseError, "Grammar error: #{e.message}"
+    rescue RueGrammar::ParseError => ex
+      raise ParseError, "Grammar error: #{ex.message}"
     end
 
     def sections
@@ -101,11 +101,11 @@ module Rhales
         next unless content_nodes.is_a?(Array)
 
         content_nodes.each do |content_node|
-          if content_node.type == :handlebars_expression
-            content = content_node.value[:content]
-            if content.start_with?('>')
-              partials << content[1..-1].strip
-            end
+          next unless content_node.type == :handlebars_expression
+
+          content = content_node.value[:content]
+          if content.start_with?('>')
+            partials << content[1..].strip
           end
         end
       end
@@ -115,7 +115,7 @@ module Rhales
       section_node = @grammar.sections[section_name]
       return [] unless section_node
 
-      variables = []
+      variables     = []
       content_nodes = section_node.value[:content]
       extract_variables_from_content(content_nodes, variables, exclude_partials: exclude_partials)
       variables.uniq
@@ -125,24 +125,24 @@ module Rhales
       return unless content_nodes.is_a?(Array)
 
       content_nodes.each do |node|
-        if node.type == :handlebars_expression
-          content = node.value[:content]
+        next unless node.type == :handlebars_expression
 
-          # Skip partials if requested
-          next if exclude_partials && content.start_with?('>')
+        content = node.value[:content]
 
-          # Skip block helpers
-          next if content.match?(/^(#|\/)(if|unless|each|with)\s/)
+        # Skip partials if requested
+        next if exclude_partials && content.start_with?('>')
 
-          variables << content.strip
-        end
+        # Skip block helpers
+        next if content.match?(%r{^(#|/)(if|unless|each|with)\s})
+
+        variables << content.strip
       end
     end
 
     private
 
     def parse_data_attributes!
-      data_section = @grammar.sections['data']
+      data_section     = @grammar.sections['data']
       @data_attributes = {}
 
       if data_section

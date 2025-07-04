@@ -27,7 +27,7 @@ module Rhales
 
     def initialize(template_content, context, partial_resolver: nil)
       @template_content = template_content
-      @context = context
+      @context          = context
       @partial_resolver = partial_resolver
     end
 
@@ -41,10 +41,10 @@ module Rhales
         grammar.parse!
         render_node(grammar.ast)
       end
-    rescue RueGrammar::ParseError => e
-      raise RenderError, "Template parsing failed: #{e.message}"
-    rescue StandardError => e
-      raise RenderError, "Template rendering failed: #{e.message}"
+    rescue RueGrammar::ParseError => ex
+      raise RenderError, "Template parsing failed: #{ex.message}"
+    rescue StandardError => ex
+      raise RenderError, "Template rendering failed: #{ex.message}"
     end
 
     private
@@ -127,7 +127,7 @@ module Rhales
 
     def render_handlebars_expression(node)
       content = node.value[:content]
-      raw = node.value[:raw]
+      raw     = node.value[:raw]
 
       # Handle different expression types
       case content
@@ -136,9 +136,9 @@ module Rhales
       when /^#if\s+(.+)/, /^#unless\s+(.+)/, /^#each\s+(.+)/ # Block statements
         # For AST nodes, block statements need to be handled differently
         # For now, we'll skip block statements in AST mode and let them be handled by regex fallback
-        ""
-      when /^\/\w+/ # Closing tags
-        ""
+        ''
+      when %r{^/\w+} # Closing tags
+        ''
       else # Variables
         value = get_variable_value(content)
         raw ? value.to_s : escape_html(value.to_s)
@@ -159,19 +159,19 @@ module Rhales
     def render_if_block(condition, full_content)
       # For AST-based rendering, blocks should be handled at the AST level
       # This method is kept for compatibility but shouldn't be called in AST mode
-      ""
+      ''
     end
 
     def render_unless_block(condition, full_content)
       # For AST-based rendering, blocks should be handled at the AST level
       # This method is kept for compatibility but shouldn't be called in AST mode
-      ""
+      ''
     end
 
     def render_each_block(items_var, full_content)
       # For AST-based rendering, blocks should be handled at the AST level
       # This method is kept for compatibility but shouldn't be called in AST mode
-      ""
+      ''
     end
 
     # Process block expressions in simple templates
@@ -197,8 +197,8 @@ module Rhales
     end
 
     def process_if_blocks(content)
-      content.gsub(/\{\{\s*#if\s+([^}]+)\s*\}\}(.*?)\{\{\s*\/if\s*\}\}/m) do |match|
-        condition = Regexp.last_match(1).strip
+      content.gsub(%r{\{\{\s*#if\s+([^}]+)\s*\}\}(.*?)\{\{\s*/if\s*\}\}}m) do |match|
+        condition     = Regexp.last_match(1).strip
         block_content = Regexp.last_match(2)
 
         # Check for {{else}} clause
@@ -218,8 +218,8 @@ module Rhales
     end
 
     def process_unless_blocks(content)
-      content.gsub(/\{\{\s*#unless\s+([^}]+)\s*\}\}(.*?)\{\{\s*\/unless\s*\}\}/m) do |match|
-        condition = Regexp.last_match(1).strip
+      content.gsub(%r{\{\{\s*#unless\s+([^}]+)\s*\}\}(.*?)\{\{\s*/unless\s*\}\}}m) do |match|
+        condition     = Regexp.last_match(1).strip
         block_content = Regexp.last_match(2)
 
         if evaluate_condition(condition)
@@ -231,8 +231,8 @@ module Rhales
     end
 
     def process_each_blocks(content)
-      content.gsub(/\{\{\s*#each\s+([^}]+)\s*\}\}(.*?)\{\{\s*\/each\s*\}\}/m) do |match|
-        items_var = Regexp.last_match(1).strip
+      content.gsub(%r{\{\{\s*#each\s+([^}]+)\s*\}\}(.*?)\{\{\s*/each\s*\}\}}m) do |match|
+        items_var     = Regexp.last_match(1).strip
         block_content = Regexp.last_match(2)
 
         items = get_variable_value(items_var)
@@ -241,7 +241,7 @@ module Rhales
           items.map.with_index do |item, index|
             # Create context for each iteration
             item_context = create_each_context(item, index, items_var)
-            engine = self.class.new(block_content, item_context, partial_resolver: @partial_resolver)
+            engine       = self.class.new(block_content, item_context, partial_resolver: @partial_resolver)
             engine.render
           end.join
         else
@@ -261,7 +261,7 @@ module Rhales
       # Process raw variables first {{{variable}}} - use non-greedy match
       content = content.gsub(/\{\{\{\s*([^}]+?)\s*\}\}\}/) do |match|
         variable_name = Regexp.last_match(1).strip
-        value = get_variable_value(variable_name)
+        value         = get_variable_value(variable_name)
         value.to_s
       end
 
@@ -269,7 +269,7 @@ module Rhales
       content.gsub(/\{\{\s*([^}]+?)\s*\}\}/) do |match|
         variable_name = Regexp.last_match(1).strip
         # Skip if it's a block statement or partial
-        next match if variable_name.match?(/^(#|\/|>)/)
+        next match if variable_name.match?(%r{^(#|/|>)})
 
         value = get_variable_value(variable_name)
         escape_html(value.to_s)
@@ -338,9 +338,9 @@ module Rhales
 
       def initialize(parent_context, current_item, current_index, items_var)
         @parent_context = parent_context
-        @current_item = current_item
-        @current_index = current_index
-        @items_var = items_var
+        @current_item   = current_item
+        @current_index  = current_index
+        @items_var      = items_var
       end
 
       def get(variable_name)
@@ -375,9 +375,9 @@ module Rhales
         super || @parent_context.respond_to?(method_name)
       end
 
-      def method_missing(method_name, *args)
+      def method_missing(method_name, *)
         if @parent_context.respond_to?(method_name)
-          @parent_context.public_send(method_name, *args)
+          @parent_context.public_send(method_name, *)
         else
           super
         end

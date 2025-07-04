@@ -16,13 +16,13 @@ module Rhales
   class RueGrammar
     REQUIRED_SECTIONS = %w[data template].freeze
     OPTIONAL_SECTIONS = ['logic'].freeze
-    ALL_SECTIONS = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+    ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
     class ParseError < StandardError
       attr_reader :line, :column, :offset
 
       def initialize(message, line: nil, column: nil, offset: nil)
-        @line = line
+        @line   = line
         @column = column
         @offset = offset
         super("#{message} at line #{line}, column #{column}")
@@ -33,9 +33,9 @@ module Rhales
       attr_reader :type, :location, :children, :value
 
       def initialize(type, location, value: nil, children: [])
-        @type = type
+        @type     = type
         @location = location
-        @value = value
+        @value    = value
         @children = children
       end
     end
@@ -44,22 +44,22 @@ module Rhales
       attr_reader :start_line, :start_column, :end_line, :end_column, :start_offset, :end_offset
 
       def initialize(start_line:, start_column:, end_line:, end_column:, start_offset:, end_offset:)
-        @start_line = start_line
+        @start_line   = start_line
         @start_column = start_column
-        @end_line = end_line
-        @end_column = end_column
+        @end_line     = end_line
+        @end_column   = end_column
         @start_offset = start_offset
-        @end_offset = end_offset
+        @end_offset   = end_offset
       end
     end
 
     def initialize(content, file_path = nil)
-      @content = content
+      @content   = content
       @file_path = file_path
-      @position = 0
-      @line = 1
-      @column = 1
-      @ast = nil
+      @position  = 0
+      @line      = 1
+      @column    = 1
+      @ast       = nil
     end
 
     def parse!
@@ -68,9 +68,7 @@ module Rhales
       self
     end
 
-    def ast
-      @ast
-    end
+    attr_reader :ast
 
     def sections
       return {} unless @ast
@@ -85,7 +83,7 @@ module Rhales
     def parse_rue_file
       sections = []
 
-      while !at_end?
+      until at_end?
         skip_whitespace
         break if at_end?
 
@@ -93,7 +91,7 @@ module Rhales
       end
 
       if sections.empty?
-        raise ParseError.new("Empty .rue file", line: @line, column: @column, offset: @position)
+        raise ParseError.new('Empty .rue file', line: @line, column: @column, offset: @position)
       end
 
       Node.new(:rue_file, current_location, children: sections)
@@ -104,7 +102,7 @@ module Rhales
 
       # Parse opening tag
       consume('<') || parse_error("Expected '<' to start section")
-      tag_name = parse_tag_name
+      tag_name   = parse_tag_name
       attributes = parse_attributes
       consume('>') || parse_error("Expected '>' to close opening tag")
 
@@ -114,32 +112,31 @@ module Rhales
       # Parse closing tag
       consume("</#{tag_name}>") || parse_error("Expected '</#{tag_name}>' to close section")
 
-      end_pos = current_position
+      end_pos  = current_position
       location = Location.new(
         start_line: start_pos[:line],
         start_column: start_pos[:column],
         end_line: end_pos[:line],
         end_column: end_pos[:column],
         start_offset: start_pos[:offset],
-        end_offset: end_pos[:offset]
+        end_offset: end_pos[:offset],
       )
 
       Node.new(:section, location, value: {
         tag: tag_name,
         attributes: attributes,
-        content: content
-      })
+        content: content,
+      }
+      )
     end
 
     def parse_tag_name
       start_pos = @position
 
-      while !at_end? && current_char.match?(/[a-zA-Z]/)
-        advance
-      end
+      advance while !at_end? && current_char.match?(/[a-zA-Z]/)
 
       if start_pos == @position
-        parse_error("Expected tag name")
+        parse_error('Expected tag name')
       end
 
       @content[start_pos...@position]
@@ -160,7 +157,7 @@ module Rhales
         skip_whitespace
 
         # Parse attribute value
-        attr_value = parse_quoted_string
+        attr_value            = parse_quoted_string
         attributes[attr_name] = attr_value
 
         skip_whitespace
@@ -170,7 +167,7 @@ module Rhales
     end
 
     def parse_section_content(tag_name)
-      start_pos = @position
+      start_pos     = @position
       content_parts = []
 
       while !at_end? && !peek_closing_tag?(tag_name)
@@ -181,7 +178,7 @@ module Rhales
         else
           # Parse regular text
           text = parse_text_until_handlebars_or_closing_tag(tag_name)
-          content_parts << Node.new(:text, current_location, value: text) if !text.empty?
+          content_parts << Node.new(:text, current_location, value: text) unless text.empty?
         end
       end
 
@@ -210,24 +207,25 @@ module Rhales
         consume('}}') || parse_error("Expected '}}'")
       end
 
-      end_pos = current_position
+      end_pos  = current_position
       location = Location.new(
         start_line: start_pos[:line],
         start_column: start_pos[:column],
         end_line: end_pos[:line],
         end_column: end_pos[:column],
         start_offset: start_pos[:offset],
-        end_offset: end_pos[:offset]
+        end_offset: end_pos[:offset],
       )
 
       Node.new(:handlebars_expression, location, value: {
         content: expr_content,
-        raw: raw
-      })
+        raw: raw,
+      }
+      )
     end
 
     def parse_handlebars_content(raw)
-      content = ""
+      content        = ''
       closing_braces = raw ? '}}}' : '}}'
 
       while !at_end? && !peek_string?(closing_braces)
@@ -239,7 +237,7 @@ module Rhales
     end
 
     def parse_text_until_handlebars_or_closing_tag(tag_name)
-      text = ""
+      text = ''
 
       while !at_end? &&
             !(current_char == '{' && peek_char == '{') &&
@@ -253,31 +251,29 @@ module Rhales
 
     def parse_quoted_string
       quote_char = current_char
-      unless quote_char == '"' || quote_char == "'"
-        parse_error("Expected quoted string")
+      unless ['"', "'"].include?(quote_char)
+        parse_error('Expected quoted string')
       end
 
       advance # Skip opening quote
-      value = ""
+      value = ''
 
       while !at_end? && current_char != quote_char
         value << current_char
         advance
       end
 
-      consume(quote_char) || parse_error("Unterminated quoted string")
+      consume(quote_char) || parse_error('Unterminated quoted string')
       value
     end
 
     def parse_identifier
       start_pos = @position
 
-      while !at_end? && current_char.match?(/[a-zA-Z0-9_]/)
-        advance
-      end
+      advance while !at_end? && current_char.match?(/[a-zA-Z0-9_]/)
 
       if start_pos == @position
-        parse_error("Expected identifier")
+        parse_error('Expected identifier')
       end
 
       @content[start_pos...@position]
@@ -302,17 +298,19 @@ module Rhales
 
     def current_char
       return "\0" if at_end?
+
       @content[@position]
     end
 
     def peek_char
       return "\0" if @position + 1 >= @content.length
+
       @content[@position + 1]
     end
 
     def advance
       if current_char == "\n"
-        @line += 1
+        @line  += 1
         @column = 1
       else
         @column += 1
@@ -325,9 +323,7 @@ module Rhales
     end
 
     def skip_whitespace
-      while !at_end? && current_char.match?(/\s/)
-        advance
-      end
+      advance while !at_end? && current_char.match?(/\s/)
     end
 
     def current_position
@@ -342,7 +338,7 @@ module Rhales
         end_line: pos[:line],
         end_column: pos[:column],
         start_offset: pos[:offset],
-        end_offset: pos[:offset]
+        end_offset: pos[:offset],
       )
     end
 
