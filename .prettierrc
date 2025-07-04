@@ -1,0 +1,38 @@
+{
+  "arrowParens": "always",
+  "bracketSameLine": true,
+  "bracketSpacing": true,
+  "embeddedLanguageFormatting": "auto",
+  "endOfLine": "lf",
+  "htmlWhitespaceSensitivity": "strict",
+  "jsxSingleQuote": false,
+  "overrides": [
+    {
+      "files": "*.svg",
+      "options": {
+        "parser": "html",
+        "plugins": []
+      }
+    },
+    {
+      "files": ["*.vue"],
+      "options": {
+        "parser": "vue",
+        "vueIndentScriptAndStyle": true,
+        "htmlWhitespaceSensitivity": "strict",
+        "printWidth": 100
+      }
+    }
+  ],
+  "plugins": ["prettier-plugin-vue", "@prettier/plugin-ruby"],
+  "vueIndentScriptAndStyle": true,
+  "printWidth": 100,
+  "proseWrap": "preserve",
+  "quoteProps": "as-needed",
+  "semi": true,
+  "singleAttributePerLine": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "useTabs": false
+}

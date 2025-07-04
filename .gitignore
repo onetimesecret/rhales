@@ -1,0 +1,50 @@
+# Globs
+*.env
+*.log
+*.txt
+.byebug*
+.ruby-version
+
+# Directories
+.claude
+.continue/
+.devcontainer
+.history
+.pnpm/
+.pnpm-store/
+.prompts/
+.prompts*
+.pytest_cache/
+.ruby-lsp/
+.vscode/
+.idea/
+.cache/
+.temp/
+.zed/
+.bundle/
+.rspec
+data/
+node_modules/
+vendor/
+log/
+tmp/
+coverage/
+dist/
+
+# Files
+.DS_Store
+.github/*md
+.eslintcache
+.claude
+.rspec*
+.qodo
+
+# Ignore WIP or temp dev files with uppercase names
+[A-Z]*.rb
+[A-Z]*.ts
+
+!CLAUDE.md
+
+# Environment files
+.env*
+!.env.example
