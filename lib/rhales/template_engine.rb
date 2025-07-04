@@ -6,16 +6,23 @@ require_relative 'grammars/rue'
 module Rhales
   # Rhales - Ruby Handlebars-style template engine
   #
-  # AST-based template engine using RueGrammar for parsing.
-  # Supports variable interpolation, conditionals, iteration, and partials
-  # with proper nested structure handling.
+  # Modern AST-based template engine that supports both simple template strings
+  # and full .rue files. Uses RueGrammar for formal parsing with proper
+  # nested structure handling and block statement support.
+  #
+  # Features:
+  # - Dual-mode operation: simple templates and .rue files
+  # - Full AST parsing eliminates regex-based vulnerabilities
+  # - Proper nested block handling with accurate error reporting
+  # - XSS protection through HTML escaping by default
+  # - Handlebars-compatible syntax with Ruby idioms
   #
   # Supported syntax:
   # - {{variable}} - Variable interpolation with HTML escaping
   # - {{{variable}}} - Raw variable interpolation (no escaping)
-  # - {{#if condition}} ... {{/if}} - Conditionals
+  # - {{#if condition}} ... {{else}} ... {{/if}} - Conditionals with else
   # - {{#unless condition}} ... {{/unless}} - Negated conditionals
-  # - {{#each items}} ... {{/each}} - Iteration
+  # - {{#each items}} ... {{/each}} - Iteration with context
   # - {{> partial_name}} - Partial inclusion
   class TemplateEngine
     class RenderError < StandardError; end
@@ -32,11 +39,11 @@ module Rhales
     end
 
     def render
-      # For simple templates (just handlebars expressions), parse directly
+      # Check if this is a simple template or a full .rue file
       if simple_template?
         render_simple_template
       else
-        # For complex templates with sections, use grammar
+        # Parse .rue file using RueGrammar
         grammar = RueGrammar.new(@template_content)
         grammar.parse!
         render_node(grammar.ast)
@@ -54,17 +61,70 @@ module Rhales
     end
 
     def render_simple_template
-      # Parse handlebars expressions directly without section structure
-      content = @template_content.dup
+      # Parse simple template content directly without full .rue structure
+      # This lightweight parser creates AST nodes for templates that don't
+      # require the full .rue file format (data/template/logic sections)
+      content_nodes = parse_simple_template_content(@template_content)
+      render_content_nodes(content_nodes)
+    end
 
-      # Process block statements first (they can contain other expressions)
-      content = process_block_expressions(content)
+    # Parse simple template content into AST nodes
+    # Creates text and handlebars_expression nodes compatible with RueGrammar
+    # without requiring full .rue file structure validation
+    def parse_simple_template_content(content)
+      nodes = []
+      position = 0
 
-      # Process partials
-      content = process_partial_expressions(content)
+      while position < content.length
+        # Find next handlebars expression
+        start_pos = content.index('{{', position)
 
-      # Process variables
-      process_variable_expressions(content)
+        if start_pos.nil?
+          # No more expressions, add remaining text
+          remaining_text = content[position..-1]
+          nodes << create_text_node(remaining_text) unless remaining_text.empty?
+          break
+        end
+
+        # Add text before expression
+        if start_pos > position
+          text_content = content[position...start_pos]
+          nodes << create_text_node(text_content)
+        end
+
+        # Find end of expression
+        raw = content[start_pos + 2] == '{'
+        end_pattern = raw ? '}}}' : '}}'
+        end_pos = content.index(end_pattern, start_pos + (raw ? 3 : 2))
+
+        if end_pos.nil?
+          # Malformed expression, treat as text
+          nodes << create_text_node(content[start_pos..-1])
+          break
+        end
+
+        # Extract expression content
+        expr_start = start_pos + (raw ? 3 : 2)
+        expr_content = content[expr_start...end_pos].strip
+
+        # Create handlebars node
+        nodes << create_handlebars_node(expr_content, raw)
+
+        position = end_pos + end_pattern.length
+      end
+
+      nodes
+    end
+
+    def create_text_node(text)
+      RueGrammar::Node.new(:text, nil, value: text)
+    end
+
+    def create_handlebars_node(content, raw)
+      RueGrammar::Node.new(:handlebars_expression, nil, value: {
+        content: content,
+        raw: raw
+      })
     end
 
     def render_node(node)
@@ -74,13 +134,9 @@ module Rhales
         template_section = node.children.find { |child| child.value[:tag] == 'template' }
         return '' unless template_section
 
-        # Convert template section content back to string and use regex parsing
-        # This is a hybrid approach until full AST block parsing is implemented
-        template_content = reconstruct_template_content(template_section.value[:content])
-        render_simple_template_content(template_content)
+        render_content_nodes(template_section.value[:content])
       when :section
-        template_content = reconstruct_template_content(node.value[:content])
-        render_simple_template_content(template_content)
+        render_content_nodes(node.value[:content])
       when :text
         node.value
       when :handlebars_expression
@@ -90,39 +146,135 @@ module Rhales
       end
     end
 
-    def render_section_content(content_nodes)
-      content_nodes.map { |node| render_node(node) }.join
-    end
-
-    def reconstruct_template_content(content_nodes)
+    # Render array of AST content nodes with proper block handling
+    # Processes text nodes and handlebars expressions, detecting and handling
+    # block statements (if/unless/each) with proper nesting and else clauses
+    def render_content_nodes(content_nodes)
       return '' unless content_nodes.is_a?(Array)
 
-      content_nodes.map do |node|
+      result = ''
+      i = 0
+
+      while i < content_nodes.length
+        node = content_nodes[i]
+
         case node.type
         when :text
-          node.value
+          result += node.value
         when :handlebars_expression
-          if node.value[:raw]
-            "{{{#{node.value[:content]}}}}"
+          content = node.value[:content]
+
+          # Check if this is a block start
+          if content.match(/^#(if|unless|each)\s+(.+)/)
+            block_type = Regexp.last_match(1)
+            condition = Regexp.last_match(2).strip
+
+            # Find matching end tag and extract block content
+            block_content, else_content, end_index = extract_block_content(content_nodes, i + 1, block_type)
+
+            # Render the block
+            result += render_block(block_type, condition, block_content, else_content)
+
+            # Skip to after the end tag
+            i = end_index
           else
-            "{{#{node.value[:content]}}}"
+            # Regular handlebars expression
+            result += render_handlebars_expression(node)
           end
-        else
-          ''
         end
-      end.join
+
+        i += 1
+      end
+
+      result
     end
 
-    def render_simple_template_content(content)
-      # Use the existing regex-based parsing for now
-      # Process block statements first
-      content = process_block_expressions(content)
+    # Extract block content from AST nodes with proper nesting support
+    # Handles nested blocks of the same type and else clauses for if blocks
+    # Returns [block_content, else_content, end_index]
+    def extract_block_content(content_nodes, start_index, block_type)
+      block_content = []
+      else_content = []
+      current_content = block_content
+      depth = 1
+      i = start_index
 
-      # Process partials
-      content = process_partial_expressions(content)
+      while i < content_nodes.length && depth > 0
+        node = content_nodes[i]
 
-      # Process variables
-      process_variable_expressions(content)
+        if node.type == :handlebars_expression
+          content = node.value[:content]
+
+          case content
+          when /^##{block_type}\s+/
+            # Nested block of same type
+            depth += 1
+            current_content << node
+          when /^\/#{block_type}$/
+            # Closing tag
+            depth -= 1
+            if depth == 0
+              # Found the matching closing tag
+              return [block_content, else_content, i]
+            else
+              current_content << node
+            end
+          when 'else'
+            # Else clause (only for if blocks at depth 1)
+            if block_type == 'if' && depth == 1
+              current_content = else_content
+            else
+              current_content << node
+            end
+          else
+            current_content << node
+          end
+        else
+          current_content << node
+        end
+
+        i += 1
+      end
+
+      raise BlockNotFoundError, "Missing closing tag for {{##{block_type}}}"
+    end
+
+    # Render block content based on block type and condition evaluation
+    # Supports if/else, unless, and each blocks with proper context handling
+    def render_block(block_type, condition, block_content, else_content)
+      case block_type
+      when 'if'
+        if evaluate_condition(condition)
+          render_content_nodes(block_content)
+        else
+          render_content_nodes(else_content)
+        end
+      when 'unless'
+        if evaluate_condition(condition)
+          ''
+        else
+          render_content_nodes(block_content)
+        end
+      when 'each'
+        render_each_block(condition, block_content)
+      else
+        ''
+      end
+    end
+
+    def render_each_block(items_var, block_content)
+      items = get_variable_value(items_var)
+
+      if items.respond_to?(:each)
+        items.map.with_index do |item, index|
+          # Create context for each iteration
+          item_context = create_each_context(item, index, items_var)
+          engine = self.class.new('', item_context, partial_resolver: @partial_resolver)
+          engine.send(:render_content_nodes, block_content)
+        end.join
+      else
+        ''
+      end
     end
 
     def render_handlebars_expression(node)
@@ -133,11 +285,7 @@ module Rhales
       case content
       when /^>\s*(\w+)/ # Partials
         render_partial(Regexp.last_match(1))
-      when /^#if\s+(.+)/, /^#unless\s+(.+)/, /^#each\s+(.+)/ # Block statements
-        # For AST nodes, block statements need to be handled differently
-        # For now, we'll skip block statements in AST mode and let them be handled by regex fallback
-        ''
-      when %r{^/\w+} # Closing tags
+      when /^(#|\/)(if|unless|each)/ # Block statements (should be handled by render_content_nodes)
         ''
       else # Variables
         value = get_variable_value(content)
@@ -153,131 +301,6 @@ module Rhales
 
       # Recursively render the partial content
       engine = self.class.new(partial_content, @context, partial_resolver: @partial_resolver)
-      engine.render
-    end
-
-    def render_if_block(condition, full_content)
-      # For AST-based rendering, blocks should be handled at the AST level
-      # This method is kept for compatibility but shouldn't be called in AST mode
-      ''
-    end
-
-    def render_unless_block(condition, full_content)
-      # For AST-based rendering, blocks should be handled at the AST level
-      # This method is kept for compatibility but shouldn't be called in AST mode
-      ''
-    end
-
-    def render_each_block(items_var, full_content)
-      # For AST-based rendering, blocks should be handled at the AST level
-      # This method is kept for compatibility but shouldn't be called in AST mode
-      ''
-    end
-
-    # Process block expressions in simple templates
-    def process_block_expressions(content)
-      # Process nested blocks from inside out
-      loop do
-        original_content = content
-
-        # Process if blocks
-        content = process_if_blocks(content)
-
-        # Process unless blocks
-        content = process_unless_blocks(content)
-
-        # Process each blocks
-        content = process_each_blocks(content)
-
-        # Break if no more changes
-        break if content == original_content
-      end
-
-      content
-    end
-
-    def process_if_blocks(content)
-      content.gsub(%r{\{\{\s*#if\s+([^}]+)\s*\}\}(.*?)\{\{\s*/if\s*\}\}}m) do |match|
-        condition     = Regexp.last_match(1).strip
-        block_content = Regexp.last_match(2)
-
-        # Check for {{else}} clause
-        if block_content.include?('{{else}}')
-          if_part, else_part = block_content.split(/\{\{\s*else\s*\}\}/, 2)
-          if evaluate_condition(condition)
-            render_template_content(if_part)
-          else
-            render_template_content(else_part)
-          end
-        elsif evaluate_condition(condition)
-          render_template_content(block_content)
-        else
-          ''
-        end
-      end
-    end
-
-    def process_unless_blocks(content)
-      content.gsub(%r{\{\{\s*#unless\s+([^}]+)\s*\}\}(.*?)\{\{\s*/unless\s*\}\}}m) do |match|
-        condition     = Regexp.last_match(1).strip
-        block_content = Regexp.last_match(2)
-
-        if evaluate_condition(condition)
-          ''
-        else
-          render_template_content(block_content)
-        end
-      end
-    end
-
-    def process_each_blocks(content)
-      content.gsub(%r{\{\{\s*#each\s+([^}]+)\s*\}\}(.*?)\{\{\s*/each\s*\}\}}m) do |match|
-        items_var     = Regexp.last_match(1).strip
-        block_content = Regexp.last_match(2)
-
-        items = get_variable_value(items_var)
-
-        if items.respond_to?(:each)
-          items.map.with_index do |item, index|
-            # Create context for each iteration
-            item_context = create_each_context(item, index, items_var)
-            engine       = self.class.new(block_content, item_context, partial_resolver: @partial_resolver)
-            engine.render
-          end.join
-        else
-          ''
-        end
-      end
-    end
-
-    def process_partial_expressions(content)
-      content.gsub(/\{\{\s*>\s*(\w+)\s*\}\}/) do |match|
-        partial_name = Regexp.last_match(1)
-        render_partial(partial_name)
-      end
-    end
-
-    def process_variable_expressions(content)
-      # Process raw variables first {{{variable}}} - use non-greedy match
-      content = content.gsub(/\{\{\{\s*([^}]+?)\s*\}\}\}/) do |match|
-        variable_name = Regexp.last_match(1).strip
-        value         = get_variable_value(variable_name)
-        value.to_s
-      end
-
-      # Process escaped variables {{variable}} - but skip if already part of raw variables
-      content.gsub(/\{\{\s*([^}]+?)\s*\}\}/) do |match|
-        variable_name = Regexp.last_match(1).strip
-        # Skip if it's a block statement or partial
-        next match if variable_name.match?(%r{^(#|/|>)})
-
-        value = get_variable_value(variable_name)
-        escape_html(value.to_s)
-      end
-    end
-
-    def render_template_content(content)
-      engine = self.class.new(content, @context, partial_resolver: @partial_resolver)
       engine.render
     end
 

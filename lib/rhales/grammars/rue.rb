@@ -1,4 +1,4 @@
-# lib/rhales/rue_grammar.rb - Formal .rue file grammar
+# lib/rhales/rue_grammar.rb
 
 require 'prism'
 

@@ -1,8 +1,27 @@
-# lib/rhales/parser.rb - Updated to use formal grammar
+# lib/rhales/parser.rb
 
 require_relative 'grammars/rue'
 
 module Rhales
+  # Modern AST-based parser for .rue files using formal grammar
+  #
+  # This parser uses RueGrammar for formal parsing with proper error reporting
+  # and accurate line/column information. It replaces regex-based parsing
+  # with a robust AST approach that handles nested structures correctly.
+  #
+  # Features:
+  # - Formal grammar parsing with RueGrammar
+  # - Accurate error reporting with line/column information
+  # - Proper nested structure handling
+  # - Section validation and attribute extraction
+  # - Variable and partial dependency analysis
+  # - Immutable AST representation
+  #
+  # Usage:
+  #   parser = Parser.new(rue_content)
+  #   parser.parse!
+  #   template_section = parser.section('template')
+  #   variables = parser.template_variables
   class Parser
     class ParseError < StandardError; end
     class SectionMissingError < ParseError; end

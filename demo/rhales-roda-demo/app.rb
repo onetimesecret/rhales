@@ -93,8 +93,9 @@ class RhalesDemo < Roda
     require_bcrypt? false  # We'll handle password hashing ourselves
 
     # Use our Rhales templates instead of ERB
-    login_view { rhales_render('login', { page_title: 'Login' }) }
-    create_account_view { rhales_render('register', { page_title: 'Create Account' }) }
+    # Note: In Rodauth view blocks, we have access to scope which has the rhales_render method
+    login_view { scope.rhales_render('login', { page_title: 'Login' }) }
+    create_account_view { scope.rhales_render('register', { page_title: 'Create Account' }) }
   end
 
   # Configure Rhales
@@ -116,6 +117,17 @@ class RhalesDemo < Roda
 
   # Rhales render helper using adapter classes
   def rhales_render(template_name, business_data = {})
+    # Automatically include common view data (flash, CSRF, etc.)
+    auto_data = {
+      flash_notice: flash['notice'],
+      flash_error: flash['error'],
+      current_path: request.path,
+      request_method: request.request_method
+    }
+
+    # Merge with provided business data (business_data takes precedence)
+    merged_data = auto_data.merge(business_data)
+
     # Create adapter instances for Rhales context
     request_data = SimpleRequest.new(
       path: request.path,
@@ -153,7 +165,7 @@ class RhalesDemo < Roda
       session_data,
       auth_data,
       nil, # locale_override
-      business_data: business_data
+      business_data: merged_data
     )
     view.render(template_name)
   end
