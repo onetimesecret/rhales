@@ -513,3 +513,14 @@ bundle exec rspec
 ## License
 
 The gem is available as open source under the [MIT License](https://opensource.org/licenses/MIT).
+
+## AI Development Assistance
+
+Rhales was developed with assistance from AI tools. The following tools provided significant help with architecture design, code generation, and documentation:
+
+- **Claude Sonnet 4** - Architecture design, code generation, and documentation
+- **Claude Desktop & Claude Code** - Interactive development sessions and debugging
+- **GitHub Copilot** - Code completion and refactoring assistance
+- **Qodo Merge Pro** - Code review and quality improvements
+
+I remain responsible for all design decisions and the final code. I believe in being transparent about development tools, especially as AI becomes more integrated into our workflows.
