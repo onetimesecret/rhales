@@ -2,7 +2,7 @@
 
 require_relative 'context'
 require_relative 'parser'
-require_relative 'rhales'
+require_relative 'template_engine'
 require_relative 'hydrator'
 require_relative 'refinements/require_refinements'
 
@@ -150,7 +150,7 @@ module Rhales
       partial_resolver = create_partial_resolver
 
       # Render with Rhales
-      Rhales.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
+      TemplateEngine.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
     end
 
     # Create partial resolver for {{> partial}} inclusions

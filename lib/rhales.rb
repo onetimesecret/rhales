@@ -6,7 +6,7 @@ require_relative 'rhales/adapters/base_auth'
 require_relative 'rhales/adapters/base_session'
 require_relative 'rhales/context'
 require_relative 'rhales/parser'
-require_relative 'rhales/rhales'
+require_relative 'rhales/template_engine'
 require_relative 'rhales/hydrator'
 require_relative 'rhales/refinements/require_refinements'
 require_relative 'rhales/view'
@@ -47,7 +47,7 @@ module Rhales
   # Quick template rendering for testing/simple use cases
   def self.render_template(template_content, context_data = {})
     context = Context.minimal(business_data: context_data)
-    Rhales.render(template_content, context)
+    TemplateEngine.render(template_content, context)
   end
 
   # Create context with business data (for advanced usage)

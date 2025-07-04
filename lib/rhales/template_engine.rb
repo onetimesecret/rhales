@@ -1,4 +1,4 @@
-# lib/rhales/rhales.rb
+# lib/rhales/template_engine.rb
 
 require 'prism'
 require 'erb'
@@ -18,7 +18,7 @@ module Rhales
     # - {{#each items}} ... {{/each}} - Iteration
     # - {{> partial_name}} - Partial inclusion
     # rubocop:disable Style/RegexpLiteral
-    class Rhales
+    class TemplateEngine
       class RenderError < StandardError; end
       class PartialNotFoundError < RenderError; end
       class UndefinedVariableError < RenderError; end

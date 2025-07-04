@@ -78,7 +78,7 @@ module Rhales
       # Process variable interpolations in data section
       # Uses Rhales consistently for all template processing
       def process_data_variables(data_content)
-        rhales = Rhales.new(data_content, @context)
+        rhales = TemplateEngine.new(data_content, @context)
         rhales.render
       end
 

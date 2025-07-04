@@ -30,7 +30,7 @@ RSpec.describe 'Rhales Integration' do
       expect(html).to include('class="theme-dark"')
 
       # Verify data hydration
-      expect(html).to include('<script id="rhales-data-')
+      expect(html).to include('<script id="rsfc-data-')
       expect(html).to include('type="application/json"')
       expect(html).to include('"message": "Welcome to Rhales"')
       expect(html).to include('"authenticated": "true"')
@@ -65,7 +65,7 @@ RSpec.describe 'Rhales Integration' do
       view = Rhales::View.new(nil, nil, nil, 'en', business_data: test_data)
       html = view.render_hydration_only('test')
 
-      expect(html).to include('<script id="rhales-data-')
+      expect(html).to include('<script id="rsfc-data-')
       expect(html).to include('window.data = JSON.parse(')
       expect(html).not_to include('<h1>')
     end
