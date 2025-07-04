@@ -1,0 +1,54 @@
+<data>
+{
+  "statuses": [
+    {"value": "draft", "label": "Draft"},
+    {"value": "published", "label": "Published"}
+  ],
+  "form_title": "{{#if post.id}}Edit Post{{else}}New Post{{/if}}"
+}
+</data>
+
+<template>
+<div class="card" style="max-width: 800px;">
+  <h2>{{form_title}}</h2>
+  
+  <form method="post" action="{{action}}">
+    {{{runtime.csrf_field}}}
+    
+    <div class="form-group">
+      <label for="title">Title</label>
+      <input type="text" name="title" id="title" value="{{post.title}}" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="content">Content</label>
+      <textarea name="content" id="content" rows="10" required>{{post.content}}</textarea>
+    </div>
+    
+    <div class="form-group">
+      <label for="status">Status</label>
+      <select name="status" id="status">
+        {{#each statuses}}
+          <option value="{{value}}" {{#if ../post.status}}{{#if (eq ../post.status value)}}selected{{/if}}{{/if}}>
+            {{label}}
+          </option>
+        {{/each}}
+      </select>
+    </div>
+    
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit" class="btn">
+        {{#if post.id}}Update Post{{else}}Create Post{{/if}}
+      </button>
+      <a href="/" style="line-height: 2.5rem;">Cancel</a>
+    </div>
+  </form>
+</div>
+</template>
+
+<logic>
+# Form for creating and editing posts
+# Demonstrates conditional rendering based on post.id
+# Uses data section for form configuration
+# Shows how to handle select options with current value
+</logic>

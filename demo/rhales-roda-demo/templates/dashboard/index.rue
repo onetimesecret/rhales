@@ -1,0 +1,71 @@
+<data window="dashboardData">
+{
+  "stats_title": "Your Content Stats",
+  "posts_title": "Recent Posts",
+  "empty_message": "No posts yet. Create your first post!",
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View"
+  }
+}
+</data>
+
+<template>
+<h1>Welcome back, {{current_user.name}}!</h1>
+
+<div class="stats">
+  <div class="stat-card">
+    <h3>Total Posts</h3>
+    <div class="value">{{stats.total_posts}}</div>
+  </div>
+  <div class="stat-card">
+    <h3>Published</h3>
+    <div class="value">{{stats.published}}</div>
+  </div>
+  <div class="stat-card">
+    <h3>Drafts</h3>
+    <div class="value">{{stats.drafts}}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+    <h2>{{posts_title}}</h2>
+    <a href="/posts/new" class="btn" style="margin-left: auto;">New Post</a>
+  </div>
+  
+  {{#if posts}}
+    {{#each posts}}
+      {{> post_item}}
+    {{/each}}
+  {{else}}
+    <p style="color: #666; text-align: center; padding: 2rem;">{{empty_message}}</p>
+  {{/if}}
+</div>
+
+<script nonce="{{runtime.nonce}}">
+  // Example of using hydrated data
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.dashboardData) {
+      console.log('Dashboard loaded with actions:', window.dashboardData.actions);
+      
+      // Add delete confirmation
+      document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+          if (!confirm('Are you sure you want to delete this post?')) {
+            e.preventDefault();
+          }
+        });
+      });
+    }
+  });
+</script>
+</template>
+
+<logic>
+# Dashboard shows user stats and posts
+# Uses partials for post items
+# Demonstrates conditional rendering and iteration
+# Client-side enhancement with hydrated data
+</logic>

@@ -1,0 +1,39 @@
+<data>
+{
+  "status_colors": {
+    "published": "#27ae60",
+    "draft": "#95a5a6"
+  }
+}
+</data>
+
+<template>
+<div style="border-bottom: 1px solid #eee; padding: 1rem 0;">
+  <div style="display: flex; justify-content: space-between; align-items: start;">
+    <div style="flex: 1;">
+      <h3 style="margin-bottom: 0.5rem;">{{title}}</h3>
+      <p style="color: #666; margin-bottom: 0.5rem;">{{content}}</p>
+      <div style="font-size: 0.9rem; color: #999;">
+        <span style="color: {{#if status}}{{#if status_colors.[status]}}{{status_colors.[status]}}{{else}}#666{{/if}}{{/if}}">
+          {{status}}
+        </span>
+        • Created {{created_at}}
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="/posts/{{id}}/edit" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.9rem;">Edit</a>
+      <form method="post" action="/posts/{{id}}" class="delete-form" style="display: inline;">
+        {{{runtime.csrf_field}}}
+        <input type="hidden" name="_method" value="DELETE">
+        <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.75rem; font-size: 0.9rem;">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+</template>
+
+<logic>
+# Partial for rendering individual post items
+# Shows dynamic styling based on status
+# Includes edit and delete actions with CSRF
+</logic>
