@@ -1,0 +1,131 @@
+<data window="userDashboard">
+{
+  "welcome_message": "Welcome to your private dashboard, {{current_user.name}}!",
+  "features": [
+    {
+      "title": "Secure Data Boundary",
+      "description": "This data is only visible to authenticated users",
+      "icon": "🔒"
+    },
+    {
+      "title": "Server-Side Interpolation",
+      "description": "Data from Ruby merged into JSON at render time",
+      "icon": "🔄"
+    },
+    {
+      "title": "Client-Side Hydration",
+      "description": "Check browser console - data is available to JavaScript",
+      "icon": "💧"
+    }
+  ],
+  "api_endpoint": "/api/user",
+  "user_info": {
+    "email": "{{user_data.email}}",
+    "member_since": "{{user_data.member_since}}",
+    "id": "{{user_data.id}}"
+  }
+}
+</data>
+
+<template>
+<div style="max-width: 800px; margin: 0 auto;">
+  <h1>{{welcome_message}}</h1>
+
+  <div class="card" style="margin: 2rem 0;">
+    <h2>🎯 RSFC Demo Features</h2>
+    <p>This page demonstrates Ruby Single File Components with authentication boundaries:</p>
+
+    <div class="stats">
+      {{#each features}}
+        <div class="stat-card">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">{{icon}}</div>
+          <h3>{{title}}</h3>
+          <p style="color: #666; font-size: 0.9rem;">{{description}}</p>
+        </div>
+      {{/each}}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔐 Your Private Data</h2>
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
+      <div style="margin-bottom: 1rem;">
+        <strong>Email:</strong> {{user_info.email}}
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <strong>Member Since:</strong> {{user_info.member_since}}
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <strong>User ID:</strong> {{user_info.id}}
+      </div>
+    </div>
+
+    <p style="color: #666; font-size: 0.9rem;">
+      💡 This information was injected server-side into the JSON data section,
+      then interpolated into the template. It's also available to client-side JavaScript!
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>⚡ Live Demo</h2>
+    <p>Click the button below to fetch your data via API and see client-side hydration:</p>
+
+    <button id="fetch-data" class="btn">Fetch User Data</button>
+    <button id="show-hydrated" class="btn" style="margin-left: 1rem;">Show Hydrated Data</button>
+
+    <div id="result" style="margin-top: 1rem;"></div>
+  </div>
+
+  <div style="text-align: center; margin: 2rem 0;">
+    <a href="/logout" class="btn">Logout</a>
+  </div>
+</div>
+
+<script nonce="{{runtime.nonce}}">
+  document.addEventListener('DOMContentLoaded', function() {
+    // This data was hydrated from the server
+    const dashboardData = window.userDashboard;
+
+    console.log('🎉 RSFC Hydration Success!', dashboardData);
+
+    document.getElementById('fetch-data').addEventListener('click', async function() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>Loading...</p>';
+
+      try {
+        const response = await fetch(dashboardData.api_endpoint);
+        const data = await response.json();
+
+        resultDiv.innerHTML = `
+          <div style="background: #e8f5e8; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+            <h4>✅ API Response:</h4>
+            <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = '<p style="color: red;">❌ Error fetching data</p>';
+      }
+    });
+
+    document.getElementById('show-hydrated').addEventListener('click', function() {
+      const resultDiv = document.getElementById('result');
+
+      resultDiv.innerHTML = `
+        <div style="background: #e3f2fd; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+          <h4>💧 Hydrated Data:</h4>
+          <pre style="background: white; padding: 1rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(dashboardData, null, 2)}</pre>
+        </div>
+      `;
+    });
+  });
+</script>
+</template>
+
+<logic>
+# Dashboard demonstrates:
+# - Secure authentication boundary (only shown when logged in)
+# - Server-side data interpolation in JSON
+# - Client-side hydration with window object
+# - API integration showing same data via different path
+# - CSP nonce for secure inline scripts
+</logic>
