@@ -124,6 +124,42 @@ This example demonstrates Rhales' core value proposition: **eliminating the coor
 - ✅ **SEO + SPA**: Server-rendered HTML with automatic client hydration
 - ✅ **Security boundaries**: Only explicitly declared data reaches the client
 
+### 4. RSFC Security Model
+
+**Key Principle: The security boundary is at the server-to-client handoff, not within server-side rendering.**
+
+```xml
+<data>
+{
+  "message": "{{greeting}}",    <!-- ✅ Exposed to client -->
+  "user": {
+    "name": "{{user.name}}"     <!-- ✅ Exposed to client -->
+  }
+  <!-- ❌ user.secret_key not declared, won't reach client -->
+}
+</data>
+
+<template>
+  <h1>{{greeting}}</h1>          <!-- ✅ Full server context access -->
+  <p>{{user.name}}</p>           <!-- ✅ Can access user object methods -->
+  <p>{{user.secret_key}}</p>     <!-- ✅ Server-side only, not in <data> -->
+</template>
+```
+
+**Template Section (`<template>`):**
+- ✅ **Full server context access** - like ERB, HAML, or any server-side template
+- ✅ **Can call object methods** - `{{user.full_name}}`, `{{products.count}}`, etc.
+- ✅ **Rich server-side logic** - access to full business objects and their capabilities
+- ✅ **Private by default** - nothing in templates reaches the client unless explicitly declared
+
+**Data Section (`<data>`):**
+- ✅ **Explicit client allowlist** - only declared variables reach the browser
+- ✅ **JSON serialization boundary** - like designing a REST API endpoint
+- ✅ **Type safety foundation** - can validate against schemas
+- ❌ **Cannot expose secrets** - `user.secret_key` won't reach client unless declared
+
+This design gives you the flexibility of full server-side templating while maintaining explicit control over what data reaches the client.
+
 **Generated output:**
 ```html
 <!-- Server-rendered HTML -->
@@ -144,7 +180,7 @@ window.appState = JSON.parse(document.getElementById('app-state-data').textConte
 <script nonce="abc123" type="module" src="/assets/app.js"></script>
 ```
 
-### 4. Framework Integration
+### 5. Framework Integration
 
 #### Rails
 
@@ -311,7 +347,7 @@ class App < Roda
 end
 ```
 
-### 5. Basic Usage
+### 6. Basic Usage
 
 ```ruby
 # Create a view instance
