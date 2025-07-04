@@ -74,9 +74,13 @@ module Rhales
         template_section = node.children.find { |child| child.value[:tag] == 'template' }
         return '' unless template_section
 
-        render_section_content(template_section.value[:content])
+        # Convert template section content back to string and use regex parsing
+        # This is a hybrid approach until full AST block parsing is implemented
+        template_content = reconstruct_template_content(template_section.value[:content])
+        render_simple_template_content(template_content)
       when :section
-        render_section_content(node.value[:content])
+        template_content = reconstruct_template_content(node.value[:content])
+        render_simple_template_content(template_content)
       when :text
         node.value
       when :handlebars_expression
@@ -90,6 +94,37 @@ module Rhales
       content_nodes.map { |node| render_node(node) }.join
     end
 
+    def reconstruct_template_content(content_nodes)
+      return '' unless content_nodes.is_a?(Array)
+
+      content_nodes.map do |node|
+        case node.type
+        when :text
+          node.value
+        when :handlebars_expression
+          if node.value[:raw]
+            "{{{#{node.value[:content]}}}}"
+          else
+            "{{#{node.value[:content]}}}"
+          end
+        else
+          ''
+        end
+      end.join
+    end
+
+    def render_simple_template_content(content)
+      # Use the existing regex-based parsing for now
+      # Process block statements first
+      content = process_block_expressions(content)
+
+      # Process partials
+      content = process_partial_expressions(content)
+
+      # Process variables
+      process_variable_expressions(content)
+    end
+
     def render_handlebars_expression(node)
       content = node.value[:content]
       raw = node.value[:raw]
@@ -98,12 +133,12 @@ module Rhales
       case content
       when /^>\s*(\w+)/ # Partials
         render_partial(Regexp.last_match(1))
-      when /^#if\s+(.+)/ # If blocks
-        render_if_block(Regexp.last_match(1), content)
-      when /^#unless\s+(.+)/ # Unless blocks
-        render_unless_block(Regexp.last_match(1), content)
-      when /^#each\s+(.+)/ # Each blocks
-        render_each_block(Regexp.last_match(1), content)
+      when /^#if\s+(.+)/, /^#unless\s+(.+)/, /^#each\s+(.+)/ # Block statements
+        # For AST nodes, block statements need to be handled differently
+        # For now, we'll skip block statements in AST mode and let them be handled by regex fallback
+        ""
+      when /^\/\w+/ # Closing tags
+        ""
       else # Variables
         value = get_variable_value(content)
         raw ? value.to_s : escape_html(value.to_s)
@@ -122,21 +157,21 @@ module Rhales
     end
 
     def render_if_block(condition, full_content)
-      # This is a simplified version - for full block parsing, we'd need to parse the template
-      # and find the matching {{/if}} with proper nesting
-      raise BlockNotFoundError, "Block parsing not implemented for AST nodes yet"
+      # For AST-based rendering, blocks should be handled at the AST level
+      # This method is kept for compatibility but shouldn't be called in AST mode
+      ""
     end
 
     def render_unless_block(condition, full_content)
-      # This is a simplified version - for full block parsing, we'd need to parse the template
-      # and find the matching {{/unless}} with proper nesting
-      raise BlockNotFoundError, "Block parsing not implemented for AST nodes yet"
+      # For AST-based rendering, blocks should be handled at the AST level
+      # This method is kept for compatibility but shouldn't be called in AST mode
+      ""
     end
 
     def render_each_block(items_var, full_content)
-      # This is a simplified version - for full block parsing, we'd need to parse the template
-      # and find the matching {{/each}} with proper nesting
-      raise BlockNotFoundError, "Block parsing not implemented for AST nodes yet"
+      # For AST-based rendering, blocks should be handled at the AST level
+      # This method is kept for compatibility but shouldn't be called in AST mode
+      ""
     end
 
     # Process block expressions in simple templates
@@ -223,15 +258,15 @@ module Rhales
     end
 
     def process_variable_expressions(content)
-      # Process raw variables first {{{variable}}}
-      content = content.gsub(/\{\{\{\s*([^}]+)\s*\}\}\}/) do |match|
+      # Process raw variables first {{{variable}}} - use non-greedy match
+      content = content.gsub(/\{\{\{\s*([^}]+?)\s*\}\}\}/) do |match|
         variable_name = Regexp.last_match(1).strip
         value = get_variable_value(variable_name)
         value.to_s
       end
 
-      # Process escaped variables {{variable}}
-      content.gsub(/\{\{\s*([^}]+)\s*\}\}/) do |match|
+      # Process escaped variables {{variable}} - but skip if already part of raw variables
+      content.gsub(/\{\{\s*([^}]+?)\s*\}\}/) do |match|
         variable_name = Regexp.last_match(1).strip
         # Skip if it's a block statement or partial
         next match if variable_name.match?(/^(#|\/|>)/)

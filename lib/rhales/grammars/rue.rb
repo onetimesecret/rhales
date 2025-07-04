@@ -352,13 +352,13 @@ module Rhales
       # Check for required sections
       missing = REQUIRED_SECTIONS - sections
       if missing.any?
-        raise ParseError.new("Missing required sections: #{missing.join(', ')}")
+        raise ParseError.new("Missing required sections: #{missing.join(', ')}", line: 1, column: 1)
       end
 
       # Check for duplicates
       duplicates = sections.select { |tag| sections.count(tag) > 1 }.uniq
       if duplicates.any?
-        raise ParseError.new("Duplicate sections: #{duplicates.join(', ')}")
+        raise ParseError.new("Duplicate sections: #{duplicates.join(', ')}", line: 1, column: 1)
       end
     end
 

@@ -93,16 +93,21 @@ module Rhales
     private
 
     def extract_partials_from_node(node, partials)
-      return unless node.respond_to?(:children)
+      return unless @ast
 
-      node.children.each do |child|
-        if child.type == :handlebars_expression
-          content = child.value[:content]
-          if content.start_with?('>')
-            partials << content[1..-1].strip
+      # Extract from all sections
+      @grammar.sections.each do |section_name, section_node|
+        content_nodes = section_node.value[:content]
+        next unless content_nodes.is_a?(Array)
+
+        content_nodes.each do |content_node|
+          if content_node.type == :handlebars_expression
+            content = content_node.value[:content]
+            if content.start_with?('>')
+              partials << content[1..-1].strip
+            end
           end
         end
-        extract_partials_from_node(child, partials)
       end
     end
 
@@ -111,16 +116,17 @@ module Rhales
       return [] unless section_node
 
       variables = []
-      extract_variables_from_node(section_node, variables, exclude_partials: exclude_partials)
+      content_nodes = section_node.value[:content]
+      extract_variables_from_content(content_nodes, variables, exclude_partials: exclude_partials)
       variables.uniq
     end
 
-    def extract_variables_from_node(node, variables, exclude_partials: false)
-      return unless node.respond_to?(:children)
+    def extract_variables_from_content(content_nodes, variables, exclude_partials: false)
+      return unless content_nodes.is_a?(Array)
 
-      node.children.each do |child|
-        if child.type == :handlebars_expression
-          content = child.value[:content]
+      content_nodes.each do |node|
+        if node.type == :handlebars_expression
+          content = node.value[:content]
 
           # Skip partials if requested
           next if exclude_partials && content.start_with?('>')
@@ -130,7 +136,6 @@ module Rhales
 
           variables << content.strip
         end
-        extract_variables_from_node(child, variables, exclude_partials: exclude_partials)
       end
     end
 
