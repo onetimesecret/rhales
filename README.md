@@ -54,37 +54,97 @@ end
 
 ### 2. Create a .rue file
 
-Create `templates/welcome.rue`:
+Create `templates/dashboard.rue` - notice how the `<data>` section defines exactly what your frontend app will receive:
 
 ```xml
-<data>
+<data window="appState" schema="@/src/types/app-state.d.ts">
 {
-  "greeting": "{{page_title}}",
   "user": {
+    "id": "{{user.id}}",
     "name": "{{user.name}}",
-    "authenticated": {{authenticated}}
+    "email": "{{user.email}}",
+    "preferences": {{user.preferences}}
   },
-  "features": {{features}}
+  "products": {{recent_products}},
+  "cart": {
+    "items": {{cart.items}},
+    "total": "{{cart.total}}"
+  },
+  "api": {
+    "baseUrl": "{{api_base_url}}",
+    "csrfToken": "{{csrf_token}}"
+  },
+  "features": {{enabled_features}}
 }
 </data>
 
 <template>
-<div class="{{theme_class}}">
-  <h1>{{page_title}}</h1>
-  {{#if authenticated}}
-    <p>Welcome back, {{user.name}}!</p>
-  {{else}}
-    <p>Please sign in to continue.</p>
-  {{/if}}
+<!doctype html>
+<html lang="{{locale}}" class="{{theme_class}}">
+<head>
+  <title>{{page_title}}</title>
+  <meta name="csrf-token" content="{{csrf_token}}">
+</head>
+<body>
+  <!-- Critical: The mounting point for your frontend framework -->
+  <div id="app">
+    <!-- Server-rendered content for SEO and initial load -->
+    <nav>{{> navigation}}</nav>
+    <main>
+      <h1>{{page_title}}</h1>
+      {{#if user}}
+        <p>Welcome back, {{user.name}}!</p>
+      {{else}}
+        <p>Please sign in to continue.</p>
+      {{/if}}
+    </main>
+  </div>
 
-  {{#if features.dark_mode}}
-    <button onclick="toggleTheme()">Toggle Theme</button>
-  {{/if}}
-</div>
+  <!--
+    RSFC automatically generates hydration scripts:
+    - <script type="application/json" id="app-state-data">{...}</script>
+    - <script>window.appState = JSON.parse(...);</script>
+  -->
+
+  <!-- Your frontend framework takes over from here -->
+  <script nonce="{{nonce}}" type="module" src="/assets/app.js"></script>
+</body>
+</html>
 </template>
 ```
 
-### 3. Framework Integration
+### 3. The Manifold: Server-to-SPA Handoff
+
+This example demonstrates Rhales' core value proposition: **eliminating the coordination gap** between server state and frontend frameworks.
+
+**What you get:**
+- ✅ **Declarative data contract**: The `<data>` section explicitly defines what your frontend receives
+- ✅ **Type safety ready**: Schema reference points to TypeScript definitions
+- ✅ **Zero coordination overhead**: No separate API design needed for initial state
+- ✅ **SEO + SPA**: Server-rendered HTML with automatic client hydration
+- ✅ **Security boundaries**: Only explicitly declared data reaches the client
+
+**Generated output:**
+```html
+<!-- Server-rendered HTML -->
+<div id="app">
+  <nav>...</nav>
+  <main><h1>User Dashboard</h1><p>Welcome back, Alice!</p></main>
+</div>
+
+<!-- Automatic client hydration -->
+<script id="app-state-data" type="application/json">
+{"user":{"id":123,"name":"Alice","email":"alice@example.com","preferences":{...}},"products":[...],"cart":{...},"api":{...},"features":{...}}
+</script>
+<script nonce="abc123">
+window.appState = JSON.parse(document.getElementById('app-state-data').textContent);
+</script>
+
+<!-- Your Vue/React/Svelte app mounts here with full state -->
+<script nonce="abc123" type="module" src="/assets/app.js"></script>
+```
+
+### 4. Framework Integration
 
 #### Rails
 
@@ -104,8 +164,14 @@ class ApplicationController < ActionController::Base
 end
 
 # In your controller
-def index
-  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Our App')
+def dashboard
+  @dashboard_html = render_rhales('dashboard',
+    page_title: 'User Dashboard',
+    user: current_user,
+    recent_products: Product.recent.limit(5),
+    cart: current_user.cart,
+    enabled_features: Feature.enabled_for(current_user)
+  )
 end
 ```
 
@@ -128,9 +194,15 @@ helpers do
   end
 end
 
-get '/' do
-  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Sinatra')
-  erb :index
+get '/dashboard' do
+  @dashboard_html = render_rhales('dashboard',
+    page_title: 'Dashboard',
+    user: current_user,
+    recent_products: Product.recent,
+    cart: session[:cart] || {},
+    enabled_features: FEATURES
+  )
+  erb :dashboard
 end
 ```
 
@@ -154,9 +226,15 @@ module ApplicationHelper
 end
 
 # app/controllers/application_controller.rb
-get :index do
-  @welcome_html = render_rhales('welcome', page_title: 'Welcome to Padrino')
-  render :index
+get :dashboard do
+  @dashboard_html = render_rhales('dashboard',
+    page_title: 'Dashboard',
+    user: current_user,
+    recent_products: Product.recent,
+    cart: current_user&.cart,
+    enabled_features: settings.features
+  )
+  render :dashboard
 end
 ```
 
@@ -185,9 +263,15 @@ class MyAPI < Grape::API
     end
   end
 
-  get '/welcome' do
+  get '/dashboard' do
     content_type 'text/html'
-    render_rhales('welcome', page_title: 'Welcome to Grape API')
+    render_rhales('dashboard',
+      page_title: 'API Dashboard',
+      user: current_user,
+      recent_products: [],
+      cart: {},
+      enabled_features: { api_v2: true }
+    )
   end
 end
 ```
@@ -213,29 +297,44 @@ class App < Roda
   end
 
   route do |r|
-    r.root do
-      @welcome_html = render_rhales('welcome', page_title: 'Welcome to Roda')
-      view('index')
+    r.on 'dashboard' do
+      @dashboard_html = render_rhales('dashboard',
+        page_title: 'Dashboard',
+        user: current_user,
+        recent_products: [],
+        cart: session[:cart],
+        enabled_features: FEATURES
+      )
+      view('dashboard')
     end
   end
 end
 ```
 
-### 4. Basic Usage
+### 5. Basic Usage
 
 ```ruby
 # Create a view instance
 view = Rhales::View.new(request, session, current_user, locale)
 
-# Render a template
-html = view.render('welcome', page_title: 'Welcome to Rhales')
+# Render a template with rich data for frontend hydration
+html = view.render('dashboard',
+  page_title: 'User Dashboard',
+  user: current_user,
+  recent_products: Product.recent.limit(5),
+  cart: current_user.cart,
+  enabled_features: Feature.enabled_for(current_user)
+)
 
 # Or use the convenience method
-html = Rhales.render('welcome',
+html = Rhales.render('dashboard',
   request: request,
   session: session,
   user: current_user,
-  page_title: 'Welcome to Rhales'
+  page_title: 'User Dashboard',
+  recent_products: products,
+  cart: cart_data,
+  enabled_features: features
 )
 ```
 
