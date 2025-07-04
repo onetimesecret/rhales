@@ -1,5 +1,8 @@
 # Rhales - Ruby Single File Components
 
+> [!CAUTION]
+> **Early Development Release** - Rhales is in active development (v0.1.0). The API may change between versions. While functional and tested, it's recommended for experimental use and contributions rather than production applications. Please report issues and provide feedback through GitHub.
+
 Rhales is a framework for building server-rendered components with client-side data hydration using `.rue` files called RSFCs (Ruby Single File Components). Similar to Vue.js single file components but designed for Ruby applications.
 
 About the name:
