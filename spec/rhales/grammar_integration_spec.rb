@@ -50,8 +50,9 @@ RSpec.describe 'Grammar Integration' do
       data_section = grammar.sections['data']
       expect(data_section.value[:attributes]).to eq({
         'window' => 'customData',
-        'schema' => 'schema.json'
-      })
+        'schema' => 'schema.json',
+      },
+                                                   )
     end
 
     it 'parses handlebars expressions correctly' do
@@ -203,8 +204,9 @@ RSpec.describe 'Grammar Integration' do
       Rhales::Context.minimal(business_data: {
         greeting: 'Hello World',
         authenticated: true,
-        user: { name: 'John Doe' }
-      })
+        user: { name: 'John Doe' },
+      },
+                             )
     end
 
     it 'renders simple templates without .rue structure' do
@@ -248,8 +250,9 @@ RSpec.describe 'Grammar Integration' do
       RUE
 
       html_context = Rhales::Context.minimal(business_data: {
-        greeting: '<strong>Bold</strong>'
-      })
+        greeting: '<strong>Bold</strong>',
+      },
+                                            )
 
       engine = Rhales::TemplateEngine.new(template, html_context)
       result = engine.render
@@ -320,11 +323,11 @@ RSpec.describe 'Grammar Integration' do
 
       # Create business data
       business_data = {
-        page_title: 'AST Test Page'
+        page_title: 'AST Test Page',
       }
 
       # Create authenticated context
-      user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Grammar User', theme: 'dark')
+      user    = Rhales::Adapters::AuthenticatedAuth.new(name: 'Grammar User', theme: 'dark')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'test_session')
       context = Rhales::Context.for_view(nil, session, user, 'en', **business_data)
 
@@ -338,8 +341,8 @@ RSpec.describe 'Grammar Integration' do
 
       # Render template
       template_content = parser.section('template')
-      engine = Rhales::TemplateEngine.new(template_content, context)
-      result = engine.render
+      engine           = Rhales::TemplateEngine.new(template_content, context)
+      result           = engine.render
 
       # Verify rendering
       expect(result).to include('<h1>AST Test Page</h1>')
@@ -367,8 +370,8 @@ RSpec.describe 'Grammar Integration' do
       parser.parse!
 
       template_content = parser.section('template')
-      engine = Rhales::TemplateEngine.new(template_content, context)
-      result = engine.render
+      engine           = Rhales::TemplateEngine.new(template_content, context)
+      result           = engine.render
 
       expect(result).to include('<h1>Test Title</h1>')
       expect(result).to include('<p>Static content</p>')

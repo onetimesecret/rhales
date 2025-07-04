@@ -30,7 +30,7 @@ RSpec.describe Rhales::Configuration do
 
     context 'when site configuration is provided' do
       before do
-        subject.site_host = 'example.com'
+        subject.site_host        = 'example.com'
         subject.site_ssl_enabled = true
       end
 
@@ -68,7 +68,7 @@ RSpec.describe Rhales::Configuration do
     context 'when neither condition is met' do
       before do
         subject.development_enabled = false
-        subject.app_environment = 'production'
+        subject.app_environment     = 'production'
       end
 
       it 'returns false' do
@@ -126,14 +126,14 @@ end
 
 RSpec.describe Rhales do
   describe '.configure' do
-    before { Rhales.reset_configuration! }
+    before { described_class.reset_configuration! }
 
     it 'yields configuration object' do
-      expect { |b| Rhales.configure(&b) }.to yield_with_args(Rhales::Configuration)
+      expect { |b| described_class.configure(&b) }.to yield_with_args(Rhales::Configuration)
     end
 
     it 'validates and freezes configuration' do
-      config = Rhales.configure do |c|
+      config = described_class.configure do |c|
         c.default_locale = 'es'
       end
 
@@ -144,21 +144,21 @@ RSpec.describe Rhales do
 
   describe '.configuration' do
     it 'returns configuration instance' do
-      expect(Rhales.configuration).to be_a(Rhales::Configuration)
+      expect(described_class.configuration).to be_a(Rhales::Configuration)
     end
 
     it 'returns same instance on multiple calls' do
-      config1 = Rhales.configuration
-      config2 = Rhales.configuration
+      config1 = described_class.configuration
+      config2 = described_class.configuration
       expect(config1).to be(config2)
     end
   end
 
   describe '.reset_configuration!' do
     it 'resets configuration' do
-      original_config = Rhales.configuration
-      Rhales.reset_configuration!
-      new_config = Rhales.configuration
+      original_config = described_class.configuration
+      described_class.reset_configuration!
+      new_config      = described_class.configuration
       expect(new_config).not_to be(original_config)
     end
   end

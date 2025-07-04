@@ -54,7 +54,7 @@ RSpec.describe Rhales::Context do
 
     it 'supports dot notation' do
       nested_data = { user: { profile: { name: 'John' } } }
-      context = described_class.new(nil, nil, nil, 'en', business_data: nested_data)
+      context     = described_class.new(nil, nil, nil, 'en', business_data: nested_data)
       expect(context.get('user.profile.name')).to eq('John')
     end
 
@@ -108,15 +108,15 @@ RSpec.describe Rhales::Context do
   end
 
   describe 'with custom configuration' do
+    subject { described_class.new(nil, nil, nil, nil, config: custom_config) }
+
     let(:custom_config) do
-      config = Rhales::Configuration.new
-      config.default_locale = 'fr'
+      config                 = Rhales::Configuration.new
+      config.default_locale  = 'fr'
       config.app_environment = 'staging'
-      config.features = { custom_feature: true }
+      config.features        = { custom_feature: true }
       config
     end
-
-    subject { described_class.new(nil, nil, nil, nil, config: custom_config) }
 
     it 'uses custom configuration' do
       expect(subject.locale).to eq('fr')
