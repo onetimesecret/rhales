@@ -93,9 +93,8 @@ class RhalesDemo < Roda
     require_bcrypt? false  # We'll handle password hashing ourselves
 
     # Use our Rhales templates instead of ERB
-    # Using the rodauth_view helper for cleaner configuration
-    login_view(&rodauth_view('login', page_title: 'Login'))
-    create_account_view(&rodauth_view('register_simple', title: 'Sign Up for Demo'))
+    login_view { scope.rhales_render('login', page_title: 'Login') }
+    create_account_view { scope.rhales_render('register_simple', title: 'Sign Up for Demo') }
   end
 
   # Configure Rhales
@@ -115,14 +114,35 @@ class RhalesDemo < Roda
     !current_user.nil?
   end
 
+  # CSRF token validation
+  def valid_csrf_token?(token)
+    return false unless token && session[:csrf_token]
+    # Simple constant-time comparison for security
+    token == session[:csrf_token]
+  end
+
+  def require_csrf_token!
+    unless valid_csrf_token?(request.params['_csrf_token'])
+      response.status = 403
+      return "CSRF token validation failed"
+    end
+  end
+
   # Helper method for Rodauth view configuration
   # Makes it easier to configure views: rodauth_view('login', title: 'Login')
   def rodauth_view(template_name, **data)
     proc { scope.rhales_render(template_name, data) }
   end
 
-  # Rhales render helper using adapter classes
-  def rhales_render(template_name, business_data = {})
+  # Rhales render helper using adapter classes with layout support
+  def rhales_render(template_name, business_data = {}, layout: 'layouts/main')
+    # Generate proper CSRF token and field
+    csrf_token = SecureRandom.hex(32)
+    csrf_field = "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
+
+    # Store CSRF token in session for validation
+    session[:csrf_token] = csrf_token
+
     # Automatically include common view data (flash, CSRF, etc.)
     auto_data = {
       flash_notice: flash['notice'],
@@ -144,7 +164,7 @@ class RhalesDemo < Roda
 
     session_data = SimpleSession.new(
       authenticated: logged_in?,
-      csrf_token: 'demo_csrf_token'
+      csrf_token: csrf_token
     )
 
     # Create auth adapter object
@@ -165,7 +185,7 @@ class RhalesDemo < Roda
       )
     end
 
-    # Create and render view using the View class
+    # Create view instance
     view = Rhales::View.new(
       request_data,
       session_data,
@@ -173,7 +193,41 @@ class RhalesDemo < Roda
       nil, # locale_override
       business_data: merged_data
     )
-    view.render(template_name)
+
+    # Add CSRF field to runtime data
+    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:csrf_field] = csrf_field
+    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:flash] = {
+      notice: flash['notice'],
+      error: flash['error']
+    }
+    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:nonce] = SecureRandom.hex(16)
+
+    # Render content template first
+    content_html = view.render(template_name)
+
+    # If layout is specified, render it with content
+    if layout
+      # Create new view for layout with content data
+      layout_view = Rhales::View.new(
+        request_data,
+        session_data,
+        auth_data,
+        nil,
+        business_data: merged_data.merge(content: content_html, authenticated: logged_in?)
+      )
+
+      # Add same runtime data to layout view
+      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:csrf_field] = csrf_field
+      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:flash] = {
+        notice: flash['notice'],
+        error: flash['error']
+      }
+      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:nonce] = SecureRandom.hex(16)
+
+      layout_view.render(layout)
+    else
+      content_html
+    end
   end
 
   route do |r|
