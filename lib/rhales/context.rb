@@ -24,6 +24,7 @@ module Rhales
         @sess          = sess || default_session
         @cust          = cust || default_customer
         @config        = config || Rhales.configuration
+        @locale        = locale_override || @config.default_locale
 
         # Normalize business data keys to strings for consistent access
         @business_data = normalize_keys(business_data).freeze

@@ -1,196 +1,164 @@
-# lib/rhales/parser.rb
+# lib/rhales/parser.rb - Updated to use formal grammar
 
-require 'prism'
-require 'json'
+require_relative 'grammars/rue'
 
 module Rhales
-    # Parser for Ruby Single File Components (.rue files)
-    #
-    # Parses .rue files into their constituent sections:
-    # - <data> - JSON with server variable interpolation for client hydration
-    # - <template> - Handlebars-style template with variable interpolation
-    # - <logic> - Optional Ruby code for server-side processing
-    #
-    # Uses Prism for all parsing to avoid external dependencies on unmaintained
-    # handlebars libraries while providing a clean handlebars subset.
-    # rubocop:disable Style/RegexpLiteral
-    class Parser
-      class ParseError < StandardError; end
-      class SectionMissingError < ParseError; end
-      class SectionDuplicateError < ParseError; end
-      class InvalidSyntaxError < ParseError; end
+  class Parser
+    class ParseError < StandardError; end
+    class SectionMissingError < ParseError; end
+    class SectionDuplicateError < ParseError; end
+    class InvalidSyntaxError < ParseError; end
 
-      REQUIRED_SECTIONS = %w[data template].freeze
-      OPTIONAL_SECTIONS = ['logic'].freeze
-      ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+    REQUIRED_SECTIONS = %w[data template].freeze
+    OPTIONAL_SECTIONS = ['logic'].freeze
+    ALL_SECTIONS = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
-      attr_reader :content, :file_path, :sections, :data_attributes
+    attr_reader :content, :file_path, :grammar, :ast
 
-      def initialize(content, file_path = nil)
-        @content         = content
-        @file_path       = file_path
-        @sections        = {}
-        @data_attributes = {}
-        @partials        = []
-      end
+    def initialize(content, file_path = nil)
+      @content = content
+      @file_path = file_path
+      @grammar = RueGrammar.new(content, file_path)
+      @ast = nil
+    end
 
-      def parse!
-        extract_sections!
-        validate_required_sections!
-        parse_data_attributes!
-        extract_partials!
-        validate_data_json!
-        self
-      end
+    def parse!
+      @grammar.parse!
+      @ast = @grammar.ast
+      parse_data_attributes!
+      self
+    rescue RueGrammar::ParseError => e
+      raise ParseError, "Grammar error: #{e.message}"
+    end
 
-      # Extract sections from the .rue file content
-      def extract_sections!
-        # Process each section type individually to avoid regex conflicts
-        ALL_SECTIONS.each do |section_name|
-          section_regex = %r{<#{section_name}\s*([^>]*)>(.*?)</#{section_name}>}m
+    def sections
+      return {} unless @ast
 
-          matches = @content.scan(section_regex)
-          next if matches.empty?
-
-          if matches.length > 1
-            raise SectionDuplicateError, "Duplicate <#{section_name}> section"
+      @grammar.sections.transform_values do |section_node|
+        section_node.value[:content].map do |content_node|
+          case content_node.type
+          when :text
+            content_node.value
+          when :handlebars_expression
+            if content_node.value[:raw]
+              "{{{#{content_node.value[:content]}}}"
+            else
+              "{{#{content_node.value[:content]}}}"
+            end
           end
+        end.join
+      end
+    end
 
-          attributes, section_content = matches.first
-          @sections[section_name]     = section_content.strip
+    def section(name)
+      sections[name]
+    end
 
-          # Store attributes for data section
-          if section_name == 'data'
-            @data_attributes = parse_attributes(attributes)
+    def data_attributes
+      @data_attributes ||= {}
+    end
+
+    def window_attribute
+      data_attributes['window'] || 'data'
+    end
+
+    def schema_path
+      data_attributes['schema']
+    end
+
+    def section?(name)
+      @grammar.sections.key?(name)
+    end
+
+    def partials
+      return [] unless @ast
+
+      partials = []
+      extract_partials_from_node(@ast, partials)
+      partials.uniq
+    end
+
+    def template_variables
+      extract_variables_from_section('template', exclude_partials: true)
+    end
+
+    def data_variables
+      extract_variables_from_section('data')
+    end
+
+    def all_variables
+      (template_variables + data_variables).uniq
+    end
+
+    private
+
+    def extract_partials_from_node(node, partials)
+      return unless node.respond_to?(:children)
+
+      node.children.each do |child|
+        if child.type == :handlebars_expression
+          content = child.value[:content]
+          if content.start_with?('>')
+            partials << content[1..-1].strip
           end
         end
+        extract_partials_from_node(child, partials)
       end
+    end
 
-      # Validate that required sections are present
-      def validate_required_sections!
-        missing_sections = REQUIRED_SECTIONS - @sections.keys
-        return if missing_sections.empty?
+    def extract_variables_from_section(section_name, exclude_partials: false)
+      section_node = @grammar.sections[section_name]
+      return [] unless section_node
 
-        raise SectionMissingError, "Missing required sections: #{missing_sections.join(', ')}"
-      end
+      variables = []
+      extract_variables_from_node(section_node, variables, exclude_partials: exclude_partials)
+      variables.uniq
+    end
 
-      # Parse attributes from section opening tags
-      def parse_attributes(attr_string)
-        attributes = {}
-        # Simple attribute parsing: key="value" or key='value'
-        attr_string.scan(/(\w+)=["']([^"']+)["']/) do |key, value|
-          attributes[key] = value
+    def extract_variables_from_node(node, variables, exclude_partials: false)
+      return unless node.respond_to?(:children)
+
+      node.children.each do |child|
+        if child.type == :handlebars_expression
+          content = child.value[:content]
+
+          # Skip partials if requested
+          next if exclude_partials && content.start_with?('>')
+
+          # Skip block helpers
+          next if content.match?(/^(#|\/)(if|unless|each|with)\s/)
+
+          variables << content.strip
         end
-        attributes
+        extract_variables_from_node(child, variables, exclude_partials: exclude_partials)
+      end
+    end
+
+    private
+
+    def parse_data_attributes!
+      data_section = @grammar.sections['data']
+      @data_attributes = {}
+
+      if data_section
+        @data_attributes = data_section.value[:attributes].dup
       end
 
-      # Parse data section attributes (window, schema)
-      def parse_data_attributes!
-        @data_attributes['window'] ||= 'data' # Default window attribute
+      # Set default window attribute
+      @data_attributes['window'] ||= 'data'
+    end
+
+    class << self
+      def parse_file(file_path)
+        raise ArgumentError, 'Not a .rue file' unless rue_file?(file_path)
+
+        file_content = File.read(file_path)
+        new(file_content, file_path).parse!
       end
 
-      # Extract partial references from template section
-      def extract_partials!
-        return unless @sections['template']
-
-        # Find {{> partial_name}} patterns
-        @sections['template'].scan(/\{\{\s*>\s*(\w+)\s*\}\}/) do |match|
-          @partials << match[0]
-        end
-
-        @partials.uniq!
+      def rue_file?(file_path)
+        File.extname(file_path) == '.rue'
       end
-
-      # Validate that data section contains valid JSON structure
-      def validate_data_json!
-        return unless @sections['data']
-
-        # Basic validation - check that it looks like JSON
-        data_content = @sections['data'].strip
-
-        # Should start with { and end with }
-        unless data_content.start_with?('{') && data_content.end_with?('}')
-          raise InvalidSyntaxError, 'Data section must contain JSON object'
-        end
-
-        # NOTE: We don't parse JSON here because it contains {{variable}} interpolations
-        # that need to be processed with context first
-      end
-
-      # Get list of partial dependencies
-      def partials
-        @partials.dup
-      end
-
-      # Get specific section content
-      def section(name)
-        @sections[name]
-      end
-
-      # Get data section window attribute (for window.data vs window.customName)
-      def window_attribute
-        @data_attributes['window']
-      end
-
-      # Get data section schema attribute (for future TypeScript integration)
-      def schema_path
-        @data_attributes['schema']
-      end
-
-      # Check if section exists
-      def section?(name)
-        @sections.key?(name)
-      end
-
-      # Get template with variables that need interpolation
-      def template_variables
-        return [] unless @sections['template']
-
-        variables = []
-        # Extract {{variable}} patterns (but not {{> partials}} or {{#if}} blocks)
-        @sections['template'].scan(/\{\{\s*([^>#\/\s][^}]*?)\s*\}\}/) do |match|
-          var_name = match[0].strip
-          # Skip handlebars helpers and block statements
-          next if var_name.match?(/^(if|unless|each|with)\s/)
-
-          variables << var_name
-        end
-
-        variables.uniq
-      end
-
-      # Get data section variables that need interpolation
-      def data_variables
-        return [] unless @sections['data']
-
-        variables = []
-        @sections['data'].scan(/\{\{\s*([^}]+)\s*\}\}/) do |match|
-          variables << match[0].strip
-        end
-
-        variables.uniq
-      end
-
-      # Get all variables referenced in the file
-      def all_variables
-        (template_variables + data_variables).uniq
-      end
-
-      class << self
-        # Parse a .rue file and return parser instance
-        def parse_file(file_path)
-          raise ArgumentError, 'Not a .rue file' unless rue_file?(file_path)
-
-          file_content = File.read(file_path)
-
-          new(file_content, file_path).parse!
-        end
-
-        # Check if a file is a .rue file
-        def rue_file?(file_path)
-          File.extname(file_path) == '.rue'
-        end
-      end
-    # rubocop:enable Style/RegexpLiteral
+    end
   end
 end
