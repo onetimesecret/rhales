@@ -24,7 +24,8 @@ module Rhales
         @sess          = sess || default_session
         @cust          = cust || default_customer
         @config        = config || Rhales.configuration
-        @locale        = determine_locale(locale_override)
+        @locale        = locale_override || @config.default_locale
+
         # Normalize business data keys to strings for consistent access
         @business_data = normalize_keys(business_data).freeze
 
@@ -77,7 +78,7 @@ module Rhales
       attr_reader :all_data
 
       # Check if variable exists
-      def has_variable?(variable_path)
+      def variable?(variable_path)
         !get(variable_path).nil?
       end
 
@@ -92,17 +93,6 @@ module Rhales
       end
 
     private
-
-      # Determine locale with priority order
-      def determine_locale(locale_override)
-        if locale_override
-          locale_override
-        elsif !req.nil? && req.env && req.env['ots.locale']
-          req.env['ots.locale']
-        else
-          @config.default_locale
-        end
-      end
 
       # Build runtime data (request metadata)
       def build_runtime_data

@@ -6,6 +6,11 @@ require 'securerandom'
 module Rhales
     # Data Hydrator for RSFC client-side data injection
     #
+    # RSFC Security Model: This is the server-to-client security boundary
+    # - Templates have full server context access (like ERB/HAML)
+    # - Only data declared in <data> section reaches the client
+    # - Like designing a REST API: explicit allowlist of what gets exposed
+    #
     # Processes the <data> section of .rue files and generates:
     # 1. JSON script element with serialized data
     # 2. Hydration script that parses JSON and assigns to window[attribute]
@@ -78,7 +83,7 @@ module Rhales
       # Process variable interpolations in data section
       # Uses Rhales consistently for all template processing
       def process_data_variables(data_content)
-        rhales = Rhales.new(data_content, @context)
+        rhales = TemplateEngine.new(data_content, @context)
         rhales.render
       end
 

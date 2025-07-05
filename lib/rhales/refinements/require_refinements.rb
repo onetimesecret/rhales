@@ -5,7 +5,7 @@ require_relative '../parser'
 module Rhales
   module Ruequire
     # Cache for parsed RSFC templates
-    @rsfc_cache    = {}
+    @rsfc_cache    = {} # TODO: ThreadSafety/MutableClassInstanceVariable
     @file_watchers = {}
 
     class << self

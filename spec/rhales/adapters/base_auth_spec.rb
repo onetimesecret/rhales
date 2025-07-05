@@ -57,8 +57,9 @@ RSpec.describe Rhales::Adapters::AnonymousAuth do
 end
 
 RSpec.describe Rhales::Adapters::AuthenticatedAuth do
-  let(:user_data) { { id: 123, name: 'John Doe', theme: 'dark', roles: ['user', 'editor'] } }
   subject { described_class.new(user_data) }
+
+  let(:user_data) { { id: 123, name: 'John Doe', theme: 'dark', roles: %w[user editor] } }
 
   describe '#anonymous?' do
     it 'returns false' do

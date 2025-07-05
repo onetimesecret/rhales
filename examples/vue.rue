@@ -1,0 +1,50 @@
+<!-- examples/vue.rue -->
+
+<!--
+  Example: Vue.js SPA Layout with Server-Side Rendering + Client Hydration
+
+  This demonstrates Rhales' core strength: seamless server-to-SPA handoff.
+
+  The <data> section defines exactly what your Vue app receives via window.onetime,
+  while the <template> provides SEO-friendly server-rendered HTML that Vue can
+  mount onto for client-side functionality.
+
+  Key features demonstrated:
+  - Schema validation with TypeScript definitions
+  - Automatic JSON hydration script generation
+  - Conditional asset loading (dev vs production)
+  - CSP-compliant nonce handling
+-->
+
+<data window="onetime" schema="@/src/types/declarations/window.d.ts">
+{{onetime_window}}
+</data>
+
+<template>
+  <!doctype html>
+  <html lang="{{locale}}" class="{{theme_class}}">
+    <head>
+      {{> colourmode}}
+      {{> head}}
+    </head>
+
+    <body class="font-serif bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div id="app">
+        <!-- Server-rendered content for SEO/initial load -->
+        {{> placeholder}}
+      </div>
+
+      <!-- Client hydration data is automatically injected by RSFC hydrator -->
+      <!-- The data section above will be converted to: -->
+      <!-- <script id="onetime-script" type="application/json">{...}</script> -->
+      <!-- <script>window.onetime = JSON.parse(document.getElementById('onetime-script').textContent);</script> -->
+
+      <!-- Vue application bootstrap -->
+      {{#if frontend_host}}
+      <script nonce="{{nonce}}" type="module" src="{{frontend_host}}/src/main.ts"></script>
+      {{else}}
+      <script nonce="{{nonce}}" type="module" src="/assets/main.js"></script>
+      {{/if}}
+    </body>
+  </html>
+</template>

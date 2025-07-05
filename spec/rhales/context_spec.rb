@@ -54,7 +54,7 @@ RSpec.describe Rhales::Context do
 
     it 'supports dot notation' do
       nested_data = { user: { profile: { name: 'John' } } }
-      context = described_class.new(nil, nil, nil, 'en', business_data: nested_data)
+      context     = described_class.new(nil, nil, nil, 'en', business_data: nested_data)
       expect(context.get('user.profile.name')).to eq('John')
     end
 
@@ -63,16 +63,16 @@ RSpec.describe Rhales::Context do
     end
   end
 
-  describe '#has_variable?' do
+  describe '#variable?' do
     subject { described_class.new(mock_request, mock_session, mock_user, 'en', business_data: business_data) }
 
     it 'returns true for existing variables' do
-      expect(subject.has_variable?('page_title')).to be(true)
-      expect(subject.has_variable?('csrf_token')).to be(true)
+      expect(subject.variable?('page_title')).to be(true)
+      expect(subject.variable?('csrf_token')).to be(true)
     end
 
     it 'returns false for non-existent variables' do
-      expect(subject.has_variable?('non_existent')).to be(false)
+      expect(subject.variable?('non_existent')).to be(false)
     end
   end
 
@@ -108,15 +108,15 @@ RSpec.describe Rhales::Context do
   end
 
   describe 'with custom configuration' do
+    subject { described_class.new(nil, nil, nil, nil, config: custom_config) }
+
     let(:custom_config) do
-      config = Rhales::Configuration.new
-      config.default_locale = 'fr'
+      config                 = Rhales::Configuration.new
+      config.default_locale  = 'fr'
       config.app_environment = 'staging'
-      config.features = { custom_feature: true }
+      config.features        = { custom_feature: true }
       config
     end
-
-    subject { described_class.new(nil, nil, nil, nil, config: custom_config) }
 
     it 'uses custom configuration' do
       expect(subject.locale).to eq('fr')

@@ -1,0 +1,149 @@
+<data>
+{
+  "app_name": "Rhales Demo",
+  "year": 2025
+}
+</data>
+
+<template>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{app_name}}</title>
+  <style nonce="{{runtime.nonce}}">
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1rem 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    nav a { color: white; text-decoration: none; margin-left: 1.5rem; }
+    nav a:hover { text-decoration: underline; }
+    .logo { font-size: 1.5rem; font-weight: bold; }
+    main { min-height: calc(100vh - 140px); padding: 2rem 0; }
+    footer {
+      background: #34495e;
+      color: white;
+      text-align: center;
+      padding: 1rem 0;
+    }
+    .flash {
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .flash.error {
+      background: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #2980b9; }
+    .btn-danger { background: #e74c3c; }
+    .btn-danger:hover { background: #c0392b; }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .stat-card h3 { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .stat-card .value { font-size: 2rem; font-weight: bold; color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <div class="logo">{{app_name}}</div>
+        <div>
+          {{#if authenticated}}
+            <a href="/">Dashboard</a>
+            <a href="/logout">Logout</a>
+          {{else}}
+            <a href="/">Home</a>
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+          {{/if}}
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      {{#if runtime.flash.notice}}
+        <div class="flash">{{runtime.flash.notice}}</div>
+      {{/if}}
+      {{#if runtime.flash.error}}
+        <div class="flash error">{{runtime.flash.error}}</div>
+      {{/if}}
+
+      {{{content}}}
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; {{year}} {{app_name}} - Powered by Rhales RSFC</p>
+    </div>
+  </footer>
+</body>
+</html>
+</template>
+
+<logic>
+# Layout provides the main HTML structure for all pages
+# Uses conditional rendering for navigation based on authentication state
+# Includes flash message support and responsive design
+</logic>

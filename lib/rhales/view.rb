@@ -2,7 +2,7 @@
 
 require_relative 'context'
 require_relative 'parser'
-require_relative 'rhales'
+require_relative 'template_engine'
 require_relative 'hydrator'
 require_relative 'refinements/require_refinements'
 
@@ -142,6 +142,12 @@ module Rhales
     end
 
     # Render template section with Rhales
+    #
+    # RSFC Security Model: Templates have full server context access
+    # - Templates can access all business data, user objects, methods, etc.
+    # - This is like any server-side template (ERB, HAML, etc.)
+    # - Security boundary is at server-to-client handoff, not within server rendering
+    # - Only data declared in <data> section reaches the client
     def render_template_section(parser)
       template_content = parser.section('template')
       return '' unless template_content
@@ -149,8 +155,8 @@ module Rhales
       # Create partial resolver
       partial_resolver = create_partial_resolver
 
-      # Render with Rhales
-      Rhales.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
+      # Render with full server context (business data + computed context)
+      TemplateEngine.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
     end
 
     # Create partial resolver for {{> partial}} inclusions

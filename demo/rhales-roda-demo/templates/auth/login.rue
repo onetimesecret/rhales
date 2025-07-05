@@ -1,0 +1,47 @@
+<data>
+{
+  "title": "Login",
+  "demo_accounts": [
+    {"email": "demo@example.com", "password": "demo123"},
+    {"email": "user@example.com", "password": "userpass"}
+  ]
+}
+</data>
+
+<template>
+<div class="card" style="max-width: 400px; margin: 0 auto;">
+  <h2>{{title}}</h2>
+
+  <form method="post" action="/login">
+    {{runtime.csrf_field}}
+
+    <div class="form-group">
+      <label for="login">Email</label>
+      <input type="email" name="login" id="login" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" name="password" id="password" required>
+    </div>
+
+    <button type="submit" class="btn">Login</button>
+    <a href="/register" style="margin-left: 1rem;">Need an account?</a>
+  </form>
+
+  <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #eee;">
+    <h3 style="font-size: 1rem; margin-bottom: 1rem;">Demo Accounts</h3>
+    {{#each demo_accounts}}
+      <div style="margin-bottom: 0.5rem; font-size: 0.9rem;">
+        <code>{{email}} / {{password}}</code>
+      </div>
+    {{/each}}
+  </div>
+</div>
+</template>
+
+<logic>
+# Login form with CSRF protection
+# Shows demo accounts for testing
+# Links to registration page
+</logic>

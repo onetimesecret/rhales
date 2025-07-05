@@ -38,6 +38,7 @@ dist/
 .claude
 .rspec*
 .qodo
+*.gem
 
 # Ignore WIP or temp dev files with uppercase names
 [A-Z]*.rb
