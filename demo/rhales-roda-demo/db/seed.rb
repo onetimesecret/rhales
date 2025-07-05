@@ -1,12 +1,19 @@
 require_relative '../app'
 require 'bcrypt'
 
-# Create demo account
-Account.create(
-  email: 'demo@example.com',
-  password_hash: BCrypt::Password.create('demo123'),
-  name: 'Demo User',
-)
+# Access the database through the RhalesDemo class
+db = RhalesDemo::DB
 
-puts 'Seed data created successfully!'
-puts 'Demo account: demo@example.com / demo123'
+# Create demo account (if it doesn't already exist)
+unless db[:accounts].where(email: 'demo@example.com').first
+  password_hash = BCrypt::Password.create('demo123')
+  db[:accounts].insert(
+    email: 'demo@example.com',
+    password_hash: password_hash
+  )
+  puts 'Demo account created: demo@example.com / demo123'
+else
+  puts 'Demo account already exists: demo@example.com / demo123'
+end
+
+puts 'Seed data setup completed successfully!'
