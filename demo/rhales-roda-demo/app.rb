@@ -95,20 +95,10 @@ class RhalesDemo < Roda
 
     # Use our Rhales templates instead of ERB
     login_view do
-      scope.rhales_render('login',
-        page_title: 'Login',
-        csrf_field: '<!-- CSRF FIELD PLACEHOLDER -->',
-        test_field: 'RODAUTH_TEST',
-      )
+      scope.rhales_render('auth/login')
     end
     create_account_view do
-      csrf_token                 = SecureRandom.hex(32)
-      scope.session[:csrf_token] = csrf_token
-      scope.rhales_render('register_simple',
-        title: 'Sign Up for Demo',
-        csrf_field: "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">",
-        csrf_token: csrf_token,
-      )
+      scope.rhales_render('auth/register')
     end
   end
 
@@ -145,12 +135,6 @@ class RhalesDemo < Roda
     end
   end
 
-  # Helper method for Rodauth view configuration
-  # Makes it easier to configure views: rodauth_view('login', title: 'Login')
-  def rodauth_view(template_name, **data)
-    proc { scope.rhales_render(template_name, data) }
-  end
-
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
     # Generate proper CSRF token and field
@@ -166,18 +150,11 @@ class RhalesDemo < Roda
       'current_path' => request.path,
       'request_method' => request.request_method,
       'csrf_field' => csrf_field,
-      'csrf_token' => csrf_token,
-      'test_field' => 'TEST_VALUE',
+      'csrf_token' => csrf_token
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
-    # But we want to ensure CSRF is always available, so add it after merge
     merged_data = auto_data.merge(business_data).merge(extra_data)
-
-    # Always ensure CSRF field is available regardless of data precedence
-    merged_data['csrf_field'] = csrf_field
-    merged_data['csrf_token'] = csrf_token
-    merged_data['test_field'] = 'FORCED_TEST_VALUE'
 
     # Create adapter instances for Rhales context
     request_data = SimpleRequest.new(

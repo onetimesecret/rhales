@@ -109,8 +109,6 @@
         <div>
           {{#if authenticated}}
             <a href="/">Dashboard</a>
-            <a href="/posts/new">New Post</a>
-            <a href="/profile">Profile</a>
             <a href="/logout">Logout</a>
           {{else}}
             <a href="/">Home</a>
