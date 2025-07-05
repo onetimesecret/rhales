@@ -22,5 +22,6 @@ gem 'tilt'
 # Development
 group :development do
   gem 'pry'
+  gem 'pry-byebug'
   gem 'rerun'
 end
