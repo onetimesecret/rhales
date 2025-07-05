@@ -135,6 +135,12 @@ class RhalesDemo < Roda
     end
   end
 
+  # Generate HTML input field for CSRF token
+  def csrf_field
+    token = session[:csrf_token] || SecureRandom.hex(32)
+    "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{token}\">"
+  end
+
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
     # Generate proper CSRF token and field
