@@ -4,9 +4,9 @@ require 'bcrypt'
 # Create demo account
 Account.create(
   email: 'demo@example.com',
-  password_hash: BCrypt::Password.create('password123'),
+  password_hash: BCrypt::Password.create('demo123'),
   name: 'Demo User',
 )
 
 puts 'Seed data created successfully!'
-puts 'Demo account: demo@example.com / password123'
+puts 'Demo account: demo@example.com / demo123'
