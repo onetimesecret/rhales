@@ -53,7 +53,7 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to eq(1)
-      
+
       if_block = grammar.ast.children[0]
       expect(if_block.type).to eq(:if_block)
       expect(if_block.value[:condition]).to eq('condition')
@@ -69,7 +69,7 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to eq(1)
-      
+
       if_block = grammar.ast.children[0]
       expect(if_block.type).to eq(:if_block)
       expect(if_block.value[:condition]).to eq('condition')
@@ -85,7 +85,7 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to eq(1)
-      
+
       unless_block = grammar.ast.children[0]
       expect(unless_block.type).to eq(:unless_block)
       expect(unless_block.value[:condition]).to eq('condition')
@@ -99,7 +99,7 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to eq(1)
-      
+
       each_block = grammar.ast.children[0]
       expect(each_block.type).to eq(:each_block)
       expect(each_block.value[:items]).to eq('items')
@@ -115,12 +115,12 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to eq(1)
-      
+
       outer_if = grammar.ast.children[0]
       expect(outer_if.type).to eq(:if_block)
       expect(outer_if.value[:condition]).to eq('outer')
       expect(outer_if.value[:if_content].size).to eq(1)
-      
+
       inner_if = outer_if.value[:if_content][0]
       expect(inner_if.type).to eq(:if_block)
       expect(inner_if.value[:condition]).to eq('inner')
@@ -147,7 +147,7 @@ RSpec.describe Rhales::HandlebarsGrammar do
       grammar.parse!
 
       expect(grammar.ast.children.size).to be >= 4
-      
+
       # Should contain text, variable, if block, and partial
       types = grammar.ast.children.map(&:type)
       expect(types).to include(:text, :variable_expression, :if_block, :partial_expression)

@@ -10,12 +10,10 @@ require 'rhales'
 
 # Simple adapter classes for Rhales context objects
 class SimpleRequest
-  attr_reader :path, :method, :ip, :params
+  attr_reader :path, :method, :ip, :params, :env
 
-  def initialize(path:, method:, ip:, params:)
-    @path = path
+  def initialize(path:, method:, ip:, params:, env: {})
     @method = method
-    @ip = ip
     @params = params
   end
 end
@@ -25,7 +23,6 @@ class SimpleSession
 
   def initialize(authenticated:, csrf_token:)
     @authenticated = authenticated
-    @csrf_token = csrf_token
   end
 
   def authenticated?
@@ -38,8 +35,6 @@ class SimpleAuth < Rhales::Adapters::BaseAuth
 
   def initialize(authenticated:, email:, user_data:)
     @authenticated = authenticated
-    @email = email
-    @user_data = user_data
   end
 
   def anonymous?
@@ -99,14 +94,13 @@ class RhalesDemo < Roda
 
   # Configure Rhales
   Rhales.configure do |config|
-    config.template_paths = [File.join(opts[:root], 'templates')]
-    config.default_locale = 'en'
     config.cache_templates = false  # Disable for demo
   end
 
   # Simple auth helper
   def current_user
     return nil unless session[:user_id]
+
     @current_user ||= DB[:accounts].where(id: session[:user_id]).first
   end
 
@@ -117,6 +111,7 @@ class RhalesDemo < Roda
   # CSRF token validation
   def valid_csrf_token?(token)
     return false unless token && session[:csrf_token]
+
     # Simple constant-time comparison for security
     token == session[:csrf_token]
   end
@@ -124,7 +119,6 @@ class RhalesDemo < Roda
   def require_csrf_token!
     unless valid_csrf_token?(request.params['_csrf_token'])
       response.status = 403
-      return "CSRF token validation failed"
     end
   end
 
@@ -135,7 +129,7 @@ class RhalesDemo < Roda
   end
 
   # Rhales render helper using adapter classes with layout support
-  def rhales_render(template_name, business_data = {}, layout: 'layouts/main')
+  def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
     # Generate proper CSRF token and field
     csrf_token = SecureRandom.hex(32)
     csrf_field = "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{csrf_token}\">"
@@ -145,26 +139,40 @@ class RhalesDemo < Roda
 
     # Automatically include common view data (flash, CSRF, etc.)
     auto_data = {
-      flash_notice: flash['notice'],
-      flash_error: flash['error'],
-      current_path: request.path,
-      request_method: request.request_method
+      'flash_notice' => flash['notice'],
+      'flash_error' => flash['error'],
+      'current_path' => request.path,
+      'request_method' => request.request_method,
+      'csrf_field' => csrf_field,
+      'csrf_token' => csrf_token,
+      'test_field' => "TEST_VALUE"
     }
 
-    # Merge with provided business data (business_data takes precedence)
-    merged_data = auto_data.merge(business_data)
+    # Merge data layers: auto_data provides base, then business_data, then extra_data
+    # But we want to ensure CSRF is always available, so add it after merge
+    merged_data = auto_data.merge(business_data).merge(extra_data)
+    
+
+    # Always ensure CSRF field is available regardless of data precedence
+    merged_data['csrf_field'] = csrf_field
+    merged_data['csrf_token'] = csrf_token
+    merged_data['test_field'] = "FORCED_TEST_VALUE"
 
     # Create adapter instances for Rhales context
     request_data = SimpleRequest.new(
       path: request.path,
       method: request.request_method,
       ip: request.ip,
-      params: request.params
+      params: request.params,
+      env: {
+        'csrf_token' => csrf_token,
+        'nonce' => SecureRandom.hex(16),
+        'request_id' => SecureRandom.hex(8),
+        'flash_notice' => flash['notice'],
     )
 
     session_data = SimpleSession.new(
       authenticated: logged_in?,
-      csrf_token: csrf_token
     )
 
     # Create auth adapter object
@@ -174,35 +182,20 @@ class RhalesDemo < Roda
         email: current_user[:email],
         user_data: {
           id: current_user[:id],
-          email: current_user[:email]
-        }
       )
     else
       SimpleAuth.new(
         authenticated: false,
         email: nil,
-        user_data: nil
       )
     end
 
-    # Create view instance
-    view = Rhales::View.new(
+    # Render content template first
       request_data,
       session_data,
       auth_data,
       nil, # locale_override
-      business_data: merged_data
     )
-
-    # Add CSRF field to runtime data
-    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:csrf_field] = csrf_field
-    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:flash] = {
-      notice: flash['notice'],
-      error: flash['error']
-    }
-    view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:nonce] = SecureRandom.hex(16)
-
-    # Render content template first
     content_html = view.render(template_name)
 
     # If layout is specified, render it with content
@@ -213,16 +206,7 @@ class RhalesDemo < Roda
         session_data,
         auth_data,
         nil,
-        business_data: merged_data.merge(content: content_html, authenticated: logged_in?)
       )
-
-      # Add same runtime data to layout view
-      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:csrf_field] = csrf_field
-      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:flash] = {
-        notice: flash['notice'],
-        error: flash['error']
-      }
-      layout_view.instance_variable_get(:@context).instance_variable_get(:@runtime_data)[:nonce] = SecureRandom.hex(16)
 
       layout_view.render(layout)
     else
@@ -238,15 +222,10 @@ class RhalesDemo < Roda
       if logged_in?
         rhales_render('dashboard', {
           welcome_message: "Welcome back, #{current_user[:email]}!",
-          login_time: Time.now.strftime('%Y-%m-%d %H:%M:%S')
-        })
       else
         rhales_render('home', {
           demo_credentials: {
             email: 'demo@example.com',
-            password: 'demo123'
-          }
-        })
       end
     end
 
@@ -258,7 +237,6 @@ class RhalesDemo < Roda
         {
           authenticated: true,
           user: current_user,
-          server_time: Time.now.iso8601
         }.to_json
       else
         { authenticated: false }.to_json
@@ -270,9 +248,7 @@ class RhalesDemo < Roda
       response['Content-Type'] = 'application/json'
 
       {
-        message: "This data was loaded dynamically via JavaScript!",
         timestamp: Time.now.to_i,
-        random_number: rand(1000)
       }.to_json
     end
   end

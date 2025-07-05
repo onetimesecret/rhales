@@ -91,7 +91,7 @@ module Rhales
       return '' unless content_nodes.is_a?(Array)
 
       result = ''
-      
+
       content_nodes.each do |node|
         case node.type
         when :text
@@ -118,7 +118,7 @@ module Rhales
     def render_variable_expression(node)
       name = node.value[:name]
       raw = node.value[:raw]
-      
+
       value = get_variable_value(name)
       raw ? value.to_s : escape_html(value.to_s)
     end
@@ -132,7 +132,7 @@ module Rhales
       condition = node.value[:condition]
       if_content = node.value[:if_content]
       else_content = node.value[:else_content]
-      
+
       if evaluate_condition(condition)
         render_content_nodes(if_content)
       else
@@ -143,7 +143,7 @@ module Rhales
     def render_unless_block(node)
       condition = node.value[:condition]
       content = node.value[:content]
-      
+
       if evaluate_condition(condition)
         ''
       else
@@ -154,7 +154,7 @@ module Rhales
     def render_each_block(node)
       items_var = node.value[:items]
       block_content = node.value[:content]
-      
+
       items = get_variable_value(items_var)
 
       if items.respond_to?(:each)

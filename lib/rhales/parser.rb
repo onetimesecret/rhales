@@ -229,13 +229,13 @@ module Rhales
       # Find all handlebars expressions in text content
       text.scan(/\{\{(.+?)\}\}/) do |match|
         content = match[0].strip
-        
+
         # Skip partials if requested
         next if exclude_partials && content.start_with?('>')
-        
+
         # Skip block helpers
         next if content.match?(%r{^(#|/)(if|unless|each|with)\s})
-        
+
         variables << content
       end
     end

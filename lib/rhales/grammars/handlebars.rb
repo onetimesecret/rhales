@@ -200,7 +200,7 @@ module Rhales
         if current_char == '{' && peek_char == '{'
           expr_start = current_position
           consume('{{')
-          
+
           # Check for triple braces
           raw = false
           if current_char == '{'
@@ -307,7 +307,7 @@ module Rhales
         if current_char == '{' && peek_char == '{'
           expr_start = current_position
           consume('{{')
-          
+
           raw = false
           if current_char == '{'
             raw = true
@@ -386,7 +386,7 @@ module Rhales
         if current_char == '{' && peek_char == '{'
           expr_start = current_position
           consume('{{')
-          
+
           raw = false
           if current_char == '{'
             raw = true
@@ -479,10 +479,10 @@ module Rhales
       # Convert variable expressions that are actually block expressions
       processed = []
       i = 0
-      
+
       while i < content.length
         node = content[i]
-        
+
         if node.type == :variable_expression
           case node.value[:name]
           when /^#if\s+(.+)$/
@@ -522,7 +522,7 @@ module Rhales
           i += 1
         end
       end
-      
+
       processed
     end
 
@@ -535,7 +535,7 @@ module Rhales
 
       while i < content.length && depth > 0
         node = content[i]
-        
+
         if node.type == :variable_expression
           case node.value[:name]
           when /^##{block_type}\s+/
@@ -560,7 +560,7 @@ module Rhales
         else
           current_content << node
         end
-        
+
         i += 1
       end
 
