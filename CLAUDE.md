@@ -1,12 +1,11 @@
 # Feature Implementation Guidelines
 
 ## Common Commands
-- bundle exec rspec spec/rhales/: Run all Rhales tests
-- bundle exec rspec spec/rhales/ --format documentation: Run tests with documentation format
-- rake rhales:test: Run Rhales-specific tests
-- rake rhales:docs: Generate documentation
+- bundle exec rspec spec/rhales/: Run test suite for current changes
 - gem build rhales.gemspec: Build the gem
-- gem install rhales-0.1.0.gem: Install the gem locally
+- bundle exec rspec spec/rhales/ --format documentation: Run tests with verbose output
+- rake rhales:test: Run Rhales-specific tests
+- rake rhales:validate: Validate template files
 - git worktree add ../feature-name feature-branch: Create parallel workspace
 - gh issue view [number]: Review GitHub issue details
 - gh pr create: Create pull request with context-aware commit message
@@ -17,51 +16,57 @@
 IMPORTANT: Always research and plan before coding. Use "think" or "think hard" for complex features.
 
 - Read relevant files and documentation WITHOUT writing code yet
-- Use subagents to investigate specific technical questions
-- Create implementation plan in markdown file
-- Document edge cases and potential complications
+- Understand the three-layer data system (runtime, business, computed)
+- Review adapter interfaces and dependency injection patterns
+- Create implementation plan in markdown file or GitHub issue
+- Document security implications and edge cases
 
 ### 2. Implementation Phase
 Follow test-driven development when possible:
 
-1. Write tests first in the `spec/rhales/` directory (mark with "TDD - no implementation yet")
-2. Confirm tests fail appropriately (`bundle exec rspec spec/rhales/your_spec.rb`)
+1. Write RSpec tests first (mark with "TDD - no implementation yet")
+2. Confirm tests fail appropriately
 3. Commit tests
-4. Implement code in `lib/rhales/` to pass the tests WITHOUT modifying tests
-5. Use subagents to verify implementation isn't overfitting
-6. Commit implementation
+4. Implement code to pass tests WITHOUT modifying tests
+5. Ensure no global state dependencies (OT.conf references)
+6. Verify HTML escaping and security measures
+7. Commit implementation
 
 ### 3. Validation & Review
-- Run the full test suite before committing (`bundle exec rspec spec/rhales/`)
-- Update `README.md` and `CHANGELOG.md` with changes
-- Use `gh` to create a descriptive pull request
+- Run full test suite: `bundle exec rspec spec/rhales/`
+- Check for any global configuration usage
+- Update README.md and CHANGELOG.md with changes
+- Verify YARD documentation is complete
+- Use `gh` to create descriptive pull request
 - Address review comments in separate commits
 
 ## Code Style
 - CRITICAL: Make MINIMAL changes to existing patterns
 - Preserve existing naming conventions and file organization
 - Use existing utility functions - avoid duplication
-- Follow established architecture patterns
-- Keep commits focused and logical
+- Use dependency injection over global state
+- Maintain adapter interface compliance
+- Keep context objects immutable
+- Ensure proper HTML escaping in templates
 
 ## Multi-Task Guidelines
 For complex features requiring parallel work:
-- Use git worktrees for independent tasks
-- Keep one task per worktree/terminal
+- Use git worktrees for independent components
+- Keep adapter changes separate from core changes
 - Use /clear between unrelated tasks to optimize context
-- Document progress in shared markdown checklist
+- Document progress in CHANGELOG.md
 
 ## Project-Specific Notes
 
-### Architecture
-The system is built around several core components:
-- `Configuration`: Handles dependency injection
-- `Context`: Manages a three-layer data system (runtime, business, computed)
-- `Parser`: Parses `.rue` files into `<data>`, `<template>`, and `<logic>`
-- `Rhales`: A Handlebars-style template engine
-- `Hydrator`: Manages client-side data injection
-- `View`: Orchestrates the rendering pipeline
-- `Adapters`: Provides pluggable authentication and session management
+### Core Components to Consider
+- **Configuration**: Block-based configuration with validation
+- **Context**: Three-layer system with dot-notation access
+- **Grammars**: Two Prism-based parsers, for .rue files and handlebars templates
+- **Parser**: .rue file parsing with Prism
+- **Rhales**: Handlebars-style template engine
+- **Hydrator**: Client-side data injection with CSP support
+- **Adapters**: Pluggable auth and session interfaces
+
 
 ### Key File Locations
 - **Core Logic**: `lib/rhales/`
@@ -75,3 +80,10 @@ The system is built around several core components:
 - **Data Hydration**: Uses a `<data>` block in `.rue` files to define a JSON object for client-side hydration, which supports variable interpolation
 - **Security**: Default HTML escaping, CSP nonce support for scripts, and CSRF token handling are built-in
 - **Configuration**: All configuration is handled via an injected `Configuration` object, avoiding global state
+
+### Testing Patterns
+- Mock adapters for auth/session testing
+- Use fixtures in `spec/fixtures/templates/`
+- Test all three context layers independently
+- Verify template caching behavior
+- Check false/nil handling explicitly
