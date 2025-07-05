@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/*
+
+  pull_request:
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    name: Tests (Ruby ${{ matrix.ruby }})
+    strategy:
+      fail-fast: true
+      matrix:
+        ruby: ["3.4", "3.5"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Run RSpec tests
+        run: bundle exec rspec
+
+      - name: Run Rhales-specific tests
+        run: bundle exec rake rhales:test
+
+  gem-build:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    name: Gem Build Test (Ruby ${{ matrix.ruby }})
+    strategy:
+      fail-fast: true
+      matrix:
+        ruby: ["3.4", "3.5"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Build gem
+        run: gem build rhales.gemspec
+
+      - name: Install gem locally
+        run: gem install rhales-*.gem
+
+      - name: Test gem installation
+        run: ruby -e "require 'rhales'; puts Rhales::VERSION"
+
+  template-validation:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    name: Template Validation (Ruby ${{ matrix.ruby }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.4", "3.5"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Validate example templates
+        run: bundle exec rake rhales:validate
+
+  demo-integration:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    name: Demo Integration (Ruby ${{ matrix.ruby }})
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.4", "3.5"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Install demo dependencies
+        working-directory: demo/rhales-roda-demo
+        run: bundle install
+
+      - name: Setup demo database
+        working-directory: demo/rhales-roda-demo
+        run: bundle exec ruby db/seed.rb
+
+      - name: Test demo app startup
+        working-directory: demo/rhales-roda-demo
+        run: |
+          timeout 30s bundle exec rackup -p 9393 &
+          sleep 5
+          curl -f http://localhost:9393/ || exit 1
+          pkill -f rackup || true
