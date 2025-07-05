@@ -2,7 +2,7 @@
 {
   "title": "Login",
   "demo_accounts": [
-    {"email": "demo@example.com", "password": "password123"},
+    {"email": "demo@example.com", "password": "demo123"},
     {"email": "user@example.com", "password": "userpass"}
   ]
 }
