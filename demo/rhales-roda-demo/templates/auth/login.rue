@@ -2,7 +2,7 @@
 {
   "title": "Login",
   "demo_accounts": [
-    {"email": "demo@example.com", "password": "password123"},
+    {"email": "demo@example.com", "password": "demo123"},
     {"email": "user@example.com", "password": "userpass"}
   ]
 }
@@ -12,7 +12,7 @@
 <div class="card" style="max-width: 400px; margin: 0 auto;">
   <h2>{{title}}</h2>
 
-  <form method="post" action="/login">2
+  <form method="post" action="/login">
     {{runtime.csrf_field}}
 
     <div class="form-group">

@@ -95,10 +95,10 @@ class RhalesDemo < Roda
 
     # Use our Rhales templates instead of ERB
     login_view do
-      scope.rhales_render('auth/login')
+      scope.instance_eval { rhales_render('auth/login') }
     end
     create_account_view do
-      scope.rhales_render('auth/register')
+      scope.instance_eval { rhales_render('auth/register') }
     end
   end
 
@@ -124,8 +124,9 @@ class RhalesDemo < Roda
   def valid_csrf_token?(token)
     return false unless token && session[:csrf_token]
 
-    # Simple constant-time comparison for security
-    token == session[:csrf_token]
+    # Use secure constant-time comparison to prevent timing attacks
+    token.bytesize == session[:csrf_token].bytesize &&
+      OpenSSL.fixed_length_secure_compare(token, session[:csrf_token])
   end
 
   def require_csrf_token!
@@ -135,13 +136,16 @@ class RhalesDemo < Roda
     end
   end
 
+  # Generate HTML input field for CSRF token
+  def csrf_field
+    token = session[:csrf_token] || SecureRandom.hex(32)
+    "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{token}\">"
+  end
+
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
-    # Generate proper CSRF token and field
-    csrf_token = SecureRandom.hex(32)
-
-    # Store CSRF token in session for validation
-    session[:csrf_token] = csrf_token
+    # Generate proper CSRF token and field (only if none exists)
+    csrf_token = session[:csrf_token] ||= SecureRandom.hex(32)
 
     # Automatically include common view data (flash, CSRF, etc.)
     auto_data = {

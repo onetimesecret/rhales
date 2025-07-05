@@ -52,7 +52,7 @@ Expected output:
 ```
 Seed data created successfully!
 Demo accounts:
-  - demo@example.com / password123
+  - demo@example.com / demo123
   - user@example.com / userpass
 ```
 
@@ -88,7 +88,7 @@ You should see the Rhales Demo homepage with feature cards.
 1. Click **"Login"** in the top navigation
 2. Enter credentials:
    - Email: `demo@example.com`
-   - Password: `password123`
+   - Password: `demo123`
 3. Click **"Login"** button
 4. You should see a dashboard with:
    - Welcome message with the user's name
