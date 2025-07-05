@@ -12,7 +12,7 @@
 <div class="card" style="max-width: 400px; margin: 0 auto;">
   <h2>{{title}}</h2>
 
-  <form method="post" action="/login">2
+  <form method="post" action="/login">
     {{runtime.csrf_field}}
 
     <div class="form-group">

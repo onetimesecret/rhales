@@ -95,10 +95,10 @@ class RhalesDemo < Roda
 
     # Use our Rhales templates instead of ERB
     login_view do
-      scope.rhales_render('auth/login')
+      scope.instance_eval { rhales_render('auth/login') }
     end
     create_account_view do
-      scope.rhales_render('auth/register')
+      scope.instance_eval { rhales_render('auth/register') }
     end
   end
 
