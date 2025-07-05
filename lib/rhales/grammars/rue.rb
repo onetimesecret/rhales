@@ -1,6 +1,7 @@
 # lib/rhales/rue_grammar.rb
 
 require 'prism'
+require_relative 'handlebars'
 
 module Rhales
   # Formal grammar definition for .rue files
@@ -167,87 +168,29 @@ module Rhales
     end
 
     def parse_section_content(tag_name)
-      start_pos     = @position
-      content_parts = []
+      start_pos = @position
+      content_start = @position
 
+      # Extract the raw content between section tags
+      raw_content = ''
       while !at_end? && !peek_closing_tag?(tag_name)
-        if current_char == '{' && peek_char == '{'
-          # Parse handlebars expression
-          expr = parse_handlebars_expression
-          content_parts << expr
-        else
-          # Parse regular text
-          text = parse_text_until_handlebars_or_closing_tag(tag_name)
-          content_parts << Node.new(:text, current_location, value: text) unless text.empty?
-        end
-      end
-
-      content_parts
-    end
-
-    def parse_handlebars_expression
-      start_pos = current_position
-
-      consume('{{') || parse_error("Expected '{{'")
-
-      # Check for triple braces (raw output)
-      raw = false
-      if current_char == '{'
-        raw = true
+        raw_content << current_char
         advance
       end
 
-      # Parse expression content
-      expr_content = parse_handlebars_content(raw)
-
-      # Consume closing braces
-      if raw
-        consume('}}}') || parse_error("Expected '}}}'")
+      # For template sections, use HandlebarsGrammar to parse the content
+      if tag_name == 'template'
+        handlebars_grammar = HandlebarsGrammar.new(raw_content)
+        handlebars_grammar.parse!
+        return handlebars_grammar.ast.children
       else
-        consume('}}') || parse_error("Expected '}}'")
+        # For data and logic sections, keep as simple text
+        return [Node.new(:text, current_location, value: raw_content)] unless raw_content.empty?
+        return []
       end
-
-      end_pos  = current_position
-      location = Location.new(
-        start_line: start_pos[:line],
-        start_column: start_pos[:column],
-        end_line: end_pos[:line],
-        end_column: end_pos[:column],
-        start_offset: start_pos[:offset],
-        end_offset: end_pos[:offset],
-      )
-
-      Node.new(:handlebars_expression, location, value: {
-        content: expr_content,
-        raw: raw,
-      }
-      )
     end
 
-    def parse_handlebars_content(raw)
-      content        = ''
-      closing_braces = raw ? '}}}' : '}}'
 
-      while !at_end? && !peek_string?(closing_braces)
-        content << current_char
-        advance
-      end
-
-      content.strip
-    end
-
-    def parse_text_until_handlebars_or_closing_tag(tag_name)
-      text = ''
-
-      while !at_end? &&
-            !(current_char == '{' && peek_char == '{') &&
-            !peek_closing_tag?(tag_name)
-        text << current_char
-        advance
-      end
-
-      text
-    end
 
     def parse_quoted_string
       quote_char = current_char

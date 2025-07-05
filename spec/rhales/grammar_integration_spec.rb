@@ -75,29 +75,31 @@ RSpec.describe 'Grammar Integration' do
       grammar.parse!
 
       template_section = grammar.sections['template']
-      handlebars_nodes = template_section.value[:content].select do |node|
-        node.type == :handlebars_expression
+      expression_nodes = template_section.value[:content].select do |node|
+        [:variable_expression, :if_block, :partial_expression].include?(node.type)
       end
 
-      expect(handlebars_nodes.size).to be >= 4
+      expect(expression_nodes.size).to be >= 4
 
       # Test variable expression
-      var_node = handlebars_nodes.find { |n| n.value[:content] == 'variable' }
+      var_node = expression_nodes.find { |n| n.type == :variable_expression && n.value[:name] == 'variable' }
       expect(var_node).not_to be_nil
       expect(var_node.value[:raw]).to be(false)
 
       # Test raw variable expression
-      raw_node = handlebars_nodes.find { |n| n.value[:content] == 'rawVariable' }
+      raw_node = expression_nodes.find { |n| n.type == :variable_expression && n.value[:name] == 'rawVariable' }
       expect(raw_node).not_to be_nil
       expect(raw_node.value[:raw]).to be(true)
 
       # Test block expression
-      if_node = handlebars_nodes.find { |n| n.value[:content] == '#if condition' }
+      if_node = expression_nodes.find { |n| n.type == :if_block }
       expect(if_node).not_to be_nil
+      expect(if_node.value[:condition]).to eq('condition')
 
       # Test partial expression
-      partial_node = handlebars_nodes.find { |n| n.value[:content] == '> partial' }
+      partial_node = expression_nodes.find { |n| n.type == :partial_expression }
       expect(partial_node).not_to be_nil
+      expect(partial_node.value[:name]).to eq('partial')
     end
 
     it 'provides accurate error reporting' do
