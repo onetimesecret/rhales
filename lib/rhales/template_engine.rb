@@ -3,6 +3,7 @@
 require 'erb'
 require_relative 'grammars/rue'
 require_relative 'grammars/handlebars'
+require_relative 'parser'
 
 module Rhales
   # Rhales - Ruby Handlebars-style template engine
@@ -31,12 +32,13 @@ module Rhales
     class UndefinedVariableError < RenderError; end
     class BlockNotFoundError < RenderError; end
 
-    attr_reader :template_content, :context, :partial_resolver
+    attr_reader :template_content, :context, :partial_resolver, :parser
 
     def initialize(template_content, context, partial_resolver: nil)
       @template_content = template_content
       @context          = context
       @partial_resolver = partial_resolver
+      @parser           = nil
     end
 
     def render
@@ -47,11 +49,19 @@ module Rhales
         grammar.parse!
         render_content_nodes(grammar.ast.children)
       else
-        # Parse .rue file using RueGrammar
-        grammar = RueGrammar.new(@template_content)
-        grammar.parse!
-        render_node(grammar.ast)
+        # Use Parser for .rue files
+        @parser = Parser.new(@template_content)
+        @parser.parse!
+
+        # Get template section via Parser
+        template_content = @parser.section('template')
+        raise RenderError, 'Missing template section' unless template_content
+
+        # Render the template section as a simple template
+        render_template_string(template_content)
       end
+    rescue Parser::ParseError => ex
+      raise RenderError, "Template parsing failed: #{ex.message}"
     rescue RueGrammar::ParseError => ex
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue HandlebarsGrammar::ParseError => ex
@@ -60,29 +70,42 @@ module Rhales
       raise RenderError, "Template rendering failed: #{ex.message}"
     end
 
+    # Access window attribute from parsed .rue file
+    def window_attribute
+      @parser&.window_attribute
+    end
+
+    # Access schema path from parsed .rue file
+    def schema_path
+      @parser&.schema_path
+    end
+
+    # Access all data attributes from parsed .rue file
+    def data_attributes
+      @parser&.data_attributes || {}
+    end
+
+    # Get template variables used in the template
+    def template_variables
+      @parser&.template_variables || []
+    end
+
+    # Get all partials used in the template
+    def partials
+      @parser&.partials || []
+    end
+
     private
 
     def simple_template?
       !@template_content.match?(/^<(data|template|logic)\b/)
     end
 
-    def render_node(node)
-      case node.type
-      when :rue_file
-        # For .rue files, only render template section
-        template_section = node.children.find { |child| child.value[:tag] == 'template' }
-        return '' unless template_section
-
-        render_content_nodes(template_section.value[:content])
-      when :section
-        render_content_nodes(node.value[:content])
-      when :text
-        node.value
-      when :handlebars_expression
-        render_handlebars_expression(node)
-      else
-        ''
-      end
+    def render_template_string(template_string)
+      # Parse the template string as a simple Handlebars template
+      grammar = HandlebarsGrammar.new(template_string)
+      grammar.parse!
+      render_content_nodes(grammar.ast.children)
     end
 
     # Render array of AST content nodes with proper block handling
@@ -298,6 +321,10 @@ module Rhales
         else
           super
         end
+      end
+
+      def respond_to_missing?(method_name, include_private = false)
+        super || @parent_context.respond_to?(method_name, include_private)
       end
     end
 

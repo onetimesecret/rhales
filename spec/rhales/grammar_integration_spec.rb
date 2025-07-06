@@ -304,6 +304,31 @@ RSpec.describe 'Grammar Integration' do
         expect(error.message).to include('Duplicate sections')
       end
     end
+
+    it 'now uses Parser internally for .rue files' do
+      template = <<~RUE
+        <data window="myData" schema="/api/schema.json">
+        {"message": "test"}
+        </data>
+
+        <template>
+        <h1>{{greeting}}</h1>
+        {{> header}}
+        </template>
+      RUE
+
+      engine = Rhales::TemplateEngine.new(template, context)
+      result = engine.render
+
+      # Verify metadata access methods work
+      expect(engine.window_attribute).to eq('myData')
+      expect(engine.schema_path).to eq('/api/schema.json')
+      expect(engine.data_attributes).to eq({ 'window' => 'myData', 'schema' => '/api/schema.json' })
+
+      # Verify analysis methods work
+      expect(engine.template_variables).to include('greeting')
+      expect(engine.partials).to include('header')
+    end
   end
 
   describe 'End-to-end AST workflow' do
