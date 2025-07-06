@@ -6,14 +6,40 @@ require 'securerandom'
 module Rhales
     # Data Hydrator for RSFC client-side data injection
     #
-    # RSFC Security Model: This is the server-to-client security boundary
-    # - Templates have full server context access (like ERB/HAML)
-    # - Only data declared in <data> section reaches the client
-    # - Like designing a REST API: explicit allowlist of what gets exposed
+    # ## RSFC Security Model: Server-to-Client Security Boundary
     #
-    # Processes the <data> section of .rue files and generates:
-    # 1. JSON script element with serialized data
-    # 2. Hydration script that parses JSON and assigns to window[attribute]
+    # The Hydrator enforces a critical security boundary between server and client:
+    #
+    # ### Server Side (Template Rendering)
+    # - Templates have FULL server context access (like ERB/HAML)
+    # - Can access user objects, database connections, internal APIs
+    # - Can access secrets, configuration, authentication state
+    # - Can process sensitive business logic
+    #
+    # ### Client Side (Data Hydration)
+    # - Only data declared in <data> section reaches the browser
+    # - Creates explicit allowlist like designing a REST API
+    # - Server-side variable interpolation processes secrets safely
+    # - JSON serialization validates data structure
+    #
+    # ### Process Flow
+    # 1. Server processes <data> section with full context access
+    # 2. Variables like {{user.name}} are interpolated server-side
+    # 3. Result is serialized as JSON and sent to client
+    # 4. Client receives only the processed, safe data
+    #
+    # ### Example
+    # ```rue
+    # <data>
+    # {
+    #   "user_name": "{{user.name}}",           // Safe: just the name
+    #   "theme": "{{user.theme_preference}}"    // Safe: just the theme
+    # }
+    # </data>
+    # ```
+    #
+    # Server template can access {{user.admin?}} and {{internal_config}},
+    # but client only gets the declared user_name and theme values.
     #
     # This creates an API-like boundary where data is serialized once and
     # parsed once, enforcing the same security model as REST endpoints.

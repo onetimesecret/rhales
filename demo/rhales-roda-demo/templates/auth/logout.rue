@@ -1,0 +1,22 @@
+<data>
+{
+  "title": "Logout"
+}
+</data>
+
+<template>
+<div style="max-width: 400px; margin: 0 auto; padding: 2rem;">
+  <h2>Logout</h2>
+
+  <form method="post" action="/logout">
+    {{{rodauth.csrf_tag}}}
+    <p>Are you sure you want to logout?</p>
+    <button type="submit" class="btn">Logout</button>
+    <a href="/" style="margin-left: 1rem;">Cancel</a>
+  </form>
+</div>
+</template>
+
+<logic>
+# Logout confirmation page
+</logic>

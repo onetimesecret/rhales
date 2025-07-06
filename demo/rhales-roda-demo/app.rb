@@ -64,18 +64,9 @@ class RhalesDemo < Roda
   # Database setup - use file-based SQLite for persistence
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
-  # Run basic migration for accounts table
-  DB.create_table?(:accounts) do
-    primary_key :id
-    String :email, null: false, unique: true
-    String :password_hash, null: false
-  end
-
-  # Create demo user if it doesn't exist
-  unless DB[:accounts].where(email: 'demo@example.com').first
-    password_hash = BCrypt::Password.create('demo123')
-    DB[:accounts].insert(email: 'demo@example.com', password_hash: password_hash)
-  end
+  # Run migrations if needed
+  Sequel.extension :migration
+  Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrate'))
 
   opts[:root] = File.dirname(__FILE__)
 
@@ -88,24 +79,33 @@ class RhalesDemo < Roda
   plugin :rodauth do
     db DB
     enable :login, :logout, :create_account
+
     login_redirect '/'
     logout_redirect '/'
     create_account_redirect '/'
 
-    # Use our existing accounts table structure
-    accounts_table :accounts
-    login_column :email
-    password_hash_column :password_hash
-
     # Set custom routes to match our templates
     create_account_route 'register'
+
+    # Skip status checks for demo simplicity
+    skip_status_checks? true
+
+    # Use email as login
+    login_param 'email'
+    login_confirm_param 'email'
 
     # Use our Rhales templates instead of ERB
     login_view do
       scope.instance_eval { rhales_render('auth/login') }
     end
+
     create_account_view do
       scope.instance_eval { rhales_render('auth/register') }
+    end
+
+    # Use Rhales template for logout page
+    logout_view do
+      scope.instance_eval { rhales_render('auth/logout') }
     end
   end
 
@@ -116,15 +116,15 @@ class RhalesDemo < Roda
     config.cache_templates = false  # Disable for demo
   end
 
-  # Simple auth helper
+  # Simple auth helper - uses Rodauth's session management
   def current_user
-    return nil unless session[:user_id]
+    return nil unless rodauth.logged_in?
 
-    @current_user ||= DB[:accounts].where(id: session[:user_id]).first
+    @current_user ||= DB[:accounts].where(id: rodauth.session_value).first
   end
 
   def logged_in?
-    !current_user.nil?
+    rodauth.logged_in?
   end
 
   # Rhales render helper using adapter classes with layout support
@@ -217,8 +217,7 @@ class RhalesDemo < Roda
         }
         )
       else
-        rhales_render('home', {}
-        )
+        rhales_render('home', {})
       end
     end
 
@@ -240,7 +239,6 @@ class RhalesDemo < Roda
     # Demo data endpoint
     r.get 'api/demo-data' do
       response['Content-Type'] = 'application/json'
-
       {
         message: 'This data was loaded dynamically via JavaScript!',
         timestamp: Time.now.to_i,

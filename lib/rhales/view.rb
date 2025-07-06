@@ -17,6 +17,34 @@ module Rhales
   # - Template rendering with Rhales
   # - Data hydration and injection
   #
+  # ## Context and Data Boundaries
+  #
+  # Views implement a two-phase security model:
+  #
+  # ### Server Templates: Full Context Access
+  # Templates have complete access to all server-side data:
+  # - All business_data passed to View.new
+  # - Data from .rue file's <data> section (processed server-side)
+  # - Runtime data (CSRF tokens, nonces, request metadata)
+  # - Computed data (authentication status, theme classes)
+  # - User objects, configuration, internal APIs
+  #
+  # ### Client Data: Explicit Allowlist
+  # Only data declared in <data> sections reaches the browser:
+  # - Creates a REST API-like boundary
+  # - Server-side variable interpolation processes secrets safely
+  # - JSON serialization validates data structure
+  # - No accidental exposure of sensitive server data
+  #
+  # Example:
+  #   # Server template has full access:
+  #   {{user.admin?}} {{csrf_token}} {{internal_config}}
+  #
+  #   # Client only gets declared data:
+  #   { "user_name": "{{user.name}}", "theme": "{{user.theme}}" }
+  #
+  # See docs/CONTEXT_AND_DATA_BOUNDARIES.md for complete details.
+  #
   # Subclasses can override context_class to use different context implementations.
   class View
     class RenderError < StandardError; end
@@ -145,9 +173,10 @@ module Rhales
     #
     # RSFC Security Model: Templates have full server context access
     # - Templates can access all business data, user objects, methods, etc.
+    # - Templates can access data from .rue file's <data> section (processed server-side)
     # - This is like any server-side template (ERB, HAML, etc.)
     # - Security boundary is at server-to-client handoff, not within server rendering
-    # - Only data declared in <data> section reaches the client
+    # - Only data declared in <data> section reaches the client (after processing)
     def render_template_section(parser)
       template_content = parser.section('template')
       return '' unless template_content
@@ -155,8 +184,11 @@ module Rhales
       # Create partial resolver
       partial_resolver = create_partial_resolver
 
-      # Render with full server context (business data + computed context)
-      TemplateEngine.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
+      # Merge .rue file data with existing context
+      context_with_rue_data = create_context_with_rue_data(parser)
+
+      # Render with full server context (business data + computed context + rue data)
+      TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
     end
 
     # Create partial resolver for {{> partial}} inclusions
@@ -179,6 +211,32 @@ module Rhales
     # Generate data hydration HTML
     def generate_hydration(parser)
       Hydrator.generate(parser, @rsfc_context)
+    end
+
+    # Create context that includes data from .rue file's data section
+    def create_context_with_rue_data(parser)
+      # Get data from .rue file's data section
+      rue_data = extract_rue_data(parser)
+
+      # Merge rue data with existing business data (rue data takes precedence)
+      merged_business_data = @business_data.merge(rue_data)
+
+      # Create new context with merged data
+      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **merged_business_data)
+    end
+
+    # Extract and process data from .rue file's data section
+    def extract_rue_data(parser)
+      data_content = parser.section('data')
+      return {} unless data_content
+
+      # Process the data section as JSON and parse it
+      hydrator = Hydrator.new(parser, @rsfc_context)
+      hydrator.processed_data_hash
+    rescue JSON::ParserError, Hydrator::JSONSerializationError => ex
+      # If data section isn't valid JSON, return empty hash
+      # This allows templates to work even with malformed data sections
+      {}
     end
 
     # Inject hydration HTML into template

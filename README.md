@@ -12,6 +12,7 @@ It all started with a simple mustache template many years ago. The successor to 
 
 - **Server-side template rendering** with Handlebars-style syntax
 - **Client-side data hydration** with secure JSON injection
+- **Clear security boundaries** between server context and client data
 - **Partial support** for component composition
 - **Pluggable authentication adapters** for any auth system
 - **Security-first design** with XSS protection and CSP support
@@ -48,6 +49,94 @@ Rhales.configure do |config|
   config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
+end
+```
+
+### 2. Create a Simple Component
+
+Create a `.rue` file in your templates directory:
+
+```rue
+<!-- templates/hello.rue -->
+<data>
+{
+  "greeting": "{{greeting}}",
+  "user_name": "{{user.name}}"
+}
+</data>
+
+<template>
+<div class="hello-component">
+  <h1>{{greeting}}, {{user.name}}!</h1>
+  <p>Welcome to Rhales RSFC!</p>
+</div>
+</template>
+
+<logic>
+# Simple greeting component
+</logic>
+```
+
+### 3. Render in Your Application
+
+```ruby
+# In your controller/route handler
+view = Rhales::View.new(request, session, user, 'en',
+  business_data: {
+    greeting: 'Hello',
+    user: { name: 'World' }
+  }
+)
+
+html = view.render('hello')
+# Returns HTML with embedded JSON for client-side hydration
+```
+
+## Context and Data Boundaries
+
+Rhales implements a **two-phase security model**:
+
+### Server Templates: Full Context Access
+Templates have complete access to all server-side data:
+- User objects and authentication state
+- Database connections and internal APIs
+- Configuration values and secrets
+- Request metadata (CSRF tokens, nonces)
+
+```handlebars
+<!-- Full server access in templates -->
+{{#if user.admin?}}
+  <a href="/admin">Admin Panel</a>
+{{/if}}
+<div class="{{theme_class}}">{{user.full_name}}</div>
+```
+
+### Client Data: Explicit Allowlist
+Only data declared in `<data>` sections reaches the browser:
+
+```rue
+<data>
+{
+  "display_name": "{{user.name}}",
+  "preferences": {
+    "theme": "{{user.theme}}"
+  }
+}
+</data>
+```
+
+Becomes:
+```javascript
+window.data = {
+  "display_name": "John Doe",
+  "preferences": { "theme": "dark" }
+}
+// No access to user.admin?, internal APIs, etc.
+```
+
+This creates a **REST API-like boundary** where you explicitly declare what data crosses the server-to-client security boundary.
+
+For complete details, see [Context and Data Boundaries Documentation](docs/CONTEXT_AND_DATA_BOUNDARIES.md).
   config.site_ssl_enabled = true
 end
 ```

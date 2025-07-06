@@ -2,7 +2,7 @@
 {
   "page_type": "public",
   "demo_credentials": {
-    "email": "demo@exampl2e.com",
+    "email": "demo@example.com",
     "password": "demo123"
   },
   "features": [

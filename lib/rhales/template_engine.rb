@@ -226,6 +226,8 @@ module Rhales
         false
       when ''
         false
+      when 'false', 'False', 'FALSE'
+        false
       when Array
         !value.empty?
       when Hash
