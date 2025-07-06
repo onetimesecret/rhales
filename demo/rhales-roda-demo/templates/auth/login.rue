@@ -13,7 +13,7 @@
   <h2>{{title}}</h2>
 
   <form method="post" action="/login">
-    {{runtime.csrf_field}}
+    {{{rodauth.csrf_tag}}}
 
     <div class="form-group">
       <label for="login">Email</label>

@@ -82,6 +82,7 @@ class RhalesDemo < Roda
   # We're using Rhales instead of Roda's render plugin
   plugin :flash
   plugin :sessions, secret: SecureRandom.hex(64), key: 'rhales-demo.session'
+  plugin :route_csrf
 
   # Simple Rodauth configuration
   plugin :rodauth do
@@ -92,6 +93,11 @@ class RhalesDemo < Roda
     logout_redirect '/'
     create_account_redirect '/'
     require_bcrypt? false  # We'll handle password hashing ourselves
+
+    # Set custom routes to match our templates
+    create_account_route 'register'
+
+    # Use Rodauth's built-in CSRF protection
 
     # Use our Rhales templates instead of ERB
     login_view do
@@ -120,41 +126,16 @@ class RhalesDemo < Roda
     !current_user.nil?
   end
 
-  # CSRF token validation
-  def valid_csrf_token?(token)
-    return false unless token && session[:csrf_token]
-
-    # Use secure constant-time comparison to prevent timing attacks
-    token.bytesize == session[:csrf_token].bytesize &&
-      OpenSSL.fixed_length_secure_compare(token, session[:csrf_token])
-  end
-
-  def require_csrf_token!
-    unless valid_csrf_token?(request.params['_csrf_token'])
-      response.status = 403
-      'CSRF token validation failed'
-    end
-  end
-
-  # Generate HTML input field for CSRF token
-  def csrf_field
-    token = session[:csrf_token] || SecureRandom.hex(32)
-    "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{token}\">"
-  end
 
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
-    # Generate proper CSRF token and field (only if none exists)
-    csrf_token = session[:csrf_token] ||= SecureRandom.hex(32)
-
-    # Automatically include common view data (flash, CSRF, etc.)
+    # Automatically include common view data (flash, rodauth, etc.)
     auto_data = {
       'flash_notice' => flash['notice'],
       'flash_error' => flash['error'],
       'current_path' => request.path,
       'request_method' => request.request_method,
-      'csrf_field' => csrf_field,
-      'csrf_token' => csrf_token
+      'rodauth' => rodauth
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
@@ -167,8 +148,6 @@ class RhalesDemo < Roda
       ip: request.ip,
       params: request.params,
       env: {
-        'csrf_token' => csrf_token,
-        'csrf_field' => csrf_field,
         'nonce' => SecureRandom.hex(16),
         'request_id' => SecureRandom.hex(8),
         'flash_notice' => flash['notice'],
@@ -178,7 +157,7 @@ class RhalesDemo < Roda
 
     session_data = SimpleSession.new(
       authenticated: logged_in?,
-      csrf_token: csrf_token,
+      csrf_token: nil, # Rodauth handles CSRF tokens
     )
 
     # Create auth adapter object

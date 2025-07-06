@@ -4,17 +4,59 @@ require_relative '../parser'
 
 module Rhales
   module Ruequire
-    # Cache for parsed RSFC templates
-    @rsfc_cache    = {} # TODO: ThreadSafety/MutableClassInstanceVariable
+    # Thread-safe cache for parsed RSFC templates
+    @rsfc_cache    = {}
     @file_watchers = {}
+    @cache_mutex   = Mutex.new
+    @watchers_mutex = Mutex.new
 
     class << self
-      attr_reader :rsfc_cache, :file_watchers
+      # Thread-safe access to cache
+      def rsfc_cache
+        @cache_mutex.synchronize { @rsfc_cache.dup }
+      end
+
+      # Thread-safe access to file watchers
+      def file_watchers
+        @watchers_mutex.synchronize { @file_watchers.dup }
+      end
 
       # Clear cache (useful for development and testing)
       def clear_cache!
-        @rsfc_cache.clear
-        @file_watchers.clear
+        @cache_mutex.synchronize { @rsfc_cache.clear }
+        cleanup_file_watchers!
+      end
+
+      # Stop all file watchers and clean up resources
+      def cleanup_file_watchers!
+        @watchers_mutex.synchronize do
+          @file_watchers.each_value do |watcher_thread|
+            if watcher_thread.is_a?(Thread) && watcher_thread.alive?
+              watcher_thread.kill
+              begin
+                watcher_thread.join(1) # Wait up to 1 second for clean shutdown
+              rescue StandardError
+                # Thread might already be dead, ignore errors
+              end
+            end
+          end
+          @file_watchers.clear
+        end
+      end
+
+      # Stop watching a specific file
+      def stop_watching_file!(full_path)
+        @watchers_mutex.synchronize do
+          watcher_thread = @file_watchers.delete(full_path)
+          if watcher_thread.is_a?(Thread) && watcher_thread.alive?
+            watcher_thread.kill
+            begin
+              watcher_thread.join(1)
+            rescue StandardError
+              # Thread cleanup error, ignore
+            end
+          end
+        end
       end
 
       # Enable development mode file watching
@@ -29,6 +71,13 @@ module Rhales
 
       def file_watching_enabled?
         @file_watching_enabled ||= false
+      end
+    end
+
+    # Ensure cleanup on program exit
+    at_exit do
+      if defined?(Rhales::Ruequire)
+        Rhales::Ruequire.cleanup_file_watchers!
       end
     end
 
@@ -100,35 +149,45 @@ module Rhales
 
       # Get parser from cache if available and not stale
       def get_cached_parser(full_path)
-        cache_entry = Rhales::Ruequire.rsfc_cache[full_path]
-        return nil unless cache_entry
+        Rhales::Ruequire.instance_variable_get(:@cache_mutex).synchronize do
+          cache_entry = Rhales::Ruequire.instance_variable_get(:@rsfc_cache)[full_path]
+          return nil unless cache_entry
 
-        # Check if file has been modified
-        if File.mtime(full_path) > cache_entry[:mtime]
-          # File modified, remove from cache
-          Rhales::Ruequire.rsfc_cache.delete(full_path)
-          return nil
+          # Check if file has been modified
+          if File.mtime(full_path) > cache_entry[:mtime]
+            # File modified, remove from cache
+            Rhales::Ruequire.instance_variable_get(:@rsfc_cache).delete(full_path)
+            return nil
+          end
+
+          cache_entry[:parser]
         end
-
-        cache_entry[:parser]
       end
 
       # Cache parsed parser with modification time
       def cache_parser(full_path, parser)
-        Rhales::Ruequire.rsfc_cache[full_path] = {
-          parser: parser,
-          mtime: File.mtime(full_path),
-        }
+        Rhales::Ruequire.instance_variable_get(:@cache_mutex).synchronize do
+          Rhales::Ruequire.instance_variable_get(:@rsfc_cache)[full_path] = {
+            parser: parser,
+            mtime: File.mtime(full_path),
+          }
+        end
       end
 
       # Set up file watching for development mode
       def setup_file_watching(full_path)
-        return if Rhales::Ruequire.file_watchers[full_path]
+        # Check if already watching in a thread-safe way
+        watchers_mutex = Rhales::Ruequire.instance_variable_get(:@watchers_mutex)
+        is_already_watching = watchers_mutex.synchronize do
+          Rhales::Ruequire.instance_variable_get(:@file_watchers)[full_path]
+        end
+
+        return if is_already_watching
 
         # Simple polling-based file watching
         # In a production system, you might want to use a more sophisticated
         # file watching library like Listen or rb-inotify
-        Thread.new do
+        watcher_thread = Thread.new do
           last_mtime = File.mtime(full_path)
 
           loop do
@@ -141,7 +200,12 @@ module Rhales
                 if defined?(OT) && OT.respond_to?(:ld)
                   OT.ld "[RSFC] File changed, clearing cache: #{full_path}"
                 end
-                Rhales::Ruequire.rsfc_cache.delete(full_path)
+
+                # Thread-safe cache removal
+                Rhales::Ruequire.instance_variable_get(:@cache_mutex).synchronize do
+                  Rhales::Ruequire.instance_variable_get(:@rsfc_cache).delete(full_path)
+                end
+
                 last_mtime = current_mtime
               end
             rescue StandardError => ex
@@ -149,12 +213,23 @@ module Rhales
               if defined?(OT) && OT.respond_to?(:ld)
                 OT.ld "[RSFC] File watcher error for #{full_path}: #{ex.message}"
               end
+
+              # Clean up watcher entry on error
+              watchers_mutex.synchronize do
+                Rhales::Ruequire.instance_variable_get(:@file_watchers).delete(full_path)
+              end
               break
             end
           end
         end
 
-        Rhales::Ruequire.file_watchers[full_path] = true
+        # Set thread as daemon so it doesn't prevent program exit
+        watcher_thread.thread_variable_set(:daemon, true)
+
+        # Mark as being watched
+        watchers_mutex.synchronize do
+          Rhales::Ruequire.instance_variable_get(:@file_watchers)[full_path] = watcher_thread
+        end
       end
     end
   end

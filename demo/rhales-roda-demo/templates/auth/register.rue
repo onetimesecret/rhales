@@ -15,7 +15,7 @@
   <h2>{{title}}</h2>
 
   <form method="post" action="/register">
-    {{{runtime.csrf_field}}}
+    {{{rodauth.csrf_tag}}}
 
     {{#each fields}}
       <div class="form-group">

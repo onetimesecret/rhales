@@ -1,6 +1,7 @@
 # Feature Implementation Guidelines
 
 ## Common Commands
+- Use bin/rackup to run the dev server
 - bundle exec rspec spec/rhales/: Run test suite for current changes
 - gem build rhales.gemspec: Build the gem
 - bundle exec rspec spec/rhales/ --format documentation: Run tests with verbose output
