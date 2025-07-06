@@ -25,7 +25,7 @@ module Rhales
       attr_reader :line, :column, :offset
 
       def initialize(message, line: nil, column: nil, offset: nil)
-        @line = line
+        @line   = line
         @column = column
         @offset = offset
         super("#{message} at line #{line}, column #{column}")
@@ -36,9 +36,9 @@ module Rhales
       attr_reader :type, :location, :children, :value
 
       def initialize(type, location, value: nil, children: [])
-        @type = type
+        @type     = type
         @location = location
-        @value = value
+        @value    = value
         @children = children
       end
 
@@ -51,23 +51,23 @@ module Rhales
       attr_reader :start_line, :start_column, :end_line, :end_column, :start_offset, :end_offset
 
       def initialize(start_line:, start_column:, end_line:, end_column:, start_offset:, end_offset:)
-        @start_line = start_line
+        @start_line   = start_line
         @start_column = start_column
-        @end_line = end_line
-        @end_column = end_column
+        @end_line     = end_line
+        @end_column   = end_column
         @start_offset = start_offset
-        @end_offset = end_offset
+        @end_offset   = end_offset
       end
     end
 
     attr_reader :content, :ast
 
     def initialize(content)
-      @content = content
+      @content  = content
       @position = 0
-      @line = 1
-      @column = 1
-      @ast = nil
+      @line     = 1
+      @column   = 1
+      @ast      = nil
     end
 
     def parse!
@@ -77,16 +77,19 @@ module Rhales
 
     def variables
       return [] unless @ast
+
       collect_variables(@ast)
     end
 
     def partials
       return [] unless @ast
+
       collect_partials(@ast)
     end
 
     def blocks
       return [] unless @ast
+
       collect_blocks(@ast)
     end
 
@@ -94,7 +97,7 @@ module Rhales
 
     def parse_template
       start_pos = current_position
-      children = []
+      children  = []
 
       until at_end?
         if current_char == '{' && peek_char == '{'
@@ -105,7 +108,7 @@ module Rhales
         end
       end
 
-      end_pos = current_position
+      end_pos  = current_position
       location = create_location(start_pos, end_pos)
       Node.new(:template, location, children: children)
     end
@@ -135,7 +138,7 @@ module Rhales
         consume('}}') || parse_error("Expected '}}'")
       end
 
-      end_pos = current_position
+      end_pos  = current_position
       location = create_location(start_pos, end_pos)
 
       # Determine expression type and create appropriate node
@@ -143,11 +146,11 @@ module Rhales
     end
 
     def parse_expression_content(raw)
-      content = ''
+      content        = ''
       closing_braces = raw ? '}}}' : '}}'
-      brace_count = 0
+      brace_count    = 0
 
-      while !at_end?
+      until at_end?
         if current_char == '}' && peek_string?(closing_braces)
           break
         elsif current_char == '{' && peek_char == '{'
@@ -177,7 +180,7 @@ module Rhales
         create_each_block(Regexp.last_match(1).strip, location)
       when /^>\s*(.+)$/
         create_partial_node(Regexp.last_match(1).strip, location)
-      when /^\/(.+)$/
+      when %r{^/(.+)$}
         # This is a closing tag, should be handled by block parsing
         parse_error("Unexpected closing tag: #{content}")
       when 'else'
@@ -191,10 +194,10 @@ module Rhales
 
     def create_if_block(condition, start_location)
       # Parse the if block content
-      if_content = []
-      else_content = []
+      if_content      = []
+      else_content    = []
       current_content = if_content
-      depth = 1
+      depth           = 1
 
       while !at_end? && depth > 0
         if current_char == '{' && peek_char == '{'
@@ -218,7 +221,7 @@ module Rhales
             consume('}}') || parse_error("Expected '}}'")
           end
 
-          expr_end = current_position
+          expr_end      = current_position
           expr_location = create_location(expr_start, expr_end)
 
           case expr_content
@@ -227,52 +230,59 @@ module Rhales
             # Add as variable expression, will be parsed properly later
             current_content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           when /^#unless\s+(.+)$/
             depth += 1
             current_content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           when /^#each\s+(.+)$/
             depth += 1
             current_content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
-          when /^\/if$/
+              raw: raw,
+            }
+            )
+          when %r{^/if$}
             depth -= 1
-            if depth == 0
-              # Found the matching closing tag
-              break
-            else
-              # This is a nested closing tag
-              current_content << Node.new(:variable_expression, expr_location, value: {
-                name: expr_content,
-                raw: raw
-              })
-            end
-          when /^\/unless$/
+            break if depth == 0
+
+            # Found the matching closing tag
+
+            # This is a nested closing tag
+            current_content << Node.new(:variable_expression, expr_location, value: {
+              name: expr_content,
+              raw: raw,
+            }
+            )
+
+          when %r{^/unless$}
             depth -= 1
             current_content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
-          when /^\/each$/
+              raw: raw,
+            }
+            )
+          when %r{^/each$}
             depth -= 1
             current_content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           when 'else'
             if depth == 1
               current_content = else_content
             else
               current_content << Node.new(:variable_expression, expr_location, value: {
                 name: expr_content,
-                raw: raw
-              })
+                raw: raw,
+              }
+              )
             end
           else
             current_content << create_expression_node(expr_content, raw, expr_location)
@@ -284,24 +294,25 @@ module Rhales
       end
 
       if depth > 0
-        parse_error("Missing closing tag for {{#if}}")
+        parse_error('Missing closing tag for {{#if}}')
       end
 
       # Now post-process the content to handle nested blocks
-      processed_if_content = post_process_content(if_content)
+      processed_if_content   = post_process_content(if_content)
       processed_else_content = post_process_content(else_content)
 
       Node.new(:if_block, start_location, value: {
         condition: condition,
         if_content: processed_if_content,
-        else_content: processed_else_content
-      })
+        else_content: processed_else_content,
+      }
+      )
     end
 
     def create_unless_block(condition, start_location)
       # Parse the unless block content
       content = []
-      depth = 1
+      depth   = 1
 
       while !at_end? && depth > 0
         if current_char == '{' && peek_char == '{'
@@ -324,7 +335,7 @@ module Rhales
             consume('}}') || parse_error("Expected '}}'")
           end
 
-          expr_end = current_position
+          expr_end      = current_position
           expr_location = create_location(expr_start, expr_end)
 
           case expr_content
@@ -332,30 +343,33 @@ module Rhales
             depth += 1
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
-          when /^\/unless$/
+              raw: raw,
+            }
+            )
+          when %r{^/unless$}
             depth -= 1
-            if depth == 0
-              break
-            else
-              content << Node.new(:variable_expression, expr_location, value: {
-                name: expr_content,
-                raw: raw
-              })
-            end
-          when /^\/if$/, /^\/each$/
+            break if depth == 0
+
+            content << Node.new(:variable_expression, expr_location, value: {
+              name: expr_content,
+              raw: raw,
+            }
+            )
+
+          when %r{^/if$}, %r{^/each$}
             depth -= 1
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           when 'else'
             # This else belongs to a nested if block, not this unless block
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           else
             content << create_expression_node(expr_content, raw, expr_location)
           end
@@ -366,21 +380,22 @@ module Rhales
       end
 
       if depth > 0
-        parse_error("Missing closing tag for {{#unless}}")
+        parse_error('Missing closing tag for {{#unless}}')
       end
 
       processed_content = post_process_content(content)
 
       Node.new(:unless_block, start_location, value: {
         condition: condition,
-        content: processed_content
-      })
+        content: processed_content,
+      }
+      )
     end
 
     def create_each_block(items_expression, start_location)
       # Parse the each block content
       content = []
-      depth = 1
+      depth   = 1
 
       while !at_end? && depth > 0
         if current_char == '{' && peek_char == '{'
@@ -403,7 +418,7 @@ module Rhales
             consume('}}') || parse_error("Expected '}}'")
           end
 
-          expr_end = current_position
+          expr_end      = current_position
           expr_location = create_location(expr_start, expr_end)
 
           case expr_content
@@ -411,30 +426,33 @@ module Rhales
             depth += 1
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
-          when /^\/each$/
+              raw: raw,
+            }
+            )
+          when %r{^/each$}
             depth -= 1
-            if depth == 0
-              break
-            else
-              content << Node.new(:variable_expression, expr_location, value: {
-                name: expr_content,
-                raw: raw
-              })
-            end
-          when /^\/if$/, /^\/unless$/
+            break if depth == 0
+
+            content << Node.new(:variable_expression, expr_location, value: {
+              name: expr_content,
+              raw: raw,
+            }
+            )
+
+          when %r{^/if$}, %r{^/unless$}
             depth -= 1
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           when 'else'
             # This else belongs to a nested if block, not this each block
             content << Node.new(:variable_expression, expr_location, value: {
               name: expr_content,
-              raw: raw
-            })
+              raw: raw,
+            }
+            )
           else
             content << create_expression_node(expr_content, raw, expr_location)
           end
@@ -445,32 +463,35 @@ module Rhales
       end
 
       if depth > 0
-        parse_error("Missing closing tag for {{#each}}")
+        parse_error('Missing closing tag for {{#each}}')
       end
 
       processed_content = post_process_content(content)
 
       Node.new(:each_block, start_location, value: {
         items: items_expression,
-        content: processed_content
-      })
+        content: processed_content,
+      }
+      )
     end
 
     def create_variable_node(name, raw, location)
       Node.new(:variable_expression, location, value: {
         name: name,
-        raw: raw
-      })
+        raw: raw,
+      }
+      )
     end
 
     def create_partial_node(name, location)
       Node.new(:partial_expression, location, value: {
-        name: name
-      })
+        name: name,
+      }
+      )
     end
 
     def create_text_node(text)
-      pos = current_position
+      pos      = current_position
       location = create_location(pos, pos)
       Node.new(:text, location, value: text)
     end
@@ -478,7 +499,7 @@ module Rhales
     def post_process_content(content)
       # Convert variable expressions that are actually block expressions
       processed = []
-      i = 0
+      i         = 0
 
       while i < content.length
         node = content[i]
@@ -486,31 +507,34 @@ module Rhales
         if node.type == :variable_expression
           case node.value[:name]
           when /^#if\s+(.+)$/
-            condition = Regexp.last_match(1).strip
+            condition                           = Regexp.last_match(1).strip
             if_content, else_content, end_index = extract_block_content_from_array(content, i + 1, 'if')
             processed << Node.new(:if_block, node.location, value: {
               condition: condition,
               if_content: post_process_content(if_content),
-              else_content: post_process_content(else_content)
-            })
-            i = end_index
+              else_content: post_process_content(else_content),
+            }
+            )
+            i                                   = end_index
           when /^#unless\s+(.+)$/
-            condition = Regexp.last_match(1).strip
+            condition                   = Regexp.last_match(1).strip
             block_content, _, end_index = extract_block_content_from_array(content, i + 1, 'unless')
             processed << Node.new(:unless_block, node.location, value: {
               condition: condition,
-              content: post_process_content(block_content)
-            })
-            i = end_index
+              content: post_process_content(block_content),
+            }
+            )
+            i                           = end_index
           when /^#each\s+(.+)$/
-            items = Regexp.last_match(1).strip
+            items                       = Regexp.last_match(1).strip
             block_content, _, end_index = extract_block_content_from_array(content, i + 1, 'each')
             processed << Node.new(:each_block, node.location, value: {
               items: items,
-              content: post_process_content(block_content)
-            })
-            i = end_index
-          when /^\/\w+$/, 'else'
+              content: post_process_content(block_content),
+            }
+            )
+            i                           = end_index
+          when %r{^/\w+$}, 'else'
             # Skip closing tags and else - they're handled by block extraction
             i += 1
           else
@@ -527,11 +551,11 @@ module Rhales
     end
 
     def extract_block_content_from_array(content, start_index, block_type)
-      block_content = []
-      else_content = []
+      block_content   = []
+      else_content    = []
       current_content = block_content
-      depth = 1
-      i = start_index
+      depth           = 1
+      i               = start_index
 
       while i < content.length && depth > 0
         node = content[i]
@@ -541,13 +565,12 @@ module Rhales
           when /^##{block_type}\s+/
             depth += 1
             current_content << node
-          when /^\/#{block_type}$/
+          when %r{^/#{block_type}$}
             depth -= 1
-            if depth == 0
-              return [block_content, else_content, i + 1]
-            else
-              current_content << node
-            end
+            return [block_content, else_content, i + 1] if depth == 0
+
+            current_content << node
+
           when 'else'
             if block_type == 'if' && depth == 1
               current_content = else_content
@@ -642,11 +665,13 @@ module Rhales
     # Utility methods
     def current_char
       return "\0" if at_end?
+
       @content[@position]
     end
 
     def peek_char
       return "\0" if @position + 1 >= @content.length
+
       @content[@position + 1]
     end
 
@@ -665,7 +690,7 @@ module Rhales
 
     def advance
       if current_char == "\n"
-        @line += 1
+        @line  += 1
         @column = 1
       else
         @column += 1
@@ -692,7 +717,7 @@ module Rhales
         end_line: end_pos[:line],
         end_column: end_pos[:column],
         start_offset: start_pos[:offset],
-        end_offset: end_pos[:offset]
+        end_offset: end_pos[:offset],
       )
     end
 

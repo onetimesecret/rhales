@@ -30,7 +30,7 @@ module Rhales
   # - User objects, configuration, internal APIs
   #
   # ### Client Data: Explicit Allowlist
-  # Only data declared in <data> sections reaches the browser:
+  # Only data declared in <data> sections reahas_role?ches the browser:
   # - Creates a REST API-like boundary
   # - Server-side variable interpolation processes secrets safely
   # - JSON serialization validates data structure

@@ -5,9 +5,9 @@ require_relative '../parser'
 module Rhales
   module Ruequire
     # Thread-safe cache for parsed RSFC templates
-    @rsfc_cache    = {}
-    @file_watchers = {}
-    @cache_mutex   = Mutex.new
+    @rsfc_cache     = {}
+    @file_watchers  = {}
+    @cache_mutex    = Mutex.new
     @watchers_mutex = Mutex.new
 
     class << self
@@ -31,13 +31,13 @@ module Rhales
       def cleanup_file_watchers!
         @watchers_mutex.synchronize do
           @file_watchers.each_value do |watcher_thread|
-            if watcher_thread.is_a?(Thread) && watcher_thread.alive?
-              watcher_thread.kill
-              begin
-                watcher_thread.join(1) # Wait up to 1 second for clean shutdown
-              rescue StandardError
-                # Thread might already be dead, ignore errors
-              end
+            next unless watcher_thread.is_a?(Thread) && watcher_thread.alive?
+
+            watcher_thread.kill
+            begin
+              watcher_thread.join(1) # Wait up to 1 second for clean shutdown
+            rescue StandardError
+              # Thread might already be dead, ignore errors
             end
           end
           @file_watchers.clear
@@ -177,7 +177,7 @@ module Rhales
       # Set up file watching for development mode
       def setup_file_watching(full_path)
         # Check if already watching in a thread-safe way
-        watchers_mutex = Rhales::Ruequire.instance_variable_get(:@watchers_mutex)
+        watchers_mutex      = Rhales::Ruequire.instance_variable_get(:@watchers_mutex)
         is_already_watching = watchers_mutex.synchronize do
           Rhales::Ruequire.instance_variable_get(:@file_watchers)[full_path]
         end

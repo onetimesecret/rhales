@@ -168,7 +168,7 @@ module Rhales
     end
 
     def parse_section_content(tag_name)
-      start_pos = @position
+      start_pos     = @position
       content_start = @position
 
       # Extract the raw content between section tags
@@ -182,15 +182,14 @@ module Rhales
       if tag_name == 'template'
         handlebars_grammar = HandlebarsGrammar.new(raw_content)
         handlebars_grammar.parse!
-        return handlebars_grammar.ast.children
+        handlebars_grammar.ast.children
       else
         # For data and logic sections, keep as simple text
         return [Node.new(:text, current_location, value: raw_content)] unless raw_content.empty?
-        return []
+
+        []
       end
     end
-
-
 
     def parse_quoted_string
       quote_char = current_char

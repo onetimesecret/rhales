@@ -68,13 +68,13 @@ module Rhales
         node.value
       when :variable_expression
         name = node.value[:name]
-        raw = node.value[:raw]
+        raw  = node.value[:raw]
         raw ? "{{{#{name}}}}" : "{{#{name}}}"
       when :partial_expression
         "{{> #{node.value[:name]}}}"
       when :if_block
-        condition = node.value[:condition]
-        if_content = convert_nodes_to_string(node.value[:if_content])
+        condition    = node.value[:condition]
+        if_content   = convert_nodes_to_string(node.value[:if_content])
         else_content = convert_nodes_to_string(node.value[:else_content])
         if else_content.empty?
           "{{#if #{condition}}}#{if_content}{{/if}}"
@@ -83,10 +83,10 @@ module Rhales
         end
       when :unless_block
         condition = node.value[:condition]
-        content = convert_nodes_to_string(node.value[:content])
+        content   = convert_nodes_to_string(node.value[:content])
         "{{#unless #{condition}}}#{content}{{/unless}}"
       when :each_block
-        items = node.value[:items]
+        items   = node.value[:items]
         content = convert_nodes_to_string(node.value[:content])
         "{{#each #{items}}}#{content}{{/each}}"
       when :handlebars_expression

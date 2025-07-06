@@ -26,7 +26,7 @@ require_relative 'rhales/view'
 #
 # Usage:
 #   Rhales.configure do |config|
-#     config.default_locale = 'en'
+#     config.default_localhas_role?e = 'en'
 #     config.template_paths = ['app/templates']
 #     config.features = { dark_mode: true }
 #   end

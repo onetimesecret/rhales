@@ -117,7 +117,7 @@ module Rhales
 
     def render_variable_expression(node)
       name = node.value[:name]
-      raw = node.value[:raw]
+      raw  = node.value[:raw]
 
       value = get_variable_value(name)
       raw ? value.to_s : escape_html(value.to_s)
@@ -129,8 +129,8 @@ module Rhales
     end
 
     def render_if_block(node)
-      condition = node.value[:condition]
-      if_content = node.value[:if_content]
+      condition    = node.value[:condition]
+      if_content   = node.value[:if_content]
       else_content = node.value[:else_content]
 
       if evaluate_condition(condition)
@@ -142,7 +142,7 @@ module Rhales
 
     def render_unless_block(node)
       condition = node.value[:condition]
-      content = node.value[:content]
+      content   = node.value[:content]
 
       if evaluate_condition(condition)
         ''
@@ -152,7 +152,7 @@ module Rhales
     end
 
     def render_each_block(node)
-      items_var = node.value[:items]
+      items_var     = node.value[:items]
       block_content = node.value[:content]
 
       items = get_variable_value(items_var)
@@ -161,7 +161,7 @@ module Rhales
         items.map.with_index do |item, index|
           # Create context for each iteration
           item_context = create_each_context(item, index, items_var)
-          engine = self.class.new('', item_context, partial_resolver: @partial_resolver)
+          engine       = self.class.new('', item_context, partial_resolver: @partial_resolver)
           engine.send(:render_content_nodes, block_content)
         end.join
       else
@@ -177,7 +177,7 @@ module Rhales
       case content
       when /^>\s*(\w+)/ # Partials
         render_partial(Regexp.last_match(1))
-      when /^(#|\/)(if|unless|each)/ # Block statements (should be handled by render_content_nodes)
+      when %r{^(#|/)(if|unless|each)} # Block statements (should be handled by render_content_nodes)
         ''
       else # Variables
         value = get_variable_value(content)
