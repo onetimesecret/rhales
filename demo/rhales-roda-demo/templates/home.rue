@@ -1,8 +1,9 @@
 <data window="demoData">
 {
+  "page_type": "public",
   "demo_credentials": {
-    "email": "{{demo_credentials.email}}",
-    "password": "{{demo_credentials.password}}"
+    "email": "demo@exampl2e.com",
+    "password": "demo123"
   },
   "features": [
     {
@@ -25,8 +26,8 @@
       "description": "Pluggable auth adapters for any framework",
       "icon": "🔐"
     }
-  ],
-  "page_type": "public"
+  ]
+
 }
 </data>
 

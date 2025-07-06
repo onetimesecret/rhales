@@ -61,8 +61,8 @@ class SimpleAuth < Rhales::Adapters::BaseAuth
 end
 
 class RhalesDemo < Roda
-  # Database setup - use simple SQLite
-  DB = Sequel.sqlite
+  # Database setup - use file-based SQLite for persistence
+  DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
   # Run basic migration for accounts table
   DB.create_table?(:accounts) do
@@ -87,17 +87,18 @@ class RhalesDemo < Roda
   # Simple Rodauth configuration
   plugin :rodauth do
     db DB
-    accounts_table :accounts
     enable :login, :logout, :create_account
     login_redirect '/'
     logout_redirect '/'
     create_account_redirect '/'
-    require_bcrypt? false  # We'll handle password hashing ourselves
+
+    # Use our existing accounts table structure
+    accounts_table :accounts
+    login_column :email
+    password_hash_column :password_hash
 
     # Set custom routes to match our templates
     create_account_route 'register'
-
-    # Use Rodauth's built-in CSRF protection
 
     # Use our Rhales templates instead of ERB
     login_view do
@@ -126,7 +127,6 @@ class RhalesDemo < Roda
     !current_user.nil?
   end
 
-
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
     # Automatically include common view data (flash, rodauth, etc.)
@@ -135,7 +135,7 @@ class RhalesDemo < Roda
       'flash_error' => flash['error'],
       'current_path' => request.path,
       'request_method' => request.request_method,
-      'rodauth' => rodauth
+      'rodauth' => rodauth,
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
@@ -217,12 +217,7 @@ class RhalesDemo < Roda
         }
         )
       else
-        rhales_render('home', {
-          demo_credentials: {
-            email: 'demo@example.com',
-            password: 'demo123',
-          },
-        }
+        rhales_render('home', {}
         )
       end
     end
