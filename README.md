@@ -485,7 +485,7 @@ class MyAuthAdapter < Rhales::Adapters::BaseAuth
     @user&.id
   end
 
-  def has_role?(role)
+  def role?(role)
     @user&.roles&.include?(role)
   end
 end

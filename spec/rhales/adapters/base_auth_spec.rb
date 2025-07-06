@@ -23,9 +23,9 @@ RSpec.describe Rhales::Adapters::BaseAuth do
     end
   end
 
-  describe '#has_role?' do
-    it 'returns false by default' do
-      expect(subject.has_role?('admin')).to be(false)
+  describe '#role?' do
+    it 'raises NotImplementedError' do
+      expect { subject.role? }.to raise_error(NotImplementedError)
     end
   end
 end
@@ -46,6 +46,16 @@ RSpec.describe Rhales::Adapters::AnonymousAuth do
   describe '#user_id' do
     it 'returns nil' do
       expect(subject.user_id).to be_nil
+    end
+  end
+
+  describe '#role?' do
+    it 'returns false (regardless of input)' do
+      expect(subject.role?).to be(false)
+      expect(subject.role?('admin')).to be(false)
+      expect(subject.role?('user')).to be(false)
+      expect(subject.role?('anonymous')).to be(false)
+      expect(subject.role?('anon')).to be(false)
     end
   end
 
@@ -93,19 +103,19 @@ RSpec.describe Rhales::Adapters::AuthenticatedAuth do
     end
   end
 
-  describe '#has_role?' do
+  describe '#role?' do
     it 'returns true for user roles' do
-      expect(subject.has_role?('user')).to be(true)
-      expect(subject.has_role?('editor')).to be(true)
+      expect(subject.role?('user')).to be(true)
+      expect(subject.role?('editor')).to be(true)
     end
 
     it 'returns false for roles user does not have' do
-      expect(subject.has_role?('admin')).to be(false)
+      expect(subject.role?('admin')).to be(false)
     end
 
     it 'handles string and symbol role names' do
-      expect(subject.has_role?(:user)).to be(true)
-      expect(subject.has_role?(:admin)).to be(false)
+      expect(subject.role?(:user)).to be(true)
+      expect(subject.role?(:admin)).to be(false)
     end
   end
 
