@@ -19,14 +19,9 @@ module Rhales
     OPTIONAL_SECTIONS = ['logic'].freeze
     ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
-    class ParseError < StandardError
-      attr_reader :line, :column, :offset
-
+    class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
-        @line   = line
-        @column = column
-        @offset = offset
-        super("#{message} at line #{line}, column #{column}")
+        super(message, line: line, column: column, offset: offset, source_type: :rue)
       end
     end
 

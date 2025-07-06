@@ -1,6 +1,7 @@
 # lib/rhales.rb
 
 require_relative 'rhales/version'
+require_relative 'rhales/errors'
 require_relative 'rhales/configuration'
 require_relative 'rhales/adapters/base_auth'
 require_relative 'rhales/adapters/base_session'
@@ -34,10 +35,6 @@ require_relative 'rhales/view'
 #   view = Rhales::View.new(request, session, user)
 #   html = view.render('my_component')
 module Rhales
-  class Error < StandardError; end
-  class ConfigurationError < Error; end
-  class TemplateError < Error; end
-  class RenderError < Error; end
 
   # Convenience method to create a view with business data
   def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **business_data)

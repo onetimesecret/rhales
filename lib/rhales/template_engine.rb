@@ -27,7 +27,7 @@ module Rhales
   # - {{#each items}} ... {{/each}} - Iteration with context
   # - {{> partial_name}} - Partial inclusion
   class TemplateEngine
-    class RenderError < StandardError; end
+    class RenderError < ::Rhales::RenderError; end
     class PartialNotFoundError < RenderError; end
     class UndefinedVariableError < RenderError; end
     class BlockNotFoundError < RenderError; end
@@ -60,12 +60,12 @@ module Rhales
         # Render the template section as a simple template
         render_template_string(template_content)
       end
-    rescue Parser::ParseError => ex
+    rescue ::Rhales::ParseError => ex
+      # Parse errors already have good error messages with location
       raise RenderError, "Template parsing failed: #{ex.message}"
-    rescue RueGrammar::ParseError => ex
-      raise RenderError, "Template parsing failed: #{ex.message}"
-    rescue HandlebarsGrammar::ParseError => ex
-      raise RenderError, "Template parsing failed: #{ex.message}"
+    rescue ::Rhales::ValidationError => ex
+      # Validation errors from Parser
+      raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
       raise RenderError, "Template rendering failed: #{ex.message}"
     end

@@ -21,14 +21,9 @@ module Rhales
   # - :each_block - {{#each}}...{{/each}}
   # - :partial_expression - {{> partial}}
   class HandlebarsGrammar
-    class ParseError < StandardError
-      attr_reader :line, :column, :offset
-
+    class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
-        @line   = line
-        @column = column
-        @offset = offset
-        super("#{message} at line #{line}, column #{column}")
+        super(message, line: line, column: column, offset: offset, source_type: :handlebars)
       end
     end
 

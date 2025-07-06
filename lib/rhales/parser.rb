@@ -23,7 +23,7 @@ module Rhales
   #   template_section = parser.section('template')
   #   variables = parser.template_variables
   class Parser
-    class ParseError < StandardError; end
+    class ParseError < ::Rhales::ValidationError; end
     class SectionMissingError < ParseError; end
     class SectionDuplicateError < ParseError; end
     class InvalidSyntaxError < ParseError; end

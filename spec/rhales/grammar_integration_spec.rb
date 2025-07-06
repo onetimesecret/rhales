@@ -300,7 +300,7 @@ RSpec.describe 'Grammar Integration' do
       engine = Rhales::TemplateEngine.new(invalid_template, context)
 
       expect { engine.render }.to raise_error(Rhales::TemplateEngine::RenderError) do |error|
-        expect(error.message).to include('Template parsing failed')
+        expect(error.message).to match(/Template (parsing|validation) failed/)
         expect(error.message).to include('Duplicate sections')
       end
     end
