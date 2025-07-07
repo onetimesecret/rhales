@@ -9,6 +9,7 @@ require 'rack/session'
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
 
+
 # Simple adapter classes for Rhales context objects
 class SimpleRequest
   attr_reader :path, :method, :ip, :params, :env
@@ -33,6 +34,8 @@ class SimpleSession
   def authenticated?
     @authenticated
   end
+
+
 end
 
 class SimpleAuth < Rhales::Adapters::BaseAuth
@@ -81,32 +84,55 @@ class RhalesDemo < Roda
 
   DB.extension :date_arithmetic
 
+
+  logger = Logger.new($stdout)
+
+  class << self
+    def get_secret
+      secret = DB[:_demo_secrets].get(:value) # `get` automatically gets the first row
+
+      if secret.nil?
+        secret = SecureRandom.hex(64)
+        DB[:_demo_secrets].insert_conflict.insert(
+          name: 'migration-default',
+          value: secret,
+        )
+      end
+
+      secret
+    end
+  end
+
   # Run migrations if needed
   Sequel.extension :migration
   Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrate'))
+
+  secret_value = RhalesDemo.get_secret
+  logger.info("[demo] Secret value: #{secret_value}")
 
   opts[:root] = File.dirname(__FILE__)
 
   # We're using Rhales instead of Roda's render plugin
   plugin :flash
-  plugin :sessions, secret: SecureRandom.hex(64), key: 'rhales-demo.session'
+  plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
   plugin :route_csrf
 
   # Simple Rodauth configuration
   plugin :rodauth do
     db DB
+
+    # Used for HMAC operations in various Rodauth features like password reset
+    # tokens, email verification, etc. If it changes, existing tokens become
+    # invalid (users lose pending password resets, etc).
+    # e.g. SecureRandom.hex(64)
+    hmac_secret ENV['RODAUTH_HMAC_SECRET'] || secret_value
+
     enable :change_login, :change_password, :close_account, :create_account,
       :lockout, :login, :logout, :remember, :reset_password, :verify_account,
       :otp_modify_email, :otp_lockout_email, :recovery_codes, :sms_codes,
       :disallow_password_reuse, :password_grace_period, :active_sessions,
       :verify_login_change, :change_password_notify, :confirm_password,
       :email_auth, :disallow_common_passwords
-
-    # Used for HMAC operations in various Rodauth features like password reset
-    # tokens, email verification, etc. If it changes, existing tokens become
-    # invalid (users lose pending password resets, etc).
-    # e.g. SecureRandom.hex(64)
-    hmac_secret ENV['RODAUTH_HMAC_SECRET'] || 'demo_hmac_secret_change_in_production'
 
     login_redirect '/'
     logout_redirect '/'
@@ -171,6 +197,10 @@ class RhalesDemo < Roda
     return nil unless rodauth.logged_in?
 
     @current_user ||= DB[:accounts].where(id: rodauth.session_value).first
+  end
+
+  def roda_secret
+    @roda_secret ||= RhalesDemo.get_secret
   end
 
   def logged_in?
@@ -257,6 +287,7 @@ class RhalesDemo < Roda
   end
 
   route do |r|
+
     r.rodauth
 
     # Home route - shows different content based on auth state
@@ -297,4 +328,5 @@ class RhalesDemo < Roda
       }.to_json
     end
   end
+
 end
