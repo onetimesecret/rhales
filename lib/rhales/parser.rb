@@ -121,6 +121,11 @@ module Rhales
       @grammar.sections.key?(name)
     end
 
+    # Get the raw section node with location information
+    def section_node(name)
+      @grammar.sections[name]
+    end
+
     def partials
       return [] unless @ast
 

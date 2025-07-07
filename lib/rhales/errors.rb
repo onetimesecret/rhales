@@ -31,3 +31,6 @@ module Rhales
   # Legacy alias for backward compatibility
   class TemplateError < Error; end
 end
+
+# Load specific error classes
+require_relative 'errors/hydration_collision_error'

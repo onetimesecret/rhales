@@ -58,6 +58,7 @@ module Rhales
 
       # Generate the complete hydration HTML (JSON script + hydration script)
       def generate_hydration_html
+        register_window_attribute
         json_script + "\n" + hydration_script
       end
 
@@ -134,6 +135,30 @@ module Rhales
       def nonce_attribute
         nonce = @context.get('nonce')
         nonce ? " nonce=\"#{nonce}\"" : ''
+      end
+
+      # Register window attribute with collision detection
+      def register_window_attribute
+        # Only register if we have a data section
+        return unless @parser.section('data')
+
+        # Get template path with line number where data tag is defined
+        template_path = build_template_path
+
+        # Register with HydrationRegistry - will raise on collision
+        HydrationRegistry.register(@window_attribute, template_path)
+      end
+
+      # Build template path with line number for error reporting
+      def build_template_path
+        data_node = @parser.section_node('data')
+        line_number = data_node ? data_node.location.start_line : 1
+
+        if @parser.file_path
+          "#{@parser.file_path}:#{line_number}"
+        else
+          "<inline>:#{line_number}"
+        end
       end
 
       class << self

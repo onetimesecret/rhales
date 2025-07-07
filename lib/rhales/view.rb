@@ -68,6 +68,9 @@ module Rhales
     def render(template_name = nil)
       template_name ||= self.class.default_template_name
 
+      # Clear hydration registry for this request
+      HydrationRegistry.clear!
+
       # Load and parse template
       parser = load_template(template_name)
 
@@ -93,7 +96,11 @@ module Rhales
     # Generate only the data hydration HTML
     def render_hydration_only(template_name = nil)
       template_name ||= self.class.default_template_name
-      parser          = load_template(template_name)
+
+      # Clear hydration registry for this request
+      HydrationRegistry.clear!
+
+      parser = load_template(template_name)
       generate_hydration(parser)
     end
 

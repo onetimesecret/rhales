@@ -10,6 +10,7 @@ require_relative 'rhales/parser'
 require_relative 'rhales/grammars/handlebars'
 require_relative 'rhales/template_engine'
 require_relative 'rhales/hydrator'
+require_relative 'rhales/hydration_registry'
 require_relative 'rhales/refinements/require_refinements'
 require_relative 'rhales/view'
 
