@@ -5,7 +5,7 @@ require 'spec_helper'
 # rubocop:disable RSpec/MultipleExpectations
 # rubocop:disable RSpec/MultipleDescribes
 RSpec.describe 'Rhales Integration' do
-  let(:business_data) do
+  let(:props) do
     {
       greeting: 'Welcome to Rhales',
       user: { name: 'John Doe' },
@@ -19,7 +19,7 @@ RSpec.describe 'Rhales Integration' do
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'test_session', created_at: Time.now)
 
       # Create view with business data
-      view = Rhales::View.new(nil, session, user, 'en', business_data: business_data)
+      view = Rhales::View.new(nil, session, user, 'en', props: props)
 
       # Render the test template
       html = view.render('test')
@@ -32,26 +32,26 @@ RSpec.describe 'Rhales Integration' do
       # Verify data hydration
       expect(html).to include('<script id="rsfc-data-')
       expect(html).to include('type="application/json"')
-      expect(html).to include('"message": "Welcome to Rhales"')
-      expect(html).to include('"authenticated": "true"')
+      expect(html).to include('"message":"Welcome to Rhales"')
+      expect(html).to include('"authenticated":"true"')
       expect(html).to include('window.data = JSON.parse(')
     end
 
     it 'handles anonymous users' do
-      anon_business_data = business_data.merge(user: { name: 'Guest' })
-      view               = Rhales::View.new(nil, nil, nil, 'en', business_data: anon_business_data)
+      anon_props = props.merge(user: { name: 'Guest' })
+      view               = Rhales::View.new(nil, nil, nil, 'en', props: anon_props)
       html               = view.render('test')
 
       expect(html).to include('<p>Please log in.</p>')
-      expect(html).to include('"authenticated": "false"')
+      expect(html).to include('"authenticated":"false"')
       expect(html).to include('class="theme-light"')
     end
   end
 
   describe 'template-only rendering' do
     it 'renders just the template section' do
-      test_data = business_data.merge(user: { name: 'Guest' })
-      view      = Rhales::View.new(nil, nil, nil, 'en', business_data: test_data)
+      test_data = props.merge(user: { name: 'Guest' })
+      view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
       html      = view.render_template_only('test')
 
       expect(html).to include('<h1>Welcome to Rhales</h1>')
@@ -61,8 +61,8 @@ RSpec.describe 'Rhales Integration' do
 
   describe 'hydration-only rendering' do
     it 'renders just the data hydration' do
-      test_data = business_data.merge(user: { name: 'Guest' })
-      view      = Rhales::View.new(nil, nil, nil, 'en', business_data: test_data)
+      test_data = props.merge(user: { name: 'Guest' })
+      view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
       html      = view.render_hydration_only('test')
 
       expect(html).to include('<script id="rsfc-data-')
@@ -73,20 +73,21 @@ RSpec.describe 'Rhales Integration' do
 
   describe 'data hash extraction' do
     it 'returns processed data as hash' do
-      test_data = business_data.merge(user: { name: 'Guest' })
-      view      = Rhales::View.new(nil, nil, nil, 'en', business_data: test_data)
+      test_data = props.merge(user: { name: 'Guest' })
+      view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
       data      = view.data_hash('test')
 
       expect(data).to be_a(Hash)
-      expect(data['message']).to eq('Welcome to Rhales')
-      expect(data['user']['name']).to eq('Guest')
-      expect(data['authenticated']).to eq('false')
+      expect(data['data']).to be_a(Hash)
+      expect(data['data']['message']).to eq('Welcome to Rhales')
+      expect(data['data']['user']['name']).to eq('Guest')
+      expect(data['data']['authenticated']).to eq('false')
     end
   end
 
   describe 'convenience methods' do
     it 'renders via Rhales.render' do
-      html = Rhales.render('test', **business_data)
+      html = Rhales.render('test', **props)
 
       expect(html).to include('Welcome to Rhales')
       expect(html).to include('<script')

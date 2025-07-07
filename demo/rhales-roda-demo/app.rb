@@ -34,8 +34,6 @@ class SimpleSession
   def authenticated?
     @authenticated
   end
-
-
 end
 
 class SimpleAuth < Rhales::Adapters::BaseAuth
@@ -83,7 +81,6 @@ class RhalesDemo < Roda
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
   DB.extension :date_arithmetic
-
 
   logger = Logger.new($stdout)
 
@@ -208,7 +205,7 @@ class RhalesDemo < Roda
   end
 
   # Rhales render helper using adapter classes with layout support
-  def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
+  def rhales_render(template_name, props = {}, layout: 'layouts/main', **extra_data)
     # Automatically include common view data (flash, rodauth, etc.)
     auto_data = {
       'flash_notice' => flash['notice'],
@@ -219,8 +216,8 @@ class RhalesDemo < Roda
       'demo_accounts' => DEMO_ACCOUNTS,
     }
 
-    # Merge data layers: auto_data provides base, then business_data, then extra_data
-    merged_data = auto_data.merge(business_data).merge(extra_data)
+    # Merge data layers: auto_data provides base, then props, then extra_data
+    merged_data = auto_data.merge(props).merge(extra_data)
 
     # Create adapter instances for Rhales context
     request_data = SimpleRequest.new(
@@ -265,7 +262,7 @@ class RhalesDemo < Roda
       session_data,
       auth_data,
       nil, # locale_override
-      business_data: merged_data,
+      props: merged_data,
     )
     content_html = view.render(template_name)
 
@@ -277,7 +274,7 @@ class RhalesDemo < Roda
         session_data,
         auth_data,
         nil,
-        business_data: merged_data.merge(content: content_html, authenticated: logged_in?),
+        props: merged_data.merge(content: content_html, authenticated: logged_in?),
       )
 
       layout_view.render(layout)
@@ -287,7 +284,6 @@ class RhalesDemo < Roda
   end
 
   route do |r|
-
     r.rodauth
 
     # Home route - shows different content based on auth state
@@ -328,5 +324,4 @@ class RhalesDemo < Roda
       }.to_json
     end
   end
-
 end

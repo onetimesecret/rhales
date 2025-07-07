@@ -1,9 +1,12 @@
 # lib/rhales/view.rb
 
+require 'securerandom'
 require_relative 'context'
 require_relative 'rue_document'
 require_relative 'template_engine'
 require_relative 'hydrator'
+require_relative 'view_composition'
+require_relative 'hydration_data_aggregator'
 require_relative 'refinements/require_refinements'
 
 using Rhales::Ruequire
@@ -23,7 +26,7 @@ module Rhales
   #
   # ### Server Templates: Full Context Access
   # Templates have complete access to all server-side data:
-  # - All business_data passed to View.new
+  # - All props passed to View.new
   # - Data from .rue file's <data> section (processed server-side)
   # - Runtime data (CSRF tokens, nonces, request metadata)
   # - Computed data (authentication status, theme classes)
@@ -50,35 +53,35 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :business_data, :config
+    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :props, :config
 
-    def initialize(req, sess = nil, cust = nil, locale_override = nil, business_data: {}, config: nil)
+    def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
       @req           = req
       @sess          = sess
       @cust          = cust
       @locale        = locale_override
-      @business_data = business_data
+      @props         = props
       @config        = config || Rhales.configuration
 
       # Create context using the specified context class
       @rsfc_context = create_context
     end
 
-    # Render RSFC template with hydration
+    # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
       template_name ||= self.class.default_template_name
 
-      # Clear hydration registry for this request
-      HydrationRegistry.clear!
+      # Phase 1: Build view composition and aggregate data
+      composition = build_view_composition(template_name)
+      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      merged_hydration_data = aggregator.aggregate(composition)
 
-      # Load and parse template
-      parser = load_template(template_name)
-
+      # Phase 2: Render HTML with pre-computed data
       # Render template content
-      template_html = render_template_section(parser)
+      template_html = render_template_with_composition(composition, template_name)
 
-      # Generate data hydration HTML
-      hydration_html = generate_hydration(parser)
+      # Generate hydration HTML with merged data
+      hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
 
       # Combine template and hydration
       inject_hydration_into_template(template_html, hydration_html)
@@ -89,26 +92,33 @@ module Rhales
     # Render only the template section (without data hydration)
     def render_template_only(template_name = nil)
       template_name ||= self.class.default_template_name
-      parser          = load_template(template_name)
-      render_template_section(parser)
+
+      # Build composition for consistent behavior
+      composition = build_view_composition(template_name)
+      render_template_with_composition(composition, template_name)
     end
 
     # Generate only the data hydration HTML
     def render_hydration_only(template_name = nil)
       template_name ||= self.class.default_template_name
 
-      # Clear hydration registry for this request
-      HydrationRegistry.clear!
+      # Build composition and aggregate data
+      composition = build_view_composition(template_name)
+      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      merged_hydration_data = aggregator.aggregate(composition)
 
-      parser = load_template(template_name)
-      generate_hydration(parser)
+      # Generate hydration HTML
+      generate_hydration_from_merged_data(merged_hydration_data)
     end
 
     # Get processed data as hash (for API endpoints or testing)
     def data_hash(template_name = nil)
       template_name ||= self.class.default_template_name
-      parser          = load_template(template_name)
-      Hydrator.generate_data_hash(parser, @rsfc_context)
+
+      # Build composition and aggregate data
+      composition = build_view_composition(template_name)
+      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      aggregator.aggregate(composition)
     end
 
     protected
@@ -116,7 +126,7 @@ module Rhales
     # Create the appropriate context for this view
     # Subclasses can override this to use different context types
     def create_context
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **@business_data)
+      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **@props)
     end
 
     # Return the context class to use
@@ -194,7 +204,7 @@ module Rhales
       # Merge .rue file data with existing context
       context_with_rue_data = create_context_with_rue_data(parser)
 
-      # Render with full server context (business data + computed context + rue data)
+      # Render with full server context (props + computed context + rue data)
       TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
     end
 
@@ -225,11 +235,11 @@ module Rhales
       # Get data from .rue file's data section
       rue_data = extract_rue_data(parser)
 
-      # Merge rue data with existing business data (rue data takes precedence)
-      merged_business_data = @business_data.merge(rue_data)
+      # Merge rue data with existing props (rue data takes precedence)
+      merged_props = @props.merge(rue_data)
 
       # Create new context with merged data
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **merged_business_data)
+      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **merged_props)
     end
 
     # Extract and process data from .rue file's data section
@@ -257,6 +267,80 @@ module Rhales
       end
     end
 
+    # Build view composition for the given template
+    def build_view_composition(template_name)
+      loader = method(:load_template_for_composition)
+      composition = ViewComposition.new(template_name, loader: loader)
+      composition.resolve!
+    end
+
+    # Loader proc for ViewComposition
+    def load_template_for_composition(template_name)
+      template_path = resolve_template_path(template_name)
+      return nil unless File.exist?(template_path)
+      require template_path
+    rescue StandardError => ex
+      raise TemplateNotFoundError, "Failed to load template #{template_name}: #{ex.message}"
+    end
+
+    # Render template using the view composition
+    def render_template_with_composition(composition, root_template_name)
+      root_parser = composition.template(root_template_name)
+      template_content = root_parser.section('template')
+      return '' unless template_content
+
+      # Create partial resolver that uses the composition
+      partial_resolver = create_partial_resolver_from_composition(composition)
+
+      # Merge .rue file data with existing context
+      context_with_rue_data = create_context_with_rue_data(root_parser)
+
+      # Render with full server context
+      TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+    end
+
+    # Create partial resolver that uses pre-loaded templates from composition
+    def create_partial_resolver_from_composition(composition)
+      proc do |partial_name|
+        parser = composition.template(partial_name)
+        parser ? parser.section('template') : nil
+      end
+    end
+
+    # Generate hydration HTML from pre-merged data
+    def generate_hydration_from_merged_data(merged_data)
+      hydration_parts = []
+
+      merged_data.each do |window_attr, data|
+        # Generate unique ID for this data block
+        unique_id = "rsfc-data-#{SecureRandom.hex(8)}"
+
+        # Create JSON script tag
+        json_script = <<~HTML.strip
+          <script id="#{unique_id}" type="application/json">#{JSON.generate(data)}</script>
+        HTML
+
+        # Create hydration script
+        nonce_attr = nonce_attribute
+        hydration_script = <<~HTML.strip
+          <script#{nonce_attr}>
+          window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
+          </script>
+        HTML
+
+        hydration_parts << json_script
+        hydration_parts << hydration_script
+      end
+
+      hydration_parts.join("\n")
+    end
+
+    # Get nonce attribute if available
+    def nonce_attribute
+      nonce = @rsfc_context.get('nonce')
+      nonce ? " nonce=\"#{nonce}\"" : ''
+    end
+
     class << self
       # Get default template name based on class name
       def default_template_name
@@ -268,15 +352,15 @@ module Rhales
           .sub(/_view$/, '')
       end
 
-      # Render template with business data
-      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **business_data)
-        view = new(req, sess, cust, locale, business_data: business_data, config: config)
+      # Render template with props
+      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **props)
+        view = new(req, sess, cust, locale, props: props, config: config)
         view.render(template_name)
       end
 
-      # Create view instance with business data
-      def with_data(req, sess, cust, locale, config: nil, **business_data)
-        new(req, sess, cust, locale, business_data: business_data, config: config)
+      # Create view instance with props
+      def with_data(req, sess, cust, locale, config: nil, **props)
+        new(req, sess, cust, locale, props: props, config: config)
       end
     end
   end

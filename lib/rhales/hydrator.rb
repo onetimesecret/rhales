@@ -43,54 +43,28 @@ module Rhales
     #
     # This creates an API-like boundary where data is serialized once and
     # parsed once, enforcing the same security model as REST endpoints.
+    #
+    # Note: With the new two-pass architecture, the Hydrator's role is
+    # greatly simplified. All data merging happens server-side in the
+    # HydrationDataAggregator, so this class only handles JSON generation
+    # for individual templates (used during the aggregation phase).
     class Hydrator
       class HydrationError < StandardError; end
       class JSONSerializationError < HydrationError; end
 
-      attr_reader :parser, :context, :window_attribute, :unique_id
+      attr_reader :parser, :context, :window_attribute
 
       def initialize(parser, context)
         @parser           = parser
         @context          = context
         @window_attribute = parser.window_attribute || 'data'
-        @unique_id        = generate_unique_id
       end
 
-      # Generate the complete hydration HTML (JSON script + hydration script)
+      # This method is now deprecated in favor of the two-pass architecture
+      # It's kept for backward compatibility but will be removed in future versions
       def generate_hydration_html
-        register_window_attribute
-        json_script + "\n" + hydration_script
-      end
-
-      # Generate just the JSON script element
-      def json_script
-        json_data = process_data_section
-
-        <<~HTML.strip
-          <script id="#{script_element_id}" type="application/json">#{json_data}</script>
-        HTML
-      end
-
-      # Generate just the hydration script
-      def hydration_script
-        nonce_attr     = nonce_attribute
-        merge_strategy = @parser.merge_strategy
-
-        if merge_strategy
-          <<~HTML.strip
-            <script#{nonce_attr}>
-            #{merge_functions_js}
-            var newData = JSON.parse(document.getElementById('#{script_element_id}').textContent);
-            window.#{@window_attribute} = #{merge_strategy}_merge(window.#{@window_attribute} || {}, newData);
-            </script>
-          HTML
-        else
-          <<~HTML.strip
-            <script#{nonce_attr}>
-            window.#{@window_attribute} = JSON.parse(document.getElementById('#{script_element_id}').textContent);
-            </script>
-          HTML
-        end
+        warn "[DEPRECATION] Hydrator#generate_hydration_html is deprecated. Use the two-pass rendering architecture instead."
+        ""
       end
 
       # Process <data> section and return JSON string
@@ -132,38 +106,8 @@ module Rhales
         raise JSONSerializationError, "Processed data section is not valid JSON: #{ex.message}"
       end
 
-      # Generate unique ID for script element
-      def generate_unique_id
-        "rsfc-data-#{SecureRandom.hex(8)}"
-      end
-
-      # Get script element ID
-      def script_element_id
-        @unique_id
-      end
-
-      # Get nonce attribute if available
-      def nonce_attribute
-        nonce = @context.get('nonce')
-        nonce ? " nonce=\"#{nonce}\"" : ''
-      end
-
-      # Register window attribute with collision detection
-      def register_window_attribute
-        # Only register if we have a data section
-        return unless @parser.section('data')
-
-        # Get template path with line number where data tag is defined
-        template_path = build_template_path
-
-        # Get merge strategy from parser
-        merge_strategy = @parser.merge_strategy
-
-        # Register with HydrationRegistry - will raise on collision
-        HydrationRegistry.register(@window_attribute, template_path, merge_strategy)
-      end
-
       # Build template path with line number for error reporting
+      # (Used by HydrationDataAggregator)
       def build_template_path
         data_node   = @parser.section_node('data')
         line_number = data_node ? data_node.location.start_line : 1
@@ -175,82 +119,11 @@ module Rhales
         end
       end
 
-      # JavaScript merge functions for different strategies
-      def merge_functions_js
-        <<~JS.strip
-          function shallow_merge(target, source) {
-            var result = {};
-            for (var key in target) {
-              if (target.hasOwnProperty(key)) {
-                result[key] = target[key];
-              }
-            }
-            for (var key in source) {
-              if (source.hasOwnProperty(key)) {
-                if (target.hasOwnProperty(key)) {
-                  throw new Error('Shallow merge conflict: key "' + key + '" exists in both objects');
-                }
-                result[key] = source[key];
-              }
-            }
-            return result;
-          }
-
-          function deep_merge(target, source) {
-            var result = {};
-            for (var key in target) {
-              if (target.hasOwnProperty(key)) {
-                result[key] = target[key];
-              }
-            }
-            for (var key in source) {
-              if (source.hasOwnProperty(key)) {
-                if (target.hasOwnProperty(key)) {
-                  if (typeof target[key] === 'object' && target[key] !== null &&
-                      typeof source[key] === 'object' && source[key] !== null &&
-                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
-                    result[key] = deep_merge(target[key], source[key]);
-                  } else {
-                    result[key] = source[key]; // Last wins
-                  }
-                } else {
-                  result[key] = source[key];
-                }
-              }
-            }
-            return result;
-          }
-
-          function strict_merge(target, source) {
-            var result = {};
-            for (var key in target) {
-              if (target.hasOwnProperty(key)) {
-                result[key] = target[key];
-              }
-            }
-            for (var key in source) {
-              if (source.hasOwnProperty(key)) {
-                if (target.hasOwnProperty(key)) {
-                  if (typeof target[key] === 'object' && target[key] !== null &&
-                      typeof source[key] === 'object' && source[key] !== null &&
-                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
-                    result[key] = strict_merge(target[key], source[key]);
-                  } else {
-                    throw new Error('Strict merge conflict: key "' + key + '" exists in both objects');
-                  }
-                } else {
-                  result[key] = source[key];
-                }
-              }
-            }
-            return result;
-          }
-        JS
-      end
-
       class << self
         # Convenience method to generate hydration HTML
+        # DEPRECATED: Use the two-pass rendering architecture instead
         def generate(parser, context)
+          warn "[DEPRECATION] Hydrator.generate is deprecated. Use the two-pass rendering architecture instead."
           new(parser, context).generate_hydration_html
         end
 
