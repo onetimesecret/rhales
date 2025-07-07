@@ -90,9 +90,9 @@ class RhalesDemo < Roda
     # Skip status checks for demo simplicity
     skip_status_checks? true
 
-    # Use email as login
-    login_param 'email'
-    login_confirm_param 'email'
+    # Use email as login - param name should match form field
+    login_param 'login'
+    login_confirm_param 'login'
 
     # Use our Rhales templates instead of ERB
     login_view do
