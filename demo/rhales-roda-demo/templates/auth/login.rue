@@ -37,7 +37,26 @@
 </template>
 
 <logic>
-# Login form with CSRF protection
-# Shows demo accounts for testing
-# Links to registration page
+# LOGIN VIEW TEMPLATE
+#
+# AVAILABLE VARIABLES:
+# Global (all Rodauth views):
+#   - rodauth.* : Full Rodauth object (csrf_tag, logged_in?, login_error_flash, etc.)
+#   - flash_notice : Success message from flash[:notice]
+#   - flash_error : Error message from flash[:error]
+#   - current_path : Current URL path
+#   - request_method : HTTP method
+#   - demo_accounts : Demo credentials array
+#
+# Login-specific:
+#   - rodauth.login : Previously submitted login value (on error)
+#   - rodauth.login_error_flash : Login-specific error message
+#   - rodauth.login_param : Form field name for login ('login')
+#   - rodauth.password_param : Form field name for password ('password')
+#
+# Key Rodauth methods for login:
+#   - rodauth.csrf_tag : Complete CSRF input tag (use {{{...}}})
+#   - rodauth.login_path : Login form action URL
+#   - rodauth.create_account_path : Registration URL
+#   - rodauth.reset_password_path : Password reset URL
 </logic>

@@ -1,0 +1,28 @@
+<data>
+{
+  "page_title": "Close Account",
+  "submit_text": "Close Account",
+  "warning_message": "This action cannot be undone."
+}
+</data>
+
+<template>
+<div class="auth-form">
+  <h2>{{page_title}}</h2>
+
+  <div class="alert alert-warning">
+    {{warning_message}}
+  </div>
+
+  <form method="post">
+    <div class="form-group">
+      <label for="password">Current Password:</label>
+      <input type="password" id="password" name="password" required />
+    </div>
+
+    {{{rodauth.csrf_tag}}}
+
+    <button type="submit" class="btn btn-danger">{{submit_text}}</button>
+  </form>
+</div>
+</template>

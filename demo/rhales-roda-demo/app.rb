@@ -177,17 +177,69 @@ class RhalesDemo < Roda
     #   super(password)
     # end
 
-    # Use our Rhales templates instead of ERB
+    # ===== RODAUTH VIEW CUSTOMIZATIONS =====
+    # Replace default ERB templates with Rhales RSFC templates
+    #
+    # AVAILABLE VARIABLES FOR ALL RODAUTH VIEWS:
+    # - rodauth.* : Full Rodauth object with all methods (csrf_tag, logged_in?, etc.)
+    # - flash_notice : Success/info message from flash[:notice]
+    # - flash_error : Error message from flash[:error]
+    # - current_path : request.path (current URL path)
+    # - request_method : HTTP method (GET/POST/etc.)
+    # - demo_accounts : Array of demo credentials (demo-specific)
+    #
+    # ADDING GLOBAL PROPS:
+    # Modify auto_data hash in rhales_render method (line ~219)
+    #
+    # ADDING VIEW-SPECIFIC PROPS:
+    # Pass hash as 2nd param: rhales_render('template', { key: 'value' })
+
+    # LOGIN VIEW - rodauth.login_route ('/login')
+    # Specific variables: rodauth.login, rodauth.login_error_flash
     login_view do
       scope.instance_eval { rhales_render('auth/login') }
     end
 
+    # REGISTRATION VIEW - rodauth.create_account_route ('/register')
+    # Specific variables: rodauth.login_confirm, rodauth.create_account_error_flash
     create_account_view do
       scope.instance_eval { rhales_render('auth/register') }
     end
 
+    # LOGOUT VIEW - rodauth.logout_route ('/logout')
+    # Specific variables: (logout is typically POST-only, minimal data needed)
     logout_view do
       scope.instance_eval { rhales_render('auth/logout') }
+    end
+
+    # VERIFY ACCOUNT VIEW - rodauth.verify_account_route ('/verify-account')
+    # Specific variables: rodauth.verify_account_key_value (token from email link)
+    verify_account_view do
+      scope.instance_eval { rhales_render('auth/verify_account') }
+    end
+
+    # CHANGE LOGIN VIEW - rodauth.change_login_route ('/change-login')
+    # Specific variables: rodauth.login (current login), rodauth.login_confirm
+    change_login_view do
+      scope.instance_eval { rhales_render('auth/change_login') }
+    end
+
+    # CHANGE PASSWORD VIEW - rodauth.change_password_route ('/change-password')
+    # Specific variables: rodauth.new_password_param, rodauth.password_confirm_param
+    change_password_view do
+      scope.instance_eval { rhales_render('auth/change_password') }
+    end
+
+    # RESET PASSWORD VIEW - rodauth.reset_password_route ('/reset-password')
+    # Specific variables: rodauth.reset_password_key_value (token from email)
+    reset_password_view do
+      scope.instance_eval { rhales_render('auth/reset_password') }
+    end
+
+    # CLOSE ACCOUNT VIEW - rodauth.close_account_route ('/close-account')
+    # Specific variables: (requires current password confirmation)
+    close_account_view do
+      scope.instance_eval { rhales_render('auth/close_account') }
     end
   end
 
@@ -214,15 +266,25 @@ class RhalesDemo < Roda
   end
 
   # Rhales render helper using adapter classes with layout support
+  #
+  # PARAMETERS:
+  # - template_name: Path to .rue template (e.g. 'auth/login')
+  # - props: Hash of template-specific variables
+  # - layout: Layout template (default: 'layouts/main', set to nil for no layout)
+  # - **extra_data: Additional keyword arguments merged as props
+  #
+  # EXAMPLE USAGE:
+  # rhales_render('auth/login', { custom_message: 'Welcome' }, layout: 'auth_layout')
+  # rhales_render('partial', {}, layout: nil)  # No layout
   def rhales_render(template_name, props = {}, layout: 'layouts/main', **extra_data)
-    # Automatically include common view data (flash, rodauth, etc.)
+    # AUTO-INJECTED GLOBAL VARIABLES (available to all templates):
     auto_data = {
-      'flash_notice' => flash['notice'],
-      'flash_error' => flash['error'],
-      'current_path' => request.path,
-      'request_method' => request.request_method,
-      'rodauth' => rodauth,
-      'demo_accounts' => DEMO_ACCOUNTS,
+      'flash_notice' => flash['notice'],        # Success message from flash
+      'flash_error' => flash['error'],          # Error message from flash
+      'current_path' => request.path,           # Current URL path
+      'request_method' => request.request_method, # HTTP method (GET/POST/etc)
+      'rodauth' => rodauth,                     # Full Rodauth object
+      'demo_accounts' => DEMO_ACCOUNTS,         # Demo credentials (app-specific)
     }
 
     # Merge data layers: auto_data provides base, then props, then extra_data
