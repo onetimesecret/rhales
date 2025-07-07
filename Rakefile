@@ -1,25 +1,25 @@
 # Rakefile
 
-require "bundler/gem_tasks"
-require "rspec/core/rake_task"
+require 'bundler/gem_tasks'
+require 'rspec/core/rake_task'
 
 RSpec::Core::RakeTask.new(:spec)
 
-task :default => :spec
+task default: :spec
 
 # Rhales specific tasks
 namespace :rhales do
-  desc "Run Rhales tests only"
+  desc 'Run Rhales tests only'
   task :test do
-    system("bundle exec rspec spec/rhales/")
+    system('bundle exec rspec spec/rhales/')
   end
 
-  desc "Generate Rhales documentation"
+  desc 'Generate Rhales documentation'
   task :docs do
-    system("bundle exec yard doc lib/rhales/")
+    system('bundle exec yard doc lib/rhales/')
   end
 
-  desc "Validate Rhales templates in examples"
+  desc 'Validate Rhales templates in examples'
   task :validate do
     require 'rhales'
 
@@ -29,9 +29,9 @@ namespace :rhales do
         puts "Validating #{file}..."
         begin
           Rhales::RueDocument.parse_file(file)
-          puts "  ✓ Valid"
-        rescue => e
-          puts "  ✗ Error: #{e.message}"
+          puts '  ✓ Valid'
+        rescue StandardError => ex
+          puts "  ✗ Error: #{ex.message}"
         end
       end
     else

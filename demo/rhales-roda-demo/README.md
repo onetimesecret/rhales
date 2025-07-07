@@ -42,21 +42,7 @@ gem install bundler
 bundle install
 ```
 
-### Step 4: (Optional but recommended) Seed the database
-
-```bash
-bundle exec ruby db/seed.rb
-```
-
-Expected output:
-```
-Seed data created successfully!
-Demo accounts:
-  - demo@example.com / demo123
-  - user@example.com / userpass
-```
-
-### Step 5: Start the web server
+### Step 4: Start the web server
 
 ```bash
 bundle exec rackup
@@ -75,7 +61,7 @@ Puma starting in single mode...
 Use Ctrl-C to stop
 ```
 
-### Step 6: Open your browser
+### Step 5: Open your browser
 
 Visit: http://localhost:9292
 
