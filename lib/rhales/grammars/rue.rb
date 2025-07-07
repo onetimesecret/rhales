@@ -1,12 +1,23 @@
 # lib/rhales/rue_grammar.rb
 
-require 'prism'
 require_relative 'handlebars'
 
 module Rhales
-  # Formal grammar definition for .rue files
+  # Hand-rolled recursive descent parser for .rue files
   #
-  # Grammar:
+  # This parser implements .rue file parsing rules in Ruby code and produces
+  # an Abstract Syntax Tree (AST) for .rue file processing. It handles:
+  #
+  # - Section-based parsing: <data>, <template>, <logic>
+  # - Attribute extraction from section tags
+  # - Delegation to HandlebarsParser for template content
+  # - Validation of required sections
+  #
+  # Note: This class is a parser implementation, not a formal grammar definition.
+  # A formal grammar would be written in BNF/EBNF notation, while this class
+  # contains the actual parsing logic written in Ruby.
+  #
+  # File format structure:
   # rue_file := section+
   # section := '<' tag_name attributes? '>' content '</' tag_name '>'
   # tag_name := 'data' | 'template' | 'logic'

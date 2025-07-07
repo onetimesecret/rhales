@@ -1,16 +1,20 @@
 # lib/rhales/grammars/handlebars.rb
 
 module Rhales
-  # Formal grammar definition for Handlebars template syntax
+  # Hand-rolled recursive descent parser for Handlebars template syntax
   #
-  # This grammar parses handlebars expressions into proper AST nodes,
-  # following the official handlebars specification. It handles:
+  # This parser implements Handlebars parsing rules in Ruby code and produces
+  # an Abstract Syntax Tree (AST) for template processing. It handles:
   #
   # - Variable expressions: {{variable}}, {{{raw}}}
   # - Block expressions: {{#if}}{{else}}{{/if}}, {{#each}}{{/each}}
   # - Partials: {{> partial_name}}
   # - Proper nesting and error reporting
   # - Whitespace control (future)
+  #
+  # Note: This class is a parser implementation, not a formal grammar definition.
+  # A formal grammar would be written in BNF/EBNF notation, while this class
+  # contains the actual parsing logic written in Ruby.
   #
   # AST Node Types:
   # - :template - Root template node
