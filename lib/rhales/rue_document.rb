@@ -120,6 +120,10 @@ module Rhales
       data_attributes['schema']
     end
 
+    def merge_strategy
+      data_attributes['merge']
+    end
+
     def section?(name)
       @grammar.sections.key?(name)
     end
