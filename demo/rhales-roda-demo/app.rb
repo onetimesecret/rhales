@@ -8,7 +8,16 @@ require 'rack/session'
 # Add the lib directory to the load path
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
+require 'mail'
 
+Mail.defaults do
+  delivery_method :smtp, {
+    address: 'localhost',
+    port: 1025,
+    domain: 'localhost.localdomain',
+    enable_starttls_auto: false,
+  }
+end
 
 # Simple adapter classes for Rhales context objects
 class SimpleRequest
