@@ -12,6 +12,8 @@ It all started with a simple mustache template many years ago. The successor to 
 
 - **Server-side template rendering** with Handlebars-style syntax
 - **Client-side data hydration** with secure JSON injection
+- **Window collision detection** prevents silent data overwrites
+- **Explicit merge strategies** for controlled data sharing (shallow, deep, strict)
 - **Clear security boundaries** between server context and client data
 - **Partial support** for component composition
 - **Pluggable authentication adapters** for any auth system
@@ -549,6 +551,78 @@ Generates:
 <script nonce="nonce123">
 window.myData = JSON.parse(document.getElementById('rsfc-data-abc123').textContent);
 </script>
+```
+
+### Window Collision Detection
+
+Rhales automatically detects when multiple templates try to use the same window attribute, preventing silent data overwrites:
+
+```erb
+<!-- layouts/main.rue -->
+<data window="appData">
+{"user": "{{user.name}}", "csrf": "{{csrf_token}}"}
+</data>
+
+<!-- pages/home.rue -->
+<data window="appData">  <!-- ❌ Collision detected! -->
+{"page": "home", "features": ["feature1"]}
+</data>
+```
+
+This raises a helpful error:
+```
+Window attribute collision detected
+
+Attribute: 'appData'
+First defined: layouts/main.rue:1
+Conflict with: pages/home.rue:1
+
+Quick fixes:
+  1. Rename one: <data window="homeData">
+  2. Enable merging: <data window="appData" merge="deep">
+```
+
+### Merge Strategies
+
+When you intentionally want to share data between templates, use explicit merge strategies:
+
+```erb
+<!-- layouts/main.rue -->
+<data window="appData">
+{
+  "user": {"name": "{{user.name}}", "role": "{{user.role}}"},
+  "csrf": "{{csrf_token}}"
+}
+</data>
+
+<!-- pages/home.rue with deep merge -->
+<data window="appData" merge="deep">
+{
+  "user": {"email": "{{user.email}}"},  <!-- Merged with layout user -->
+  "page": {"title": "Home", "features": {{features.to_json}}}
+}
+</data>
+```
+
+#### Available Merge Strategies
+
+**`merge="shallow"`** - Top-level key merge, throws error on conflicts:
+```javascript
+// Layout: {"user": {...}, "csrf": "abc"}
+// Page:   {"page": {...}, "user": {...}}  // ❌ Error: key conflict
+```
+
+**`merge="deep"`** - Recursive merge, last value wins on conflicts:
+```javascript
+// Layout: {"user": {"name": "John", "role": "admin"}}
+// Page:   {"user": {"email": "john@example.com"}}
+// Result: {"user": {"name": "John", "role": "admin", "email": "john@example.com"}}
+```
+
+**`merge="strict"`** - Recursive merge, throws error on any conflict:
+```javascript
+// Layout: {"user": {"name": "John"}}
+// Page:   {"user": {"name": "Jane"}}  // ❌ Error: value conflict
 ```
 
 ## Testing

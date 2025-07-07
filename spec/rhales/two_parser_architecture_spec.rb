@@ -232,6 +232,26 @@ RSpec.describe 'Two Parser Architecture' do
 
       # Data attributes still work
       expect(document.window_attribute).to eq('appData')
+      expect(document.merge_strategy).to be_nil
+    end
+
+    it 'extracts merge strategy from data section attributes' do
+      rue_content = <<~RUE
+        <data window="appData" merge="deep" schema="test.json">
+        {"message": "{{greeting}}"}
+        </data>
+
+        <template>
+        <h1>{{greeting}}</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(rue_content)
+      document.parse!
+
+      expect(document.window_attribute).to eq('appData')
+      expect(document.merge_strategy).to eq('deep')
+      expect(document.schema_path).to eq('test.json')
     end
   end
 

@@ -74,12 +74,23 @@ module Rhales
       # Generate just the hydration script
       def hydration_script
         nonce_attr = nonce_attribute
+        merge_strategy = @parser.merge_strategy
 
-        <<~HTML.strip
-          <script#{nonce_attr}>
-          window.#{@window_attribute} = JSON.parse(document.getElementById('#{script_element_id}').textContent);
-          </script>
-        HTML
+        if merge_strategy
+          <<~HTML.strip
+            <script#{nonce_attr}>
+            #{merge_functions_js}
+            var newData = JSON.parse(document.getElementById('#{script_element_id}').textContent);
+            window.#{@window_attribute} = #{merge_strategy}_merge(window.#{@window_attribute} || {}, newData);
+            </script>
+          HTML
+        else
+          <<~HTML.strip
+            <script#{nonce_attr}>
+            window.#{@window_attribute} = JSON.parse(document.getElementById('#{script_element_id}').textContent);
+            </script>
+          HTML
+        end
       end
 
       # Process <data> section and return JSON string
@@ -145,8 +156,11 @@ module Rhales
         # Get template path with line number where data tag is defined
         template_path = build_template_path
 
+        # Get merge strategy from parser
+        merge_strategy = @parser.merge_strategy
+
         # Register with HydrationRegistry - will raise on collision
-        HydrationRegistry.register(@window_attribute, template_path)
+        HydrationRegistry.register(@window_attribute, template_path, merge_strategy)
       end
 
       # Build template path with line number for error reporting
@@ -159,6 +173,79 @@ module Rhales
         else
           "<inline>:#{line_number}"
         end
+      end
+
+      # JavaScript merge functions for different strategies
+      def merge_functions_js
+        <<~JS.strip
+          function shallow_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  throw new Error('Shallow merge conflict: key "' + key + '" exists in both objects');
+                }
+                result[key] = source[key];
+              }
+            }
+            return result;
+          }
+
+          function deep_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  if (typeof target[key] === 'object' && target[key] !== null &&
+                      typeof source[key] === 'object' && source[key] !== null &&
+                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
+                    result[key] = deep_merge(target[key], source[key]);
+                  } else {
+                    result[key] = source[key]; // Last wins
+                  }
+                } else {
+                  result[key] = source[key];
+                }
+              }
+            }
+            return result;
+          }
+
+          function strict_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  if (typeof target[key] === 'object' && target[key] !== null &&
+                      typeof source[key] === 'object' && source[key] !== null &&
+                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
+                    result[key] = strict_merge(target[key], source[key]);
+                  } else {
+                    throw new Error('Strict merge conflict: key "' + key + '" exists in both objects');
+                  }
+                } else {
+                  result[key] = source[key];
+                }
+              }
+            }
+            return result;
+          }
+        JS
       end
 
       class << self

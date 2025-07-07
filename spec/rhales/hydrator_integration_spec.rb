@@ -175,6 +175,104 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
     # to handle template composition. For now, collision detection works
     # within single template rendering.
 
+    context 'with merge strategies' do
+      context 'deep merge strategy' do
+        let(:layout_content) do
+          <<~RUE
+            <data window="appData">
+            {
+              "user": {"name": "John", "role": "admin"},
+              "csrf": "abc123"
+            }
+            </data>
+            <template>
+            <div class="layout">{{> content}}</div>
+            </template>
+          RUE
+        end
+
+        let(:page_content) do
+          <<~RUE
+            <data window="appData" merge="deep">
+            {
+              "user": {"email": "john@example.com"},
+              "page": {"title": "Home", "features": ["feature1"]}
+            }
+            </data>
+            <template>
+            <h1>Welcome</h1>
+            </template>
+          RUE
+        end
+
+        it 'allows same window attribute with deep merge strategy' do
+          # First template registers successfully
+          layout_parser = Rhales::RueDocument.new(layout_content, 'layouts/main.rue')
+          layout_parser.parse!
+
+          layout_hydrator = Rhales::Hydrator.new(layout_parser, context)
+          layout_html = layout_hydrator.generate_hydration_html
+
+          expect(layout_html).to include('window.appData = JSON.parse(')
+          expect(layout_html).to include('"user": {"name": "John", "role": "admin"}')
+
+          # Second template with merge strategy should not raise error
+          page_parser = Rhales::RueDocument.new(page_content, 'pages/home.rue')
+          page_parser.parse!
+
+          page_hydrator = Rhales::Hydrator.new(page_parser, context)
+          page_html = page_hydrator.generate_hydration_html
+
+          expect(page_html).to include('function deep_merge(')
+          expect(page_html).to include('window.appData = deep_merge(window.appData || {}, newData);')
+          expect(page_html).to include('"user": {"email": "john@example.com"}')
+          expect(page_html).to include('"page": {"title": "Home", "features": ["feature1"]}')
+        end
+      end
+
+      context 'shallow merge strategy' do
+        let(:layout_content) do
+          <<~RUE
+            <data window="appData">
+            {"user": "John", "csrf": "abc123"}
+            </data>
+            <template>
+            <div>Layout</div>
+            </template>
+          RUE
+        end
+
+        let(:page_content) do
+          <<~RUE
+            <data window="appData" merge="shallow">
+            {"page": "home", "features": ["feature1"]}
+            </data>
+            <template>
+            <div>Page</div>
+            </template>
+          RUE
+        end
+
+        it 'allows same window attribute with shallow merge strategy' do
+          # First template
+          layout_parser = Rhales::RueDocument.new(layout_content, 'layouts/main.rue')
+          layout_parser.parse!
+          layout_hydrator = Rhales::Hydrator.new(layout_parser, context)
+          layout_hydrator.generate_hydration_html
+
+          # Second template with shallow merge
+          page_parser = Rhales::RueDocument.new(page_content, 'pages/home.rue')
+          page_parser.parse!
+          page_hydrator = Rhales::Hydrator.new(page_parser, context)
+          page_html = page_hydrator.generate_hydration_html
+
+          expect(page_html).to include('function shallow_merge(')
+          expect(page_html).to include('window.appData = shallow_merge(window.appData || {}, newData);')
+          expect(page_html).to include('"page": "home"')
+        end
+      end
+    end
+
     context 'error message quality' do
       it 'includes actual data tag content when available' do
         content_with_tag = <<~RUE
