@@ -1,3 +1,4 @@
+require 'logger'
 require 'roda'
 require 'sequel'
 require 'securerandom'
@@ -64,6 +65,9 @@ class RhalesDemo < Roda
   # Database setup - use file-based SQLite for persistence
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
+  DB.loggers << Logger.new($stdout)
+  DB.extension :date_arithmetic
+
   # Run migrations if needed
   Sequel.extension :migration
   Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrate'))
@@ -78,7 +82,18 @@ class RhalesDemo < Roda
   # Simple Rodauth configuration
   plugin :rodauth do
     db DB
-    enable :login, :logout, :create_account
+    enable :change_login, :change_password, :close_account, :create_account,
+      :lockout, :login, :logout, :remember, :reset_password, :verify_account,
+      :otp_modify_email, :otp_lockout_email, :recovery_codes, :sms_codes,
+      :disallow_password_reuse, :password_grace_period, :active_sessions,
+      :verify_login_change, :change_password_notify, :confirm_password,
+      :email_auth, :disallow_common_passwords
+
+    # Used for HMAC operations in various Rodauth features like password reset
+    # tokens, email verification, etc. If it changes, existing tokens become
+    # invalid (users lose pending password resets, etc).
+    # e.g. SecureRandom.hex(64)
+    hmac_secret ENV['RODAUTH_HMAC_SECRET'] || 'demo_hmac_secret_change_in_production'
 
     login_redirect '/'
     logout_redirect '/'
