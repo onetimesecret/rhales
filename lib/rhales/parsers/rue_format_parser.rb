@@ -1,6 +1,6 @@
-# lib/rhales/rue_grammar.rb
+# lib/rhales/parsers/rue_format_parser.rb
 
-require_relative 'handlebars'
+require_relative 'handlebars_parser'
 
 module Rhales
   # Hand-rolled recursive descent parser for .rue files
@@ -25,7 +25,7 @@ module Rhales
   # attribute := key '=' quoted_value
   # content := (text | handlebars_expression)*
   # handlebars_expression := '{{' expression '}}'
-  class RueGrammar
+  class RueFormatParser
     REQUIRED_SECTIONS = %w[data template].freeze
     OPTIONAL_SECTIONS = ['logic'].freeze
     ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
@@ -184,11 +184,11 @@ module Rhales
         advance
       end
 
-      # For template sections, use HandlebarsGrammar to parse the content
+      # For template sections, use HandlebarsParser to parse the content
       if tag_name == 'template'
-        handlebars_grammar = HandlebarsGrammar.new(raw_content)
-        handlebars_grammar.parse!
-        handlebars_grammar.ast.children
+        handlebars_parser = HandlebarsParser.new(raw_content)
+        handlebars_parser.parse!
+        handlebars_parser.ast.children
       else
         # For data and logic sections, keep as simple text
         return [Node.new(:text, current_location, value: raw_content)] unless raw_content.empty?

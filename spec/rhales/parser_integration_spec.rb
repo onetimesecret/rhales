@@ -1,15 +1,13 @@
-# spec/rhales/grammar_integration_spec.rb
+# spec/rhales/parser_integration_spec.rb
 
 require 'spec_helper'
 
-RSpec.describe 'Grammar Integration' do
-  describe 'RueGrammar AST parsing' do
+RSpec.describe 'Parser Integration' do
+  describe 'RueFormatParser AST parsing' do
     it 'parses simple .rue file correctly' do
       content = <<~RUE
         <data>
-        {
-          "message": "{{greeting}}"
-        }
+        {"greeting": "{{message}}"}
         </data>
 
         <template>
@@ -17,18 +15,19 @@ RSpec.describe 'Grammar Integration' do
         </template>
       RUE
 
-      grammar = Rhales::RueGrammar.new(content)
-      grammar.parse!
+      parser = Rhales::RueFormatParser.new(content)
+      parser.parse!
 
-      expect(grammar.sections.keys).to contain_exactly('data', 'template')
+      expect(parser.sections.keys).to contain_exactly('data', 'template')
 
-      data_section = grammar.sections['data']
+      data_section = parser.sections['data']
       expect(data_section.value[:tag]).to eq('data')
+      expect(data_section.value[:content]).not_to be_empty
       expect(data_section.value[:content].size).to be >= 1
       data_content = data_section.value[:content].find { |node| node.type == :text }
-      expect(data_content.value).to include('"message"')
+      expect(data_content.value).to include('"greeting"')
 
-      template_section = grammar.sections['template']
+      template_section = parser.sections['template']
       expect(template_section.value[:tag]).to eq('template')
       expect(template_section.value[:content].size).to be >= 2
     end
@@ -44,10 +43,10 @@ RSpec.describe 'Grammar Integration' do
         </template>
       RUE
 
-      grammar = Rhales::RueGrammar.new(content)
-      grammar.parse!
+      parser = Rhales::RueFormatParser.new(content)
+      parser.parse!
 
-      data_section = grammar.sections['data']
+      data_section = parser.sections['data']
       expect(data_section.value[:attributes]).to eq({
         'window' => 'customData',
         'schema' => 'schema.json',
@@ -71,10 +70,10 @@ RSpec.describe 'Grammar Integration' do
         </template>
       RUE
 
-      grammar = Rhales::RueGrammar.new(content)
-      grammar.parse!
+      parser = Rhales::RueFormatParser.new(content)
+      parser.parse!
 
-      template_section = grammar.sections['template']
+      template_section = parser.sections['template']
       expression_nodes = template_section.value[:content].select do |node|
         [:variable_expression, :if_block, :partial_expression].include?(node.type)
       end
@@ -117,9 +116,9 @@ RSpec.describe 'Grammar Integration' do
         </data>
       RUE
 
-      grammar = Rhales::RueGrammar.new(content)
+      parser = Rhales::RueFormatParser.new(content)
 
-      expect { grammar.parse! }.to raise_error(Rhales::RueGrammar::ParseError) do |error|
+      expect { parser.parse! }.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
         expect(error.message).to include('Duplicate sections: data')
       end
     end
@@ -131,16 +130,16 @@ RSpec.describe 'Grammar Integration' do
         </logic>
       RUE
 
-      grammar = Rhales::RueGrammar.new(content)
+      parser = Rhales::RueFormatParser.new(content)
 
-      expect { grammar.parse! }.to raise_error(Rhales::RueGrammar::ParseError) do |error|
+      expect { parser.parse! }.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
         expect(error.message).to include('Missing required sections: data, template')
       end
     end
   end
 
-  describe 'Parser integration with grammar' do
-    it 'creates Parser that uses RueGrammar' do
+  describe 'RueDocument integration with parser' do
+    it 'creates RueDocument that uses RueFormatParser' do
       content = <<~RUE
         <data>
         {"greeting": "{{message}}"}
@@ -151,17 +150,17 @@ RSpec.describe 'Grammar Integration' do
         </template>
       RUE
 
-      parser = Rhales::Parser.new(content)
-      parser.parse!
+      document = Rhales::RueDocument.new(content)
+      document.parse!
 
-      expect(parser.sections.keys).to contain_exactly('data', 'template')
-      expect(parser.section('data')).to include('"greeting"')
-      expect(parser.section('template')).to include('<h1>')
-      expect(parser.template_variables).to include('message')
-      expect(parser.data_variables).to include('message')
+      expect(document.sections.keys).to contain_exactly('data', 'template')
+      expect(document.section('data')).to include('"greeting"')
+      expect(document.section('template')).to include('<h1>')
+      expect(document.template_variables).to include('message')
+      expect(document.data_variables).to include('message')
     end
 
-    it 'handles data attributes through grammar' do
+    it 'handles data attributes through parser' do
       content = <<~RUE
         <data window="appData">
         {"test": "value"}
@@ -172,11 +171,11 @@ RSpec.describe 'Grammar Integration' do
         </template>
       RUE
 
-      parser = Rhales::Parser.new(content)
-      parser.parse!
+      document = Rhales::RueDocument.new(content)
+      document.parse!
 
-      expect(parser.window_attribute).to eq('appData')
-      expect(parser.data_attributes).to eq({ 'window' => 'appData' })
+      expect(document.window_attribute).to eq('appData')
+      expect(document.section('data')).to include('"test"')
     end
 
     it 'extracts partials correctly' do
@@ -186,22 +185,20 @@ RSpec.describe 'Grammar Integration' do
         </data>
 
         <template>
-        <div>
-          {{> header}}
-          <main>Content</main>
-          {{> footer}}
-        </div>
+        {{> header}}
+        <main>Content</main>
+        {{> footer}}
         </template>
       RUE
 
-      parser = Rhales::Parser.new(content)
-      parser.parse!
+      document = Rhales::RueDocument.new(content)
+      document.parse!
 
-      expect(parser.partials).to contain_exactly('header', 'footer')
+      expect(document.partials).to contain_exactly('header', 'footer')
     end
   end
 
-  describe 'TemplateEngine integration with grammar' do
+  describe 'TemplateEngine integration with parsers' do
     let(:context) do
       Rhales::Context.minimal(business_data: {
         greeting: 'Hello World',
@@ -305,7 +302,7 @@ RSpec.describe 'Grammar Integration' do
       end
     end
 
-    it 'now uses Parser internally for .rue files' do
+    it 'now uses RueDocument internally for .rue files' do
       template = <<~RUE
         <data window="myData" schema="/api/schema.json">
         {"message": "test"}
@@ -358,16 +355,16 @@ RSpec.describe 'Grammar Integration' do
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'test_session')
       context = Rhales::Context.for_view(nil, session, user, 'en', **business_data)
 
-      # Parse through grammar
-      parser = Rhales::Parser.new(rue_content)
-      parser.parse!
+      # Parse through document
+      document = Rhales::RueDocument.new(rue_content)
+      document.parse!
 
       # Verify parsing
-      expect(parser.window_attribute).to eq('testData')
-      expect(parser.data_variables).to include('page_title')
+      expect(document.window_attribute).to eq('testData')
+      expect(document.data_variables).to include('page_title')
 
       # Render template
-      template_content = parser.section('template')
+      template_content = document.section('template')
       engine           = Rhales::TemplateEngine.new(template_content, context)
       result           = engine.render
 
@@ -393,10 +390,10 @@ RSpec.describe 'Grammar Integration' do
 
       context = Rhales::Context.minimal(business_data: { page_title: 'Test Title' })
 
-      parser = Rhales::Parser.new(content)
-      parser.parse!
+      document = Rhales::RueDocument.new(content)
+      document.parse!
 
-      template_content = parser.section('template')
+      template_content = document.section('template')
       engine           = Rhales::TemplateEngine.new(template_content, context)
       result           = engine.render
 

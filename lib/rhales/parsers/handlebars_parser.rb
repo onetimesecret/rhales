@@ -1,4 +1,4 @@
-# lib/rhales/grammars/handlebars.rb
+# lib/rhales/parsers/handlebars_parser.rb
 
 module Rhales
   # Hand-rolled recursive descent parser for Handlebars template syntax
@@ -24,7 +24,7 @@ module Rhales
   # - :unless_block - {{#unless}}...{{/unless}}
   # - :each_block - {{#each}}...{{/each}}
   # - :partial_expression - {{> partial}}
-  class HandlebarsGrammar
+  class HandlebarsParser
     class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
         super(message, line: line, column: column, offset: offset, source_type: :handlebars)

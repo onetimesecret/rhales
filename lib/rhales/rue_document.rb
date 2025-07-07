@@ -1,16 +1,16 @@
-# lib/rhales/parser.rb
+# lib/rhales/rue_document.rb
 
-require_relative 'grammars/rue'
+require_relative 'parsers/rue_format_parser'
 
 module Rhales
   # High-level interface for parsed .rue files
   #
-  # This class provides a convenient interface to .rue files parsed by RueParser.
-  # It uses RueParser internally for low-level parsing and provides high-level
+  # This class provides a convenient interface to .rue files parsed by RueFormatParser.
+  # It uses RueFormatParser internally for low-level parsing and provides high-level
   # methods for accessing sections, attributes, and extracted data.
   #
   # Features:
-  # - High-level interface to RueParser AST
+  # - High-level interface to RueFormatParser AST
   # - Accurate error reporting with line/column information
   # - Convenient section access methods
   # - Section validation and attribute extraction
@@ -21,11 +21,11 @@ module Rhales
   # HTML::Document represents a parsed HTML document.
   #
   # Usage:
-  #   parser = Parser.new(rue_content)
-  #   parser.parse!
-  #   template_section = parser.section('template')
-  #   variables = parser.template_variables
-  class Parser
+  #   document = RueDocument.new(rue_content)
+  #   document.parse!
+  #   template_section = document.section('template')
+  #   variables = document.template_variables
+  class RueDocument
     class ParseError < ::Rhales::ValidationError; end
     class SectionMissingError < ParseError; end
     class SectionDuplicateError < ParseError; end
@@ -40,7 +40,7 @@ module Rhales
     def initialize(content, file_path = nil)
       @content   = content
       @file_path = file_path
-      @grammar   = RueGrammar.new(content, file_path)  # Actually RueParser
+      @grammar   = RueFormatParser.new(content, file_path)
       @ast       = nil
     end
 
@@ -49,7 +49,7 @@ module Rhales
       @ast = @grammar.ast
       parse_data_attributes!
       self
-    rescue RueGrammar::ParseError => ex
+    rescue RueFormatParser::ParseError => ex
       raise ParseError, "Parser error: #{ex.message}"
     end
 

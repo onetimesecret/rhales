@@ -32,10 +32,10 @@ end
 
 puts
 
-# 2b. Catching parse errors directly from grammar
+# 2b. Catching parse errors directly from parser
 begin
-  grammar = Rhales::HandlebarsGrammar.new('{{unclosed')
-  grammar.parse!
+  parser = Rhales::HandlebarsParser.new('{{unclosed')
+  parser.parse!
 rescue Rhales::ParseError => ex
   puts 'Direct parse error details:'
   puts "  Class: #{ex.class}"
@@ -54,7 +54,7 @@ begin
     </logic>
   RUE
 
-  parser = Rhales::Parser.new(template)
+  parser = Rhales::RueDocument.new(template)
   parser.parse!
 rescue Rhales::ValidationError => ex
   puts "Validation error: #{ex.class} - #{ex.message}"

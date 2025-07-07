@@ -62,7 +62,7 @@ For complex features requiring parallel work:
 ### Core Components to Consider
 - **Configuration**: Block-based configuration with validation
 - **Context**: Three-layer system with dot-notation access
-- **Grammars**: Two manual recursive descent parsers, for .rue files and handlebars templates
+- **Parsers**: Two manual recursive descent parsers, for .rue files and handlebars templates
 - **Parser**: .rue file parsing with manual recursive descent
 - **Rhales**: Handlebars-style template engine
 - **Hydrator**: Client-side data injection with CSP support

@@ -1,15 +1,15 @@
 # lib/rhales/template_engine.rb
 
 require 'erb'
-require_relative 'grammars/rue'
-require_relative 'grammars/handlebars'
-require_relative 'parser'
+require_relative 'parsers/rue_format_parser'
+require_relative 'parsers/handlebars_parser'
+require_relative 'rue_document'
 
 module Rhales
   # Rhales - Ruby Handlebars-style template engine
   #
   # Modern AST-based template engine that supports both simple template strings
-  # and full .rue files. Uses RueGrammar for formal parsing with proper
+  # and full .rue files. Uses RueFormatParser for parsing with proper
   # nested structure handling and block statement support.
   #
   # Features:
@@ -44,16 +44,16 @@ module Rhales
     def render
       # Check if this is a simple template or a full .rue file
       if simple_template?
-        # Use HandlebarsGrammar for simple templates
-        grammar = HandlebarsGrammar.new(@template_content)
-        grammar.parse!
-        render_content_nodes(grammar.ast.children)
+        # Use HandlebarsParser for simple templates
+        parser = HandlebarsParser.new(@template_content)
+        parser.parse!
+        render_content_nodes(parser.ast.children)
       else
-        # Use Parser for .rue files
-        @parser = Parser.new(@template_content)
+        # Use RueDocument for .rue files
+        @parser = RueDocument.new(@template_content)
         @parser.parse!
 
-        # Get template section via Parser
+        # Get template section via RueDocument
         template_content = @parser.section('template')
         raise RenderError, 'Missing template section' unless template_content
 
@@ -64,7 +64,7 @@ module Rhales
       # Parse errors already have good error messages with location
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue ::Rhales::ValidationError => ex
-      # Validation errors from Parser
+      # Validation errors from RueDocument
       raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
       raise RenderError, "Template rendering failed: #{ex.message}"
@@ -103,9 +103,9 @@ module Rhales
 
     def render_template_string(template_string)
       # Parse the template string as a simple Handlebars template
-      grammar = HandlebarsGrammar.new(template_string)
-      grammar.parse!
-      render_content_nodes(grammar.ast.children)
+      parser = HandlebarsParser.new(template_string)
+      parser.parse!
+      render_content_nodes(parser.ast.children)
     end
 
     # Render array of AST content nodes with proper block handling
@@ -341,8 +341,8 @@ module Rhales
 
           if File.exist?(partial_path)
             # Load and parse the partial .rue file
-            parser = Parser.parse_file(partial_path)
-            parser.section('template')
+            document = RueDocument.parse_file(partial_path)
+            document.section('template')
           else
             nil
           end
