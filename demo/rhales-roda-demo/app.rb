@@ -62,6 +62,20 @@ class SimpleAuth < Rhales::Adapters::BaseAuth
 end
 
 class RhalesDemo < Roda
+  # Demo accounts for testing - matches migration seed data
+  DEMO_ACCOUNTS = [
+    {
+      email: 'demo@example.com',
+      password: 'demo123',
+      role: 'user',
+    },
+    {
+      email: 'admin@example.com',
+      password: 'admin123',
+      role: 'admin',
+    },
+  ].freeze
+
   # Database setup - use file-based SQLite for persistence
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
@@ -151,6 +165,7 @@ class RhalesDemo < Roda
       'current_path' => request.path,
       'request_method' => request.request_method,
       'rodauth' => rodauth,
+      'demo_accounts' => DEMO_ACCOUNTS,
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
