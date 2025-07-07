@@ -79,7 +79,6 @@ class RhalesDemo < Roda
   # Database setup - use file-based SQLite for persistence
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
-  DB.loggers << Logger.new($stdout)
   DB.extension :date_arithmetic
 
   # Run migrations if needed
@@ -123,6 +122,29 @@ class RhalesDemo < Roda
     login_param 'login'
     login_confirm_param 'login'
 
+    # The following hooks are kept to document their availability and naming.
+    # They can be implemented with custom logic as needed.
+    # before_login {}
+    # before_create_account {}
+    # after_login_failure {}
+    # after_create_account {}
+    #
+    # login_error_flash do
+    #   super()
+    # end
+    #
+    # create_account_error_flash do
+    #   super()
+    # end
+    #
+    # account_from_login do |login|
+    #   super(login)
+    # end
+    #
+    # password_match? do |password|
+    #   super(password)
+    # end
+
     # Use our Rhales templates instead of ERB
     login_view do
       scope.instance_eval { rhales_render('auth/login') }
@@ -132,7 +154,6 @@ class RhalesDemo < Roda
       scope.instance_eval { rhales_render('auth/register') }
     end
 
-    # Use Rhales template for logout page
     logout_view do
       scope.instance_eval { rhales_render('auth/logout') }
     end
