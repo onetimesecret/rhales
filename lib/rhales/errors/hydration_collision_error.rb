@@ -6,8 +6,8 @@ module Rhales
 
     def initialize(window_attribute, first_path, conflict_path)
       @window_attribute = window_attribute
-      @first_path = first_path
-      @conflict_path = conflict_path
+      @first_path       = first_path
+      @conflict_path    = conflict_path
 
       super(build_message)
     end
@@ -41,7 +41,7 @@ module Rhales
         tag_match = path.match(/(:.*?<data[^>]*>)/)
         return "\n               #{tag_match[1].sub(/^:/, '')}" if tag_match
       end
-      ""
+      ''
     end
 
     def suggested_alternative_name

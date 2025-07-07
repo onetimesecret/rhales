@@ -8,13 +8,13 @@ module Rhales
     attr_reader :line, :column, :offset, :source_type
 
     def initialize(message, line: nil, column: nil, offset: nil, source_type: nil)
-      @line = line
-      @column = column
-      @offset = offset
+      @line        = line
+      @column      = column
+      @offset      = offset
       @source_type = source_type  # :rue, :handlebars, or :template
 
-      location = line && column ? " at line #{line}, column #{column}" : ""
-      source = source_type ? " in #{source_type}" : ""
+      location = line && column ? " at line #{line}, column #{column}" : ''
+      source   = source_type ? " in #{source_type}" : ''
       super("#{message}#{location}#{source}")
     end
   end

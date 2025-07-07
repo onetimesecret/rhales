@@ -73,7 +73,7 @@ module Rhales
 
       # Generate just the hydration script
       def hydration_script
-        nonce_attr = nonce_attribute
+        nonce_attr     = nonce_attribute
         merge_strategy = @parser.merge_strategy
 
         if merge_strategy
@@ -165,7 +165,7 @@ module Rhales
 
       # Build template path with line number for error reporting
       def build_template_path
-        data_node = @parser.section_node('data')
+        data_node   = @parser.section_node('data')
         line_number = data_node ? data_node.location.start_line : 1
 
         if @parser.file_path
