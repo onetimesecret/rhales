@@ -1,10 +1,6 @@
 <data window="demoData">
 {
   "page_type": "public",
-  "demo_credentials": {
-    "email": "demo@example.com",
-    "password": "demo123"
-  },
   "features": [
     {
       "title": "RSFC Templates",
@@ -44,8 +40,11 @@
     <p>Use these credentials to see the authenticated experience:</p>
 
     <div style="background: white; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
-      <p><strong>Email:</strong> {{demo_credentials.email}}</p>
-      <p><strong>Password:</strong> {{demo_credentials.password}}</p>
+      {{#each demo_accounts}}
+        <div style="margin-bottom: 0.5rem;">
+          <p><strong>{{role}} Account:</strong> {{email}} / {{password}}</p>
+        </div>
+      {{/each}}
     </div>
 
     <a href="/login" style="background: #007bff; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px;">Login Now</a>

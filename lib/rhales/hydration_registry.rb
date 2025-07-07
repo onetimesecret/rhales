@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# lib/rhales/hydration_registry.rb
 
 module Rhales
   # Registry to track window attributes used in hydration blocks
@@ -15,13 +15,13 @@ module Rhales
           raise HydrationCollisionError.new(
             window_attr,
             existing[:path],
-            template_path
+            template_path,
           )
         end
 
         registry[window_attr] = {
           path: template_path,
-          merge_strategy: merge_strategy
+          merge_strategy: merge_strategy,
         }
       end
 
@@ -42,15 +42,15 @@ module Rhales
 
       def validate_inputs(window_attr, template_path)
         if window_attr.nil?
-          raise ArgumentError, "window attribute cannot be nil"
+          raise ArgumentError, 'window attribute cannot be nil'
         end
 
         if window_attr.empty?
-          raise ArgumentError, "window attribute cannot be empty"
+          raise ArgumentError, 'window attribute cannot be empty'
         end
 
         if template_path.nil?
-          raise ArgumentError, "template path cannot be nil"
+          raise ArgumentError, 'template path cannot be nil'
         end
       end
     end

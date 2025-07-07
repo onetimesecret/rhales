@@ -37,7 +37,6 @@ require_relative 'rhales/view'
 #   view = Rhales::View.new(request, session, user)
 #   html = view.render('my_component')
 module Rhales
-
   # Convenience method to create a view with business data
   def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **business_data)
     view = View.new(request, session, user, locale, business_data: business_data)

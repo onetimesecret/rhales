@@ -1,0 +1,77 @@
+# demo/rhales-roda-demo/db/migrate/001_create_rodauth_password_tables.rb
+
+require 'rodauth/migrations'
+
+Sequel.migration do
+  up do
+    primary_key_type = ENV['RODAUTH_SPEC_UUID'] && database_type == :postgres ? :uuid : :bigint
+
+    create_table(:account_password_hashes) do
+      foreign_key :id, :accounts, primary_key: true, type: primary_key_type
+      String :password_hash, null: false
+    end
+    Rodauth.create_database_authentication_functions(self, argon2: ENV['RODAUTH_NO_ARGON2'] != '1')
+    case database_type
+    when :postgres
+      user = get(Sequel.lit('current_user')).sub(/_password\z/, '')
+      run 'REVOKE ALL ON account_password_hashes FROM public'
+      run "REVOKE ALL ON FUNCTION rodauth_get_salt(#{primary_key_type}) FROM public"
+      run "REVOKE ALL ON FUNCTION rodauth_valid_password_hash(#{primary_key_type}, text) FROM public"
+      run "GRANT INSERT, UPDATE, DELETE ON account_password_hashes TO #{user}"
+      run "GRANT SELECT(id) ON account_password_hashes TO #{user}"
+      run "GRANT EXECUTE ON FUNCTION rodauth_get_salt(#{primary_key_type}) TO #{user}"
+      run "GRANT EXECUTE ON FUNCTION rodauth_valid_password_hash(#{primary_key_type}, text) TO #{user}"
+    when :mysql
+      user    = get(Sequel.lit('current_user')).sub(/_password@/, '@')
+      db_name = get(Sequel.function(:database))
+      run "GRANT EXECUTE ON #{db_name}.* TO #{user}"
+      run "GRANT INSERT, UPDATE, DELETE ON account_password_hashes TO #{user}"
+      run "GRANT SELECT (id) ON account_password_hashes TO #{user}"
+    when :mssql
+      user = get(Sequel.function(:DB_NAME))
+      run "GRANT EXECUTE ON rodauth_get_salt TO #{user}"
+      run "GRANT EXECUTE ON rodauth_valid_password_hash TO #{user}"
+      run "GRANT INSERT, UPDATE, DELETE ON account_password_hashes TO #{user}"
+      run "GRANT SELECT ON account_password_hashes(id) TO #{user}"
+    end
+
+    # Used by the disallow_password_reuse feature
+    create_table(:account_previous_password_hashes) do
+      primary_key :id, type: :Bignum
+      foreign_key :account_id, :accounts, type: primary_key_type
+      String :password_hash, null: false
+    end
+    Rodauth.create_database_previous_password_check_functions(self, argon2: ENV['RODAUTH_NO_ARGON2'] != '1')
+
+    case database_type
+    when :postgres
+      user = get(Sequel.lit('current_user')).sub(/_password\z/, '')
+      run 'REVOKE ALL ON account_previous_password_hashes FROM public'
+      run 'REVOKE ALL ON FUNCTION rodauth_get_previous_salt(int8) FROM public'
+      run 'REVOKE ALL ON FUNCTION rodauth_previous_password_hash_match(int8, text) FROM public'
+      run "GRANT INSERT, UPDATE, DELETE ON account_previous_password_hashes TO #{user}"
+      run "GRANT SELECT(id, account_id) ON account_previous_password_hashes TO #{user}"
+      run "GRANT USAGE ON account_previous_password_hashes_id_seq TO #{user}"
+      run "GRANT EXECUTE ON FUNCTION rodauth_get_previous_salt(int8) TO #{user}"
+      run "GRANT EXECUTE ON FUNCTION rodauth_previous_password_hash_match(int8, text) TO #{user}"
+    when :mysql
+      user    = get(Sequel.lit('current_user')).sub(/_password@/, '@')
+      db_name = get(Sequel.function(:database))
+      run "GRANT EXECUTE ON #{db_name}.* TO #{user}"
+      run "GRANT INSERT, UPDATE, DELETE ON account_previous_password_hashes TO #{user}"
+      run "GRANT SELECT (id, account_id) ON account_previous_password_hashes TO #{user}"
+    when :mssql
+      user = get(Sequel.function(:DB_NAME))
+      run "GRANT EXECUTE ON rodauth_get_previous_salt TO #{user}"
+      run "GRANT EXECUTE ON rodauth_previous_password_hash_match TO #{user}"
+      run "GRANT INSERT, UPDATE, DELETE ON account_previous_password_hashes TO #{user}"
+      run "GRANT SELECT ON account_previous_password_hashes(id, account_id) TO #{user}"
+    end
+  end
+
+  down do
+    Rodauth.drop_database_previous_password_check_functions(self)
+    Rodauth.drop_database_authentication_functions(self)
+    drop_table(:account_previous_password_hashes, :account_password_hashes)
+  end
+end

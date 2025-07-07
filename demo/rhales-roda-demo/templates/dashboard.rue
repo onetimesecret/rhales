@@ -78,7 +78,8 @@
       <li>This data is then injected into the browser as <code>window.userDashboard</code></li>
       <li>Client-side JavaScript can access this data without additional API calls</li>
       <li>The API endpoints demonstrate fetching fresh data when needed</li>
-      <li>All inline scripts use CSP nonces for security</li>
+      <li>CSP nonces are used for security (with additional validation planned)</li>
+      <li><em>Note: v0.1.0 - Active development with security improvements in progress</em></li>
     </ul>
   </div>
 

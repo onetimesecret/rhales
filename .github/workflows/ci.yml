@@ -109,10 +109,6 @@ jobs:
         working-directory: demo/rhales-roda-demo
         run: bundle install
 
-      - name: Setup demo database
-        working-directory: demo/rhales-roda-demo
-        run: bundle exec ruby db/seed.rb
-
       - name: Test demo app startup
         working-directory: demo/rhales-roda-demo
         run: |

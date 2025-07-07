@@ -1,3 +1,4 @@
+require 'logger'
 require 'roda'
 require 'sequel'
 require 'securerandom'
@@ -7,6 +8,7 @@ require 'rack/session'
 # Add the lib directory to the load path
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
+
 
 # Simple adapter classes for Rhales context objects
 class SimpleRequest
@@ -32,6 +34,8 @@ class SimpleSession
   def authenticated?
     @authenticated
   end
+
+
 end
 
 class SimpleAuth < Rhales::Adapters::BaseAuth
@@ -61,24 +65,74 @@ class SimpleAuth < Rhales::Adapters::BaseAuth
 end
 
 class RhalesDemo < Roda
+  # Demo accounts for testing - matches migration seed data
+  DEMO_ACCOUNTS = [
+    {
+      email: 'demo@example.com',
+      password: 'demo123',
+      role: 'user',
+    },
+    {
+      email: 'admin@example.com',
+      password: 'admin123',
+      role: 'admin',
+    },
+  ].freeze
+
   # Database setup - use file-based SQLite for persistence
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
+
+  DB.extension :date_arithmetic
+
+
+  logger = Logger.new($stdout)
+
+  class << self
+    def get_secret
+      secret = DB[:_demo_secrets].get(:value) # `get` automatically gets the first row
+
+      if secret.nil?
+        secret = SecureRandom.hex(64)
+        DB[:_demo_secrets].insert_conflict.insert(
+          name: 'migration-default',
+          value: secret,
+        )
+      end
+
+      secret
+    end
+  end
 
   # Run migrations if needed
   Sequel.extension :migration
   Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrate'))
 
+  secret_value = RhalesDemo.get_secret
+  logger.info("[demo] Secret value: #{secret_value}")
+
   opts[:root] = File.dirname(__FILE__)
 
   # We're using Rhales instead of Roda's render plugin
   plugin :flash
-  plugin :sessions, secret: SecureRandom.hex(64), key: 'rhales-demo.session'
+  plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
   plugin :route_csrf
 
   # Simple Rodauth configuration
   plugin :rodauth do
     db DB
-    enable :login, :logout, :create_account
+
+    # Used for HMAC operations in various Rodauth features like password reset
+    # tokens, email verification, etc. If it changes, existing tokens become
+    # invalid (users lose pending password resets, etc).
+    # e.g. SecureRandom.hex(64)
+    hmac_secret ENV['RODAUTH_HMAC_SECRET'] || secret_value
+
+    enable :change_login, :change_password, :close_account, :create_account,
+      :lockout, :login, :logout, :remember, :reset_password, :verify_account,
+      :otp_modify_email, :otp_lockout_email, :recovery_codes, :sms_codes,
+      :disallow_password_reuse, :password_grace_period, :active_sessions,
+      :verify_login_change, :change_password_notify, :confirm_password,
+      :email_auth, :disallow_common_passwords
 
     login_redirect '/'
     logout_redirect '/'
@@ -90,9 +144,32 @@ class RhalesDemo < Roda
     # Skip status checks for demo simplicity
     skip_status_checks? true
 
-    # Use email as login
-    login_param 'email'
-    login_confirm_param 'email'
+    # Use email as login - param name should match form field
+    login_param 'login'
+    login_confirm_param 'login'
+
+    # The following hooks are kept to document their availability and naming.
+    # They can be implemented with custom logic as needed.
+    # before_login {}
+    # before_create_account {}
+    # after_login_failure {}
+    # after_create_account {}
+    #
+    # login_error_flash do
+    #   super()
+    # end
+    #
+    # create_account_error_flash do
+    #   super()
+    # end
+    #
+    # account_from_login do |login|
+    #   super(login)
+    # end
+    #
+    # password_match? do |password|
+    #   super(password)
+    # end
 
     # Use our Rhales templates instead of ERB
     login_view do
@@ -103,7 +180,6 @@ class RhalesDemo < Roda
       scope.instance_eval { rhales_render('auth/register') }
     end
 
-    # Use Rhales template for logout page
     logout_view do
       scope.instance_eval { rhales_render('auth/logout') }
     end
@@ -123,6 +199,10 @@ class RhalesDemo < Roda
     @current_user ||= DB[:accounts].where(id: rodauth.session_value).first
   end
 
+  def roda_secret
+    @roda_secret ||= RhalesDemo.get_secret
+  end
+
   def logged_in?
     rodauth.logged_in?
   end
@@ -136,6 +216,7 @@ class RhalesDemo < Roda
       'current_path' => request.path,
       'request_method' => request.request_method,
       'rodauth' => rodauth,
+      'demo_accounts' => DEMO_ACCOUNTS,
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
@@ -206,6 +287,7 @@ class RhalesDemo < Roda
   end
 
   route do |r|
+
     r.rodauth
 
     # Home route - shows different content based on auth state
@@ -246,4 +328,5 @@ class RhalesDemo < Roda
       }.to_json
     end
   end
+
 end

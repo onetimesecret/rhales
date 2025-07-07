@@ -1,10 +1,6 @@
 <data>
 {
-  "title": "Login",
-  "demo_accounts": [
-    {"email": "demo@example.com", "password": "demo123"},
-    {"email": "user@example.com", "password": "userpass"}
-  ]
+  "title": "Login"
 }
 </data>
 
@@ -33,7 +29,7 @@
     <h3 style="font-size: 1rem; margin-bottom: 1rem;">Demo Accounts</h3>
     {{#each demo_accounts}}
       <div style="margin-bottom: 0.5rem; font-size: 0.9rem;">
-        <code>{{email}} / {{password}}</code>
+        <code>{{email}} / {{password}}</code> <em>({{role}})</em>
       </div>
     {{/each}}
   </div>

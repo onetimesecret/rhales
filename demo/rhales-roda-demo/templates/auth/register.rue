@@ -2,7 +2,6 @@
 {
   "title": "Create Account",
   "fields": [
-    {"name": "name", "type": "text", "label": "Full Name", "placeholder": "John Doe"},
     {"name": "login", "type": "email", "label": "Email", "placeholder": "you@example.com"},
     {"name": "password", "type": "password", "label": "Password", "placeholder": "Min 6 characters"},
     {"name": "password_confirm", "type": "password", "label": "Confirm Password", "placeholder": "Re-enter password"}
