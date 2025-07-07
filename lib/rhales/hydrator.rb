@@ -6,14 +6,40 @@ require 'securerandom'
 module Rhales
     # Data Hydrator for RSFC client-side data injection
     #
-    # RSFC Security Model: This is the server-to-client security boundary
-    # - Templates have full server context access (like ERB/HAML)
-    # - Only data declared in <data> section reaches the client
-    # - Like designing a REST API: explicit allowlist of what gets exposed
+    # ## RSFC Security Model: Server-to-Client Security Boundary
     #
-    # Processes the <data> section of .rue files and generates:
-    # 1. JSON script element with serialized data
-    # 2. Hydration script that parses JSON and assigns to window[attribute]
+    # The Hydrator enforces a critical security boundary between server and client:
+    #
+    # ### Server Side (Template Rendering)
+    # - Templates have FULL server context access (like ERB/HAML)
+    # - Can access user objects, database connections, internal APIs
+    # - Can access secrets, configuration, authentication state
+    # - Can process sensitive business logic
+    #
+    # ### Client Side (Data Hydration)
+    # - Only data declared in <data> section reaches the browser
+    # - Creates explicit allowlist like designing a REST API
+    # - Server-side variable interpolation processes secrets safely
+    # - JSON serialization validates data structure
+    #
+    # ### Process Flow
+    # 1. Server processes <data> section with full context access
+    # 2. Variables like {{user.name}} are interpolated server-side
+    # 3. Result is serialized as JSON and sent to client
+    # 4. Client receives only the processed, safe data
+    #
+    # ### Example
+    # ```rue
+    # <data>
+    # {
+    #   "user_name": "{{user.name}}",           // Safe: just the name
+    #   "theme": "{{user.theme_preference}}"    // Safe: just the theme
+    # }
+    # </data>
+    # ```
+    #
+    # Server template can access {{user.admin?}} and {{internal_config}},
+    # but client only gets the declared user_name and theme values.
     #
     # This creates an API-like boundary where data is serialized once and
     # parsed once, enforcing the same security model as REST endpoints.
@@ -32,6 +58,7 @@ module Rhales
 
       # Generate the complete hydration HTML (JSON script + hydration script)
       def generate_hydration_html
+        register_window_attribute
         json_script + "\n" + hydration_script
       end
 
@@ -47,12 +74,23 @@ module Rhales
       # Generate just the hydration script
       def hydration_script
         nonce_attr = nonce_attribute
+        merge_strategy = @parser.merge_strategy
 
-        <<~HTML.strip
-          <script#{nonce_attr}>
-          window.#{@window_attribute} = JSON.parse(document.getElementById('#{script_element_id}').textContent);
-          </script>
-        HTML
+        if merge_strategy
+          <<~HTML.strip
+            <script#{nonce_attr}>
+            #{merge_functions_js}
+            var newData = JSON.parse(document.getElementById('#{script_element_id}').textContent);
+            window.#{@window_attribute} = #{merge_strategy}_merge(window.#{@window_attribute} || {}, newData);
+            </script>
+          HTML
+        else
+          <<~HTML.strip
+            <script#{nonce_attr}>
+            window.#{@window_attribute} = JSON.parse(document.getElementById('#{script_element_id}').textContent);
+            </script>
+          HTML
+        end
       end
 
       # Process <data> section and return JSON string
@@ -108,6 +146,106 @@ module Rhales
       def nonce_attribute
         nonce = @context.get('nonce')
         nonce ? " nonce=\"#{nonce}\"" : ''
+      end
+
+      # Register window attribute with collision detection
+      def register_window_attribute
+        # Only register if we have a data section
+        return unless @parser.section('data')
+
+        # Get template path with line number where data tag is defined
+        template_path = build_template_path
+
+        # Get merge strategy from parser
+        merge_strategy = @parser.merge_strategy
+
+        # Register with HydrationRegistry - will raise on collision
+        HydrationRegistry.register(@window_attribute, template_path, merge_strategy)
+      end
+
+      # Build template path with line number for error reporting
+      def build_template_path
+        data_node = @parser.section_node('data')
+        line_number = data_node ? data_node.location.start_line : 1
+
+        if @parser.file_path
+          "#{@parser.file_path}:#{line_number}"
+        else
+          "<inline>:#{line_number}"
+        end
+      end
+
+      # JavaScript merge functions for different strategies
+      def merge_functions_js
+        <<~JS.strip
+          function shallow_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  throw new Error('Shallow merge conflict: key "' + key + '" exists in both objects');
+                }
+                result[key] = source[key];
+              }
+            }
+            return result;
+          }
+
+          function deep_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  if (typeof target[key] === 'object' && target[key] !== null &&
+                      typeof source[key] === 'object' && source[key] !== null &&
+                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
+                    result[key] = deep_merge(target[key], source[key]);
+                  } else {
+                    result[key] = source[key]; // Last wins
+                  }
+                } else {
+                  result[key] = source[key];
+                }
+              }
+            }
+            return result;
+          }
+
+          function strict_merge(target, source) {
+            var result = {};
+            for (var key in target) {
+              if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+              }
+            }
+            for (var key in source) {
+              if (source.hasOwnProperty(key)) {
+                if (target.hasOwnProperty(key)) {
+                  if (typeof target[key] === 'object' && target[key] !== null &&
+                      typeof source[key] === 'object' && source[key] !== null &&
+                      !Array.isArray(target[key]) && !Array.isArray(source[key])) {
+                    result[key] = strict_merge(target[key], source[key]);
+                  } else {
+                    throw new Error('Strict merge conflict: key "' + key + '" exists in both objects');
+                  }
+                } else {
+                  result[key] = source[key];
+                }
+              }
+            }
+            return result;
+          }
+        JS
       end
 
       class << self

@@ -1,21 +1,21 @@
-# spec/rhales/two_grammar_architecture_spec.rb
+# spec/rhales/two_parser_architecture_spec.rb
 
 require 'spec_helper'
 
-RSpec.describe 'Two Grammar Architecture' do
+RSpec.describe 'Two Parser Architecture' do
   describe 'Architecture Benefits' do
     it 'provides clean separation of concerns' do
-      # HandlebarsGrammar focuses purely on handlebars syntax
+      # HandlebarsParser focuses purely on handlebars syntax
       handlebars_content = '{{#if user}}Hello {{user.name}}{{else}}Please login{{/if}}'
-      handlebars_grammar = Rhales::HandlebarsGrammar.new(handlebars_content)
-      handlebars_grammar.parse!
+      handlebars_parser = Rhales::HandlebarsParser.new(handlebars_content)
+      handlebars_parser.parse!
 
-      expect(handlebars_grammar.ast.type).to eq(:template)
-      expect(handlebars_grammar.variables).to include('user', 'user.name')
-      expect(handlebars_grammar.blocks.size).to eq(1)
-      expect(handlebars_grammar.blocks[0].type).to eq(:if_block)
+      expect(handlebars_parser.ast.type).to eq(:template)
+      expect(handlebars_parser.variables).to include('user', 'user.name')
+      expect(handlebars_parser.blocks.size).to eq(1)
+      expect(handlebars_parser.blocks[0].type).to eq(:if_block)
 
-      # RueGrammar focuses on .rue file structure validation
+      # RueFormatParser focuses on .rue file structure validation
       rue_content = <<~RUE
         <data window="testData">
         {"message": "Hello World"}
@@ -26,38 +26,38 @@ RSpec.describe 'Two Grammar Architecture' do
         </template>
       RUE
 
-      rue_grammar = Rhales::RueGrammar.new(rue_content)
-      rue_grammar.parse!
+      rue_parser = Rhales::RueFormatParser.new(rue_content)
+      rue_parser.parse!
 
-      expect(rue_grammar.sections.keys).to contain_exactly('data', 'template')
-      expect(rue_grammar.sections['data'].value[:attributes]['window']).to eq('testData')
+      expect(rue_parser.sections.keys).to contain_exactly('data', 'template')
+      expect(rue_parser.sections['data'].value[:attributes]['window']).to eq('testData')
 
-      # Template section uses HandlebarsGrammar internally
-      template_nodes = rue_grammar.sections['template'].value[:content]
+      # Template section uses HandlebarsParser internally
+      template_nodes = rue_parser.sections['template'].value[:content]
       expect(template_nodes).to be_an(Array)
       expect(template_nodes.any? { |node| node.type == :if_block }).to be(true)
     end
 
-    it 'provides better error reporting with grammar-specific messages' do
-      # HandlebarsGrammar provides precise handlebars syntax errors
+    it 'provides better error reporting with parser-specific messages' do
+      # HandlebarsParser provides precise handlebars syntax errors
       expect do
-        Rhales::HandlebarsGrammar.new('{{#if condition}}unclosed').parse!
-      end.to raise_error(Rhales::HandlebarsGrammar::ParseError) do |error|
+        Rhales::HandlebarsParser.new('{{#if condition}}unclosed').parse!
+      end.to raise_error(Rhales::HandlebarsParser::ParseError) do |error|
         expect(error.message).to include('Missing closing tag for {{#if}}')
         expect(error.line).to be > 0
         expect(error.column).to be > 0
       end
 
-      # RueGrammar provides structure-specific errors
+      # RueFormatParser provides structure-specific errors
       expect do
-        Rhales::RueGrammar.new('<template>Only template section</template>').parse!
-      end.to raise_error(Rhales::RueGrammar::ParseError) do |error|
+        Rhales::RueFormatParser.new('<template>Only template section</template>').parse!
+      end.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
         expect(error.message).to include('Missing required sections: data')
       end
     end
 
     it 'eliminates dual-mode detection complexity' do
-      # Simple templates are handled by HandlebarsGrammar
+      # Simple templates are handled by HandlebarsParser
       simple_template = 'Hello {{name}}!'
       context = Rhales::Context.minimal(business_data: { greeting: 'Hello', name: 'World' })
 
@@ -65,7 +65,7 @@ RSpec.describe 'Two Grammar Architecture' do
       result = engine.render
       expect(result).to eq('Hello World!')
 
-      # .rue files are handled by RueGrammar + HandlebarsGrammar
+      # .rue files are handled by RueFormatParser + HandlebarsParser
       rue_template = <<~RUE
         <data>
         {"greeting": "Hello"}
@@ -82,7 +82,7 @@ RSpec.describe 'Two Grammar Architecture' do
     end
   end
 
-  describe 'HandlebarsGrammar Independence' do
+  describe 'HandlebarsParser Independence' do
     it 'parses complex handlebars templates without .rue structure' do
       complex_template = <<~TEMPLATE
         <div class="{{theme}}">
@@ -102,17 +102,17 @@ RSpec.describe 'Two Grammar Architecture' do
         </div>
       TEMPLATE
 
-      grammar = Rhales::HandlebarsGrammar.new(complex_template)
-      grammar.parse!
+      parser = Rhales::HandlebarsParser.new(complex_template)
+      parser.parse!
 
-      expect(grammar.variables).to include(
+      expect(parser.variables).to include(
         'theme', 'authenticated', 'user.name', 'notifications',
         'type', 'message', 'read'
       )
 
-      expect(grammar.partials).to include('login_link')
+      expect(parser.partials).to include('login_link')
 
-      blocks = grammar.blocks
+      blocks = parser.blocks
       expect(blocks.size).to eq(3) # if, each, unless
       expect(blocks.map(&:type)).to contain_exactly(:if_block, :each_block, :unless_block)
 
@@ -126,31 +126,31 @@ RSpec.describe 'Two Grammar Architecture' do
     it 'handles handlebars specification edge cases' do
       # Whitespace handling
       template_with_whitespace = "{{  variable  }}\n{{{  raw_variable  }}}"
-      grammar = Rhales::HandlebarsGrammar.new(template_with_whitespace)
-      grammar.parse!
+      parser = Rhales::HandlebarsParser.new(template_with_whitespace)
+      parser.parse!
 
-      expect(grammar.variables).to contain_exactly('variable', 'raw_variable')
+      expect(parser.variables).to contain_exactly('variable', 'raw_variable')
 
       # Nested blocks of same type
       nested_template = '{{#if outer}}{{#if inner}}Content{{/if}}{{/if}}'
-      grammar = Rhales::HandlebarsGrammar.new(nested_template)
-      grammar.parse!
+      parser = Rhales::HandlebarsParser.new(nested_template)
+      parser.parse!
 
-      expect(grammar.blocks.size).to eq(2)
-      outer_block = grammar.blocks[0]
+      expect(parser.blocks.size).to eq(2)
+      outer_block = parser.blocks[0]
       expect(outer_block.value[:condition]).to eq('outer')
 
       # Complex expressions in conditions
       complex_conditions = '{{#if user.permissions.admin}}Admin{{/if}}'
-      grammar = Rhales::HandlebarsGrammar.new(complex_conditions)
-      grammar.parse!
+      parser = Rhales::HandlebarsParser.new(complex_conditions)
+      parser.parse!
 
-      expect(grammar.variables).to include('user.permissions.admin')
+      expect(parser.variables).to include('user.permissions.admin')
     end
   end
 
-  describe 'RueGrammar Integration' do
-    it 'delegates template parsing to HandlebarsGrammar' do
+  describe 'RueFormatParser Integration' do
+    it 'delegates template parsing to HandlebarsParser' do
       rue_content = <<~RUE
         <data schema="user.json">
         {
@@ -173,17 +173,17 @@ RSpec.describe 'Two Grammar Architecture' do
         </template>
       RUE
 
-      grammar = Rhales::RueGrammar.new(rue_content)
-      grammar.parse!
+      parser = Rhales::RueFormatParser.new(rue_content)
+      parser.parse!
 
       # Verify .rue structure
-      expect(grammar.sections.keys).to contain_exactly('data', 'template')
+      expect(parser.sections.keys).to contain_exactly('data', 'template')
 
-      data_section = grammar.sections['data']
+      data_section = parser.sections['data']
       expect(data_section.value[:attributes]['schema']).to eq('user.json')
 
       # Verify template section contains proper AST nodes
-      template_section = grammar.sections['template']
+      template_section = parser.sections['template']
       template_content = template_section.value[:content]
 
       # Should contain handlebars AST nodes, not raw text
@@ -205,7 +205,7 @@ RSpec.describe 'Two Grammar Architecture' do
       expect(partial_node.value[:name]).to eq('login_form')
     end
 
-    it 'maintains backward compatibility with Parser interface' do
+    it 'maintains backward compatibility with RueDocument interface' do
       rue_content = <<~RUE
         <data window="appData">
         {"message": "{{greeting}}"}
@@ -217,21 +217,41 @@ RSpec.describe 'Two Grammar Architecture' do
         </template>
       RUE
 
-      parser = Rhales::Parser.new(rue_content)
-      parser.parse!
+      document = Rhales::RueDocument.new(rue_content)
+      document.parse!
 
       # Legacy interface still works
-      expect(parser.section('data')).to include('"message"')
-      expect(parser.section('template')).to include('<h1>{{greeting}}</h1>')
-      expect(parser.section('template')).to include('{{> footer}}')
+      expect(document.section('data')).to include('"message"')
+      expect(document.section('template')).to include('<h1>{{greeting}}</h1>')
+      expect(document.section('template')).to include('{{> footer}}')
 
-      # Variable extraction works across both grammars
-      expect(parser.data_variables).to include('greeting')
-      expect(parser.template_variables).to include('greeting')
-      expect(parser.partials).to include('footer')
+      # Variable extraction works across both parsers
+      expect(document.data_variables).to include('greeting')
+      expect(document.template_variables).to include('greeting')
+      expect(document.partials).to include('footer')
 
       # Data attributes still work
-      expect(parser.window_attribute).to eq('appData')
+      expect(document.window_attribute).to eq('appData')
+      expect(document.merge_strategy).to be_nil
+    end
+
+    it 'extracts merge strategy from data section attributes' do
+      rue_content = <<~RUE
+        <data window="appData" merge="deep" schema="test.json">
+        {"message": "{{greeting}}"}
+        </data>
+
+        <template>
+        <h1>{{greeting}}</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(rue_content)
+      document.parse!
+
+      expect(document.window_attribute).to eq('appData')
+      expect(document.merge_strategy).to eq('deep')
+      expect(document.schema_path).to eq('test.json')
     end
   end
 
@@ -338,8 +358,8 @@ RSpec.describe 'Two Grammar Architecture' do
       bad_handlebars = '{{#if condition}}content'
 
       expect do
-        Rhales::HandlebarsGrammar.new(bad_handlebars).parse!
-      end.to raise_error(Rhales::HandlebarsGrammar::ParseError) do |error|
+        Rhales::HandlebarsParser.new(bad_handlebars).parse!
+      end.to raise_error(Rhales::HandlebarsParser::ParseError) do |error|
         expect(error.message).to include('Missing closing tag for {{#if}}')
         expect(error.line).to eq(1)
         expect(error.column).to be > 0
@@ -361,22 +381,22 @@ RSpec.describe 'Two Grammar Architecture' do
       RUE
 
       expect do
-        Rhales::RueGrammar.new(bad_rue).parse!
-      end.to raise_error(Rhales::RueGrammar::ParseError) do |error|
+        Rhales::RueFormatParser.new(bad_rue).parse!
+      end.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
         expect(error.message).to include('Duplicate sections: data')
       end
     end
 
     it 'enables easier testing of individual components' do
       # Test handlebars parsing independently
-      handlebars_grammar = Rhales::HandlebarsGrammar.new('{{#if test}}{{value}}{{/if}}')
-      handlebars_grammar.parse!
+      handlebars_parser = Rhales::HandlebarsParser.new('{{#if test}}{{value}}{{/if}}')
+      handlebars_parser.parse!
 
-      expect(handlebars_grammar.blocks.size).to eq(1)
-      expect(handlebars_grammar.variables).to contain_exactly('test', 'value')
+      expect(handlebars_parser.blocks.size).to eq(1)
+      expect(handlebars_parser.variables).to contain_exactly('test', 'value')
 
       # Test .rue structure independently
-      rue_grammar = Rhales::RueGrammar.new(<<~RUE)
+      rue_parser = Rhales::RueFormatParser.new(<<~RUE)
         <data window="test">
         {"key": "value"}
         </data>
@@ -386,8 +406,8 @@ RSpec.describe 'Two Grammar Architecture' do
         </template>
       RUE
 
-      rue_grammar.parse!
-      expect(rue_grammar.sections['data'].value[:attributes]['window']).to eq('test')
+      rue_parser.parse!
+      expect(rue_parser.sections['data'].value[:attributes]['window']).to eq('test')
 
       # Test rendering independently
       context = Rhales::Context.minimal(business_data: { name: 'Test' })
@@ -397,13 +417,13 @@ RSpec.describe 'Two Grammar Architecture' do
     end
 
     it 'maintains clean architecture with single responsibility' do
-      # HandlebarsGrammar only knows about handlebars syntax
-      handlebars_methods = Rhales::HandlebarsGrammar.instance_methods(false)
+      # HandlebarsParser only knows about handlebars syntax
+      handlebars_methods = Rhales::HandlebarsParser.instance_methods(false)
       expect(handlebars_methods).to include(:parse!, :variables, :partials, :blocks)
       expect(handlebars_methods).not_to include(:window_attribute, :schema_path)
 
-      # RueGrammar only knows about .rue file structure
-      rue_methods = Rhales::RueGrammar.instance_methods(false)
+      # RueFormatParser only knows about .rue file structure
+      rue_methods = Rhales::RueFormatParser.instance_methods(false)
       expect(rue_methods).to include(:parse!, :sections)
       expect(rue_methods).not_to include(:variables, :partials, :blocks)
 

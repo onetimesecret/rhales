@@ -29,8 +29,8 @@ module Rhales
       end
 
       # Check if user has specific role/permission (optional)
-      def has_role?(role)
-        false
+      def role?(*)
+        raise NotImplementedError, 'Subclasses must implement #role?'
       end
 
       # Get user attributes as hash (optional)
@@ -58,6 +58,10 @@ module Rhales
 
       def user_id
         nil
+      end
+
+      def role?(*)
+        false
       end
 
       def display_name
@@ -89,7 +93,7 @@ module Rhales
         @user_data[:name] || @user_data['name'] || 'User'
       end
 
-      def has_role?(role)
+      def role?(role)
         roles = @user_data[:roles] || @user_data['roles'] || []
         roles.include?(role) || roles.include?(role.to_s)
       end

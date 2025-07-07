@@ -12,6 +12,9 @@ It all started with a simple mustache template many years ago. The successor to 
 
 - **Server-side template rendering** with Handlebars-style syntax
 - **Client-side data hydration** with secure JSON injection
+- **Window collision detection** prevents silent data overwrites
+- **Explicit merge strategies** for controlled data sharing (shallow, deep, strict)
+- **Clear security boundaries** between server context and client data
 - **Partial support** for component composition
 - **Pluggable authentication adapters** for any auth system
 - **Security-first design** with XSS protection and CSP support
@@ -48,6 +51,94 @@ Rhales.configure do |config|
   config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
+end
+```
+
+### 2. Create a Simple Component
+
+Create a `.rue` file in your templates directory:
+
+```rue
+<!-- templates/hello.rue -->
+<data>
+{
+  "greeting": "{{greeting}}",
+  "user_name": "{{user.name}}"
+}
+</data>
+
+<template>
+<div class="hello-component">
+  <h1>{{greeting}}, {{user.name}}!</h1>
+  <p>Welcome to Rhales RSFC!</p>
+</div>
+</template>
+
+<logic>
+# Simple greeting component
+</logic>
+```
+
+### 3. Render in Your Application
+
+```ruby
+# In your controller/route handler
+view = Rhales::View.new(request, session, user, 'en',
+  business_data: {
+    greeting: 'Hello',
+    user: { name: 'World' }
+  }
+)
+
+html = view.render('hello')
+# Returns HTML with embedded JSON for client-side hydration
+```
+
+## Context and Data Boundaries
+
+Rhales implements a **two-phase security model**:
+
+### Server Templates: Full Context Access
+Templates have complete access to all server-side data:
+- User objects and authentication state
+- Database connections and internal APIs
+- Configuration values and secrets
+- Request metadata (CSRF tokens, nonces)
+
+```handlebars
+<!-- Full server access in templates -->
+{{#if user.admin?}}
+  <a href="/admin">Admin Panel</a>
+{{/if}}
+<div class="{{theme_class}}">{{user.full_name}}</div>
+```
+
+### Client Data: Explicit Allowlist
+Only data declared in `<data>` sections reaches the browser:
+
+```rue
+<data>
+{
+  "display_name": "{{user.name}}",
+  "preferences": {
+    "theme": "{{user.theme}}"
+  }
+}
+</data>
+```
+
+Becomes:
+```javascript
+window.data = {
+  "display_name": "John Doe",
+  "preferences": { "theme": "dark" }
+}
+// No access to user.admin?, internal APIs, etc.
+```
+
+This creates a **REST API-like boundary** where you explicitly declare what data crosses the server-to-client security boundary.
+
+For complete details, see [Context and Data Boundaries Documentation](docs/CONTEXT_AND_DATA_BOUNDARIES.md).
   config.site_ssl_enabled = true
 end
 ```
@@ -396,7 +487,7 @@ class MyAuthAdapter < Rhales::Adapters::BaseAuth
     @user&.id
   end
 
-  def has_role?(role)
+  def role?(role)
     @user&.roles&.include?(role)
   end
 end
@@ -460,6 +551,78 @@ Generates:
 <script nonce="nonce123">
 window.myData = JSON.parse(document.getElementById('rsfc-data-abc123').textContent);
 </script>
+```
+
+### Window Collision Detection
+
+Rhales automatically detects when multiple templates try to use the same window attribute, preventing silent data overwrites:
+
+```erb
+<!-- layouts/main.rue -->
+<data window="appData">
+{"user": "{{user.name}}", "csrf": "{{csrf_token}}"}
+</data>
+
+<!-- pages/home.rue -->
+<data window="appData">  <!-- ❌ Collision detected! -->
+{"page": "home", "features": ["feature1"]}
+</data>
+```
+
+This raises a helpful error:
+```
+Window attribute collision detected
+
+Attribute: 'appData'
+First defined: layouts/main.rue:1
+Conflict with: pages/home.rue:1
+
+Quick fixes:
+  1. Rename one: <data window="homeData">
+  2. Enable merging: <data window="appData" merge="deep">
+```
+
+### Merge Strategies
+
+When you intentionally want to share data between templates, use explicit merge strategies:
+
+```erb
+<!-- layouts/main.rue -->
+<data window="appData">
+{
+  "user": {"name": "{{user.name}}", "role": "{{user.role}}"},
+  "csrf": "{{csrf_token}}"
+}
+</data>
+
+<!-- pages/home.rue with deep merge -->
+<data window="appData" merge="deep">
+{
+  "user": {"email": "{{user.email}}"},  <!-- Merged with layout user -->
+  "page": {"title": "Home", "features": {{features.to_json}}}
+}
+</data>
+```
+
+#### Available Merge Strategies
+
+**`merge="shallow"`** - Top-level key merge, throws error on conflicts:
+```javascript
+// Layout: {"user": {...}, "csrf": "abc"}
+// Page:   {"page": {...}, "user": {...}}  // ❌ Error: key conflict
+```
+
+**`merge="deep"`** - Recursive merge, last value wins on conflicts:
+```javascript
+// Layout: {"user": {"name": "John", "role": "admin"}}
+// Page:   {"user": {"email": "john@example.com"}}
+// Result: {"user": {"name": "John", "role": "admin", "email": "john@example.com"}}
+```
+
+**`merge="strict"`** - Recursive merge, throws error on any conflict:
+```javascript
+// Layout: {"user": {"name": "John"}}
+// Page:   {"user": {"name": "Jane"}}  // ❌ Error: value conflict
 ```
 
 ## Testing

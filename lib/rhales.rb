@@ -1,14 +1,17 @@
 # lib/rhales.rb
 
 require_relative 'rhales/version'
+require_relative 'rhales/errors'
 require_relative 'rhales/configuration'
 require_relative 'rhales/adapters/base_auth'
 require_relative 'rhales/adapters/base_session'
 require_relative 'rhales/context'
-require_relative 'rhales/parser'
-require_relative 'rhales/grammars/handlebars'
+require_relative 'rhales/rue_document'
+require_relative 'rhales/parsers/handlebars_parser'
+require_relative 'rhales/parsers/rue_format_parser'
 require_relative 'rhales/template_engine'
 require_relative 'rhales/hydrator'
+require_relative 'rhales/hydration_registry'
 require_relative 'rhales/refinements/require_refinements'
 require_relative 'rhales/view'
 
@@ -26,7 +29,7 @@ require_relative 'rhales/view'
 #
 # Usage:
 #   Rhales.configure do |config|
-#     config.default_locale = 'en'
+#     config.default_localhas_role?e = 'en'
 #     config.template_paths = ['app/templates']
 #     config.features = { dark_mode: true }
 #   end
@@ -34,10 +37,6 @@ require_relative 'rhales/view'
 #   view = Rhales::View.new(request, session, user)
 #   html = view.render('my_component')
 module Rhales
-  class Error < StandardError; end
-  class ConfigurationError < Error; end
-  class TemplateError < Error; end
-  class RenderError < Error; end
 
   # Convenience method to create a view with business data
   def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **business_data)

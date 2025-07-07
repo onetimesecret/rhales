@@ -98,5 +98,29 @@ RSpec.describe 'Rhales Integration' do
 
       expect(result).to eq('Hello Test')
     end
+
+    it 'treats string "false" as falsy in conditionals' do
+      template = '{{#if flag}}true{{else}}false{{/if}}'
+
+      # Test with boolean false
+      result = Rhales.render_template(template, flag: false)
+      expect(result).to eq('false')
+
+      # Test with string "false"
+      result = Rhales.render_template(template, flag: 'false')
+      expect(result).to eq('false')
+
+      # Test with string "False"
+      result = Rhales.render_template(template, flag: 'False')
+      expect(result).to eq('false')
+
+      # Test with string "FALSE"
+      result = Rhales.render_template(template, flag: 'FALSE')
+      expect(result).to eq('false')
+
+      # Test with other strings (should be truthy)
+      result = Rhales.render_template(template, flag: 'true')
+      expect(result).to eq('true')
+    end
   end
 end

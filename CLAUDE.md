@@ -1,6 +1,7 @@
 # Feature Implementation Guidelines
 
 ## Common Commands
+- Use bin/rackup to run the dev server
 - bundle exec rspec spec/rhales/: Run test suite for current changes
 - gem build rhales.gemspec: Build the gem
 - bundle exec rspec spec/rhales/ --format documentation: Run tests with verbose output
@@ -61,8 +62,8 @@ For complex features requiring parallel work:
 ### Core Components to Consider
 - **Configuration**: Block-based configuration with validation
 - **Context**: Three-layer system with dot-notation access
-- **Grammars**: Two Prism-based parsers, for .rue files and handlebars templates
-- **Parser**: .rue file parsing with Prism
+- **Parsers**: Two manual recursive descent parsers, for .rue files and handlebars templates
+- **Parser**: .rue file parsing with manual recursive descent
 - **Rhales**: Handlebars-style template engine
 - **Hydrator**: Client-side data injection with CSP support
 - **Adapters**: Pluggable auth and session interfaces

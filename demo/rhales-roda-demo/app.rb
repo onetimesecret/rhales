@@ -61,44 +61,51 @@ class SimpleAuth < Rhales::Adapters::BaseAuth
 end
 
 class RhalesDemo < Roda
-  # Database setup - use simple SQLite
-  DB = Sequel.sqlite
+  # Database setup - use file-based SQLite for persistence
+  DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
-  # Run basic migration for accounts table
-  DB.create_table?(:accounts) do
-    primary_key :id
-    String :email, null: false, unique: true
-    String :password_hash, null: false
-  end
-
-  # Create demo user if it doesn't exist
-  unless DB[:accounts].where(email: 'demo@example.com').first
-    password_hash = BCrypt::Password.create('demo123')
-    DB[:accounts].insert(email: 'demo@example.com', password_hash: password_hash)
-  end
+  # Run migrations if needed
+  Sequel.extension :migration
+  Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrate'))
 
   opts[:root] = File.dirname(__FILE__)
 
   # We're using Rhales instead of Roda's render plugin
   plugin :flash
   plugin :sessions, secret: SecureRandom.hex(64), key: 'rhales-demo.session'
+  plugin :route_csrf
 
   # Simple Rodauth configuration
   plugin :rodauth do
     db DB
-    accounts_table :accounts
     enable :login, :logout, :create_account
+
     login_redirect '/'
     logout_redirect '/'
     create_account_redirect '/'
-    require_bcrypt? false  # We'll handle password hashing ourselves
+
+    # Set custom routes to match our templates
+    create_account_route 'register'
+
+    # Skip status checks for demo simplicity
+    skip_status_checks? true
+
+    # Use email as login
+    login_param 'email'
+    login_confirm_param 'email'
 
     # Use our Rhales templates instead of ERB
     login_view do
       scope.instance_eval { rhales_render('auth/login') }
     end
+
     create_account_view do
       scope.instance_eval { rhales_render('auth/register') }
+    end
+
+    # Use Rhales template for logout page
+    logout_view do
+      scope.instance_eval { rhales_render('auth/logout') }
     end
   end
 
@@ -109,52 +116,26 @@ class RhalesDemo < Roda
     config.cache_templates = false  # Disable for demo
   end
 
-  # Simple auth helper
+  # Simple auth helper - uses Rodauth's session management
   def current_user
-    return nil unless session[:user_id]
+    return nil unless rodauth.logged_in?
 
-    @current_user ||= DB[:accounts].where(id: session[:user_id]).first
+    @current_user ||= DB[:accounts].where(id: rodauth.session_value).first
   end
 
   def logged_in?
-    !current_user.nil?
-  end
-
-  # CSRF token validation
-  def valid_csrf_token?(token)
-    return false unless token && session[:csrf_token]
-
-    # Use secure constant-time comparison to prevent timing attacks
-    token.bytesize == session[:csrf_token].bytesize &&
-      OpenSSL.fixed_length_secure_compare(token, session[:csrf_token])
-  end
-
-  def require_csrf_token!
-    unless valid_csrf_token?(request.params['_csrf_token'])
-      response.status = 403
-      'CSRF token validation failed'
-    end
-  end
-
-  # Generate HTML input field for CSRF token
-  def csrf_field
-    token = session[:csrf_token] || SecureRandom.hex(32)
-    "<input type=\"hidden\" name=\"_csrf_token\" value=\"#{token}\">"
+    rodauth.logged_in?
   end
 
   # Rhales render helper using adapter classes with layout support
   def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
-    # Generate proper CSRF token and field (only if none exists)
-    csrf_token = session[:csrf_token] ||= SecureRandom.hex(32)
-
-    # Automatically include common view data (flash, CSRF, etc.)
+    # Automatically include common view data (flash, rodauth, etc.)
     auto_data = {
       'flash_notice' => flash['notice'],
       'flash_error' => flash['error'],
       'current_path' => request.path,
       'request_method' => request.request_method,
-      'csrf_field' => csrf_field,
-      'csrf_token' => csrf_token
+      'rodauth' => rodauth,
     }
 
     # Merge data layers: auto_data provides base, then business_data, then extra_data
@@ -167,8 +148,6 @@ class RhalesDemo < Roda
       ip: request.ip,
       params: request.params,
       env: {
-        'csrf_token' => csrf_token,
-        'csrf_field' => csrf_field,
         'nonce' => SecureRandom.hex(16),
         'request_id' => SecureRandom.hex(8),
         'flash_notice' => flash['notice'],
@@ -178,7 +157,7 @@ class RhalesDemo < Roda
 
     session_data = SimpleSession.new(
       authenticated: logged_in?,
-      csrf_token: csrf_token,
+      csrf_token: nil, # Rodauth handles CSRF tokens
     )
 
     # Create auth adapter object
@@ -238,13 +217,7 @@ class RhalesDemo < Roda
         }
         )
       else
-        rhales_render('home', {
-          demo_credentials: {
-            email: 'demo@example.com',
-            password: 'demo123',
-          },
-        }
-        )
+        rhales_render('home', {})
       end
     end
 
@@ -266,7 +239,6 @@ class RhalesDemo < Roda
     # Demo data endpoint
     r.get 'api/demo-data' do
       response['Content-Type'] = 'application/json'
-
       {
         message: 'This data was loaded dynamically via JavaScript!',
         timestamp: Time.now.to_i,

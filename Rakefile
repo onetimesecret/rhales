@@ -28,7 +28,7 @@ namespace :rhales do
       Dir.glob(File.join(examples_dir, '**', '*.rue')).each do |file|
         puts "Validating #{file}..."
         begin
-          Rhales::Parser.parse_file(file)
+          Rhales::RueDocument.parse_file(file)
           puts "  ✓ Valid"
         rescue => e
           puts "  ✗ Error: #{e.message}"
