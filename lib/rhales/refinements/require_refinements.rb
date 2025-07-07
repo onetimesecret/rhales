@@ -1,6 +1,6 @@
 # lib/rhales/refinements/require_refinements.rb
 
-require_relative '../parser'
+require_relative '../rue_document'
 
 module Rhales
   module Ruequire
@@ -101,7 +101,7 @@ module Rhales
         return cached_parser if cached_parser
 
         # Parse the .rue file
-        parser = Rhales::Parser.parse_file(full_path)
+        parser = Rhales::RueDocument.parse_file(full_path)
 
         # Cache the parsed result
         cache_parser(full_path, parser)

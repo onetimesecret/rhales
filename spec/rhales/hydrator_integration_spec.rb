@@ -49,14 +49,14 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
 
       it 'raises HydrationCollisionError with helpful message' do
         # First template registers successfully
-        layout_parser = Rhales::Parser.new(layout_content, 'layouts/main.rue')
+        layout_parser = Rhales::RueDocument.new(layout_content, 'layouts/main.rue')
         layout_parser.parse!
 
         layout_hydrator = Rhales::Hydrator.new(layout_parser, context)
         expect { layout_hydrator.generate_hydration_html }.not_to raise_error
 
         # Second template with same window attribute should raise error
-        page_parser = Rhales::Parser.new(page_content, 'home.rue')
+        page_parser = Rhales::RueDocument.new(page_content, 'pages/home.rue')
         page_parser.parse!
 
         page_hydrator = Rhales::Hydrator.new(page_parser, context)
@@ -67,7 +67,7 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
           expect(error.message).to include("Window attribute collision detected")
           expect(error.message).to include("Attribute: 'data'")
           expect(error.message).to include("First defined: layouts/main.rue:1")
-          expect(error.message).to include("Conflict with: home.rue:1")
+          expect(error.message).to include("Conflict with: pages/home.rue:1")
           expect(error.message).to include('1. Rename one: <data window="homeData">')
           expect(error.message).to include('2. Enable merging: <data window="data" merge="deep">')
         end
@@ -106,7 +106,7 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
 
       it 'renders both without collision' do
         # First template
-        layout_parser = Rhales::Parser.new(layout_content, 'layouts/main.rue')
+        layout_parser = Rhales::RueDocument.new(layout_content, 'layouts/main.rue')
         layout_parser.parse!
 
         layout_hydrator = Rhales::Hydrator.new(layout_parser, context)
@@ -116,7 +116,7 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
         expect(layout_html).not_to include('window.pageData')
 
         # Second template
-        page_parser = Rhales::Parser.new(page_content, 'home.rue')
+        page_parser = Rhales::RueDocument.new(page_content, 'pages/home.rue')
         page_parser.parse!
 
         page_hydrator = Rhales::Hydrator.new(page_parser, context)
@@ -187,13 +187,13 @@ RSpec.describe 'Hydrator Collision Detection Integration' do
         RUE
 
         # First registration
-        parser1 = Rhales::Parser.new(content_with_tag, 'components/user.rue')
+        parser1 = Rhales::RueDocument.new(content_with_tag, 'components/user.rue')
         parser1.parse!
         hydrator1 = Rhales::Hydrator.new(parser1, context)
         hydrator1.generate_hydration_html
 
         # Second registration should show collision
-        parser2 = Rhales::Parser.new(content_with_tag, 'pages/profile.rue')
+        parser2 = Rhales::RueDocument.new(content_with_tag, 'pages/profile.rue')
         parser2.parse!
         hydrator2 = Rhales::Hydrator.new(parser2, context)
 

@@ -2,7 +2,6 @@ PATH
   remote: .
   specs:
     rhales (0.1.0)
-      prism (~> 1.0)
 
 GEM
   remote: https://rubygems.org/

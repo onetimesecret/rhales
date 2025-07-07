@@ -39,7 +39,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'prism', '~> 1.0'
+  # (none currently - all parsing is done with manual recursive descent parsers)
 
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem

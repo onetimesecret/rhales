@@ -1,7 +1,7 @@
 # lib/rhales/view.rb
 
 require_relative 'context'
-require_relative 'parser'
+require_relative 'rue_document'
 require_relative 'template_engine'
 require_relative 'hydrator'
 require_relative 'refinements/require_refinements'
