@@ -48,6 +48,23 @@ module Rhales
 
     private
 
+    # Get shared nonce from scope if available, otherwise generate one
+    def get_shared_nonce(scope)
+      # Try to get nonce from scope's CSP nonce or instance variable
+      if scope.respond_to?(:csp_nonce) && scope.csp_nonce
+        scope.csp_nonce
+      elsif scope.respond_to?(:request) && scope.request.env['csp.nonce']
+        scope.request.env['csp.nonce']
+      elsif scope.instance_variable_defined?(:@csp_nonce)
+        scope.instance_variable_get(:@csp_nonce)
+      else
+        # Generate a new nonce and store it for consistency
+        nonce = SecureRandom.hex(16)
+        scope.instance_variable_set(:@csp_nonce, nonce) if scope.respond_to?(:instance_variable_set)
+        nonce
+      end
+    end
+
     # Build props hash from locals and scope context
     def build_props(scope, locals, &block)
       props = locals.dup
@@ -82,6 +99,9 @@ module Rhales
 
     # Build Rhales context objects from scope
     def build_rhales_context(scope, props)
+      # Get shared nonce from scope if available, otherwise generate one
+      shared_nonce = get_shared_nonce(scope)
+      
       # Simple request adapter
       request_data = if scope.respond_to?(:request)
         Struct.new(:path, :method, :ip, :params, :env).new(
@@ -90,7 +110,7 @@ module Rhales
           scope.request.ip,
           scope.request.params,
           {
-            'nonce' => SecureRandom.hex(16),
+            'nonce' => shared_nonce,
             'request_id' => SecureRandom.hex(8),
           },
         )
@@ -101,7 +121,7 @@ module Rhales
           '127.0.0.1',
           {},
           {
-            'nonce' => SecureRandom.hex(16),
+            'nonce' => shared_nonce,
             'request_id' => SecureRandom.hex(8),
           },
         )

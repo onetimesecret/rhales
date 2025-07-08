@@ -180,7 +180,20 @@ class RhalesDemo < Roda
     rodauth.logged_in?
   end
 
+  # Generate a single nonce per request and set CSP header
+  def csp_nonce
+    @csp_nonce ||= SecureRandom.hex(16)
+  end
+
+  # Set CSP header with nonce
+  def set_csp_header
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'nonce-#{csp_nonce}'; style-src 'self' 'nonce-#{csp_nonce}'"
+  end
+
   route do |r|
+    # Set CSP header for all requests
+    set_csp_header
+    
     r.rodauth
 
     # Home route - shows different content based on auth state
