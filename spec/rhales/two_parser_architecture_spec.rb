@@ -59,7 +59,7 @@ RSpec.describe 'Two Parser Architecture' do
     it 'eliminates dual-mode detection complexity' do
       # Simple templates are handled by HandlebarsParser
       simple_template = 'Hello {{name}}!'
-      context = Rhales::Context.minimal(business_data: { greeting: 'Hello', name: 'World' })
+      context = Rhales::Context.minimal(props: { greeting: 'Hello', name: 'World' })
 
       engine = Rhales::TemplateEngine.new(simple_template, context)
       result = engine.render
@@ -275,7 +275,7 @@ RSpec.describe 'Two Parser Architecture' do
         </div>
       TEMPLATE
 
-      context = Rhales::Context.minimal(business_data: {
+      context = Rhales::Context.minimal(props: {
         theme_class: 'dark-theme',
         user: {
           authenticated: true,
@@ -323,7 +323,7 @@ RSpec.describe 'Two Parser Architecture' do
         {{/each}}
       TEMPLATE
 
-      context = Rhales::Context.minimal(business_data: {
+      context = Rhales::Context.minimal(props: {
         categories: [
           {
             name: 'Electronics',
@@ -410,7 +410,7 @@ RSpec.describe 'Two Parser Architecture' do
       expect(rue_parser.sections['data'].value[:attributes]['window']).to eq('test')
 
       # Test rendering independently
-      context = Rhales::Context.minimal(business_data: { name: 'Test' })
+      context = Rhales::Context.minimal(props: { name: 'Test' })
       engine = Rhales::TemplateEngine.new('Hello {{name}}!', context)
 
       expect(engine.render).to eq('Hello Test!')
@@ -438,19 +438,19 @@ RSpec.describe 'Two Parser Architecture' do
     it 'follows handlebars specification for block helpers' do
       # If/else blocks
       template = '{{#if condition}}true{{else}}false{{/if}}'
-      context = Rhales::Context.minimal(business_data: { condition: true })
+      context = Rhales::Context.minimal(props: { condition: true })
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to eq('true')
 
       # Unless blocks
       template = '{{#unless condition}}content{{/unless}}'
-      context = Rhales::Context.minimal(business_data: { condition: false })
+      context = Rhales::Context.minimal(props: { condition: false })
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to eq('content')
 
       # Each blocks with context
       template = '{{#each items}}{{name}}: {{value}}{{/each}}'
-      context = Rhales::Context.minimal(business_data: {
+      context = Rhales::Context.minimal(props: {
         items: [
           { name: 'item1', value: 'val1' },
           { name: 'item2', value: 'val2' }
@@ -463,25 +463,25 @@ RSpec.describe 'Two Parser Architecture' do
     it 'handles handlebars edge cases correctly' do
       # Empty blocks
       template = '{{#if false}}{{/if}}content'
-      context = Rhales::Context.minimal(business_data: {})
+      context = Rhales::Context.minimal(props: {})
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to eq('content')
 
       # Whitespace preservation
       template = "before\n{{variable}}\nafter"
-      context = Rhales::Context.minimal(business_data: { variable: 'middle' })
+      context = Rhales::Context.minimal(props: { variable: 'middle' })
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to eq("before\nmiddle\nafter")
 
       # HTML escaping
       template = '{{html_content}}'
-      context = Rhales::Context.minimal(business_data: { html_content: '<script>alert("xss")</script>' })
+      context = Rhales::Context.minimal(props: { html_content: '<script>alert("xss")</script>' })
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to include('&lt;script&gt;')
 
       # Raw output
       template = '{{{html_content}}}'
-      context = Rhales::Context.minimal(business_data: { html_content: '<strong>bold</strong>' })
+      context = Rhales::Context.minimal(props: { html_content: '<strong>bold</strong>' })
       result = Rhales::TemplateEngine.new(template, context).render
       expect(result).to eq('<strong>bold</strong>')
     end

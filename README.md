@@ -84,7 +84,7 @@ Create a `.rue` file in your templates directory:
 ```ruby
 # In your controller/route handler
 view = Rhales::View.new(request, session, user, 'en',
-  business_data: {
+  props: {
     greeting: 'Hello',
     user: { name: 'World' }
   }
@@ -641,7 +641,7 @@ Rhales.configure do |config|
 end
 
 # Test context creation
-context = Rhales::Context.minimal(business_data: { user: { name: 'Test' } })
+context = Rhales::Context.minimal(props: { user: { name: 'Test' } })
 expect(context.get('user.name')).to eq('Test')
 
 # Test template rendering

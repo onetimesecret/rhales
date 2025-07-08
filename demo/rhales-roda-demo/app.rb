@@ -8,60 +8,16 @@ require 'rack/session'
 # Add the lib directory to the load path
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
+require 'rhales/tilt'
+require 'mail'
 
-
-# Simple adapter classes for Rhales context objects
-class SimpleRequest
-  attr_reader :path, :method, :ip, :params, :env
-
-  def initialize(path:, method:, ip:, params:, env: {})
-    @path   = path
-    @method = method
-    @ip     = ip
-    @params = params
-    @env    = env
-  end
-end
-
-class SimpleSession
-  attr_reader :authenticated, :csrf_token
-
-  def initialize(authenticated:, csrf_token:)
-    @authenticated = authenticated
-    @csrf_token    = csrf_token
-  end
-
-  def authenticated?
-    @authenticated
-  end
-
-
-end
-
-class SimpleAuth < Rhales::Adapters::BaseAuth
-  attr_reader :authenticated, :email, :user_data
-
-  def initialize(authenticated:, email:, user_data:)
-    @authenticated = authenticated
-    @email         = email
-    @user_data     = user_data
-  end
-
-  def anonymous?
-    !@authenticated
-  end
-
-  def theme_preference
-    'light'
-  end
-
-  def user_id
-    @user_data&.dig(:id)
-  end
-
-  def display_name
-    @user_data&.dig(:email)
-  end
+Mail.defaults do
+  delivery_method :smtp, {
+    address: 'localhost',
+    port: 1025,
+    domain: 'localhost.localdomain',
+    enable_starttls_auto: false,
+  }
 end
 
 class RhalesDemo < Roda
@@ -83,7 +39,6 @@ class RhalesDemo < Roda
   DB = Sequel.sqlite(File.join(__dir__, 'db', 'demo.db'))
 
   DB.extension :date_arithmetic
-
 
   logger = Logger.new($stdout)
 
@@ -112,7 +67,18 @@ class RhalesDemo < Roda
 
   opts[:root] = File.dirname(__FILE__)
 
-  # We're using Rhales instead of Roda's render plugin
+  # Configure Rhales with Tilt integration
+  Rhales.configure do |config|
+    config.template_paths  = [File.join(opts[:root], 'templates')]
+    config.cache_templates = false
+  end
+
+  # Use Roda's render plugin with Rhales engine
+  plugin :render,
+    engine: 'rue',
+    views: File.join(opts[:root], 'templates'),
+    layout: 'layouts/main'
+
   plugin :flash
   plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
   plugin :route_csrf
@@ -150,46 +116,53 @@ class RhalesDemo < Roda
 
     # The following hooks are kept to document their availability and naming.
     # They can be implemented with custom logic as needed.
-    # before_login {}
-    # before_create_account {}
-    # after_login_failure {}
-    # after_create_account {}
-    #
-    # login_error_flash do
-    #   super()
-    # end
-    #
-    # create_account_error_flash do
-    #   super()
-    # end
-    #
-    # account_from_login do |login|
-    #   super(login)
-    # end
-    #
-    # password_match? do |password|
-    #   super(password)
-    # end
+    # before_login
+    # before_create_account
+    # after_login_failure
+    # after_create_account
+    # login_error_flash
+    # create_account_error_flash
+    # account_from_login
+    # password_match?
 
-    # Use our Rhales templates instead of ERB
-    login_view do
-      scope.instance_eval { rhales_render('auth/login') }
-    end
-
-    create_account_view do
-      scope.instance_eval { rhales_render('auth/register') }
-    end
-
-    logout_view do
-      scope.instance_eval { rhales_render('auth/logout') }
-    end
-  end
-
-  # Configure Rhales
-  Rhales.configure do |config|
-    config.template_paths  = [File.join(opts[:root], 'templates')]
-    config.default_locale  = 'en'
-    config.cache_templates = false  # Disable for demo
+    # ===== RODAUTH INTEGRATION WITH RHALES =====
+    # No view method overrides needed!
+    # Rodauth automatically discovers .rue templates via the :rhales plugin
+    #
+    # AVAILABLE VARIABLES FOR ALL RODAUTH VIEWS:
+    # Global (auto-injected by plugin):
+    #   - rodauth.* : Full Rodauth object (csrf_tag, logged_in?, etc.)
+    #   - flash_notice : Success message from flash[:notice]
+    #   - flash_error : Error message from flash[:error]
+    #   - current_path : Current URL path
+    #   - request_method : HTTP method
+    #   - demo_accounts : Demo credentials array
+    #
+    # View-specific variables available via rodauth object:
+    #   - login.rue: rodauth.login, rodauth.login_error_flash
+    #   - create_account.rue: rodauth.login_confirm, rodauth.create_account_error_flash
+    #   - verify_account.rue: rodauth.verify_account_key_value
+    #   - change_login.rue: rodauth.login, rodauth.login_confirm
+    #   - change_password.rue: rodauth.new_password_param, rodauth.password_confirm_param
+    #   - reset_password.rue: rodauth.reset_password_key_value
+    #   - close_account.rue: (requires current password confirmation)
+    #   - logout.rue: (minimal data, typically POST-only)
+    #
+    # Additional enabled features (templates auto-created if needed):
+    #   - lockout.rue: rodauth.lockout_error_flash (account lockout after failed attempts)
+    #   - remember.rue: rodauth.remember_param (remember login checkbox)
+    #   - verify_login_change.rue: rodauth.verify_login_change_key_value (email change verification)
+    #   - change_password_notify.rue: (notification after password change)
+    #   - confirm_password.rue: rodauth.password_param (password confirmation for sensitive operations)
+    #   - email_auth.rue: rodauth.email_auth_key_value (passwordless email authentication)
+    #   - recovery_codes.rue: rodauth.recovery_codes (backup 2FA codes)
+    #   - sms_codes.rue: rodauth.sms_phone, rodauth.sms_code (SMS 2FA)
+    #   - otp_modify_email.rue: rodauth.otp_* (TOTP setup/modification)
+    #   - active_sessions.rue: rodauth.active_sessions (manage multiple login sessions)
+    #
+    # Templates automatically discovered in templates/ directory:
+    #   login.rue, create_account.rue, logout.rue, verify_account.rue,
+    #   change_login.rue, change_password.rue, reset_password.rue, close_account.rue
   end
 
   # Simple auth helper - uses Rodauth's session management
@@ -207,99 +180,31 @@ class RhalesDemo < Roda
     rodauth.logged_in?
   end
 
-  # Rhales render helper using adapter classes with layout support
-  def rhales_render(template_name, business_data = {}, layout: 'layouts/main', **extra_data)
-    # Automatically include common view data (flash, rodauth, etc.)
-    auto_data = {
-      'flash_notice' => flash['notice'],
-      'flash_error' => flash['error'],
-      'current_path' => request.path,
-      'request_method' => request.request_method,
-      'rodauth' => rodauth,
-      'demo_accounts' => DEMO_ACCOUNTS,
-    }
+  # Generate a single nonce per request and set CSP header
+  def csp_nonce
+    @csp_nonce ||= SecureRandom.hex(16)
+  end
 
-    # Merge data layers: auto_data provides base, then business_data, then extra_data
-    merged_data = auto_data.merge(business_data).merge(extra_data)
-
-    # Create adapter instances for Rhales context
-    request_data = SimpleRequest.new(
-      path: request.path,
-      method: request.request_method,
-      ip: request.ip,
-      params: request.params,
-      env: {
-        'nonce' => SecureRandom.hex(16),
-        'request_id' => SecureRandom.hex(8),
-        'flash_notice' => flash['notice'],
-        'flash_error' => flash['error'],
-      },
-    )
-
-    session_data = SimpleSession.new(
-      authenticated: logged_in?,
-      csrf_token: nil, # Rodauth handles CSRF tokens
-    )
-
-    # Create auth adapter object
-    auth_data = if logged_in?
-      SimpleAuth.new(
-        authenticated: true,
-        email: current_user[:email],
-        user_data: {
-          id: current_user[:id],
-          email: current_user[:email],
-        },
-      )
-    else
-      SimpleAuth.new(
-        authenticated: false,
-        email: nil,
-        user_data: nil,
-      )
-    end
-
-    # Render content template first
-    view         = Rhales::View.new(
-      request_data,
-      session_data,
-      auth_data,
-      nil, # locale_override
-      business_data: merged_data,
-    )
-    content_html = view.render(template_name)
-
-    # If layout is specified, render it with content
-    if layout
-      # Create new view for layout with content data
-      layout_view = Rhales::View.new(
-        request_data,
-        session_data,
-        auth_data,
-        nil,
-        business_data: merged_data.merge(content: content_html, authenticated: logged_in?),
-      )
-
-      layout_view.render(layout)
-    else
-      content_html
-    end
+  # Set CSP header with nonce
+  def set_csp_header
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'nonce-#{csp_nonce}'; style-src 'self' 'nonce-#{csp_nonce}'"
   end
 
   route do |r|
-
+    # Set CSP header for all requests
+    set_csp_header
+    
     r.rodauth
 
     # Home route - shows different content based on auth state
     r.root do
       if logged_in?
-        rhales_render('dashboard', {
-          welcome_message: "Welcome back, #{current_user[:email]}!",
-          login_time: Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-        }
-        )
+        view('dashboard', locals: template_locals({
+          'welcome_message' => "Welcome back, #{current_user[:email]}!",
+          'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+        }))
       else
-        rhales_render('home', {})
+        view('home', locals: template_locals)
       end
     end
 
@@ -329,4 +234,11 @@ class RhalesDemo < Roda
     end
   end
 
+  # Helper method to provide common template data
+  def template_locals(additional_locals = {})
+    {
+      'demo_accounts' => DEMO_ACCOUNTS,
+      'authenticated' => respond_to?(:logged_in?) ? logged_in? : false,
+    }.merge(additional_locals)
+  end
 end

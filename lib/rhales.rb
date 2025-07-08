@@ -11,7 +11,8 @@ require_relative 'rhales/parsers/handlebars_parser'
 require_relative 'rhales/parsers/rue_format_parser'
 require_relative 'rhales/template_engine'
 require_relative 'rhales/hydrator'
-require_relative 'rhales/hydration_registry'
+require_relative 'rhales/view_composition'
+require_relative 'rhales/hydration_data_aggregator'
 require_relative 'rhales/refinements/require_refinements'
 require_relative 'rhales/view'
 
@@ -37,20 +38,20 @@ require_relative 'rhales/view'
 #   view = Rhales::View.new(request, session, user)
 #   html = view.render('my_component')
 module Rhales
-  # Convenience method to create a view with business data
-  def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **business_data)
-    view = View.new(request, session, user, locale, business_data: business_data)
+  # Convenience method to create a view with props
+  def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **props)
+    view = View.new(request, session, user, locale, props: props)
     view.render(template_name)
   end
 
   # Quick template rendering for testing/simple use cases
   def self.render_template(template_content, context_data = {})
-    context = Context.minimal(business_data: context_data)
+    context = Context.minimal(props: context_data)
     TemplateEngine.render(template_content, context)
   end
 
-  # Create context with business data (for advanced usage)
-  def self.create_context(request: nil, session: nil, user: nil, locale: nil, **business_data)
-    Context.for_view(request, session, user, locale, **business_data)
+  # Create context with props (for advanced usage)
+  def self.create_context(request: nil, session: nil, user: nil, locale: nil, **props)
+    Context.for_view(request, session, user, locale, **props)
   end
 end

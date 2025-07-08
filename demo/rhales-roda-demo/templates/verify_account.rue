@@ -1,0 +1,24 @@
+<data>
+{
+  "page_title": "Verify Account",
+  "submit_text": "Verify Account"
+}
+</data>
+
+<template>
+<div class="auth-form">
+  <h2>{{page_title}}</h2>
+
+  <form method="post">
+    {{rodauth.inspect}}
+    {{#if rodauth.verify_account_key_value}}
+      <input type="hidden" name="key" value="{{rodauth.verify_account_key_value}}" />
+    {{/if}}
+
+    <!-- plop -->
+    {{{rodauth.csrf_tag}}}
+
+    <button type="submit" class="btn btn-primary">{{submit_text}}</button>
+  </form>
+</div>
+</template>

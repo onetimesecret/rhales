@@ -3,6 +3,7 @@
 require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
+require_relative 'adapters/base_request'
 
 module Rhales
     # RSFCContext provides a clean interface for RSFC templates to access
@@ -11,31 +12,31 @@ module Rhales
     #
     # The context provides three layers of data:
     # 1. Runtime: Request metadata (CSRF tokens, nonces, request ID)
-    # 2. Business: Application data (user, content, features)
+    # 2. Props: Application data passed to the view (user, content, features)
     # 3. Computed: Server-side transformations and derived values
     #
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :sess, :cust, :locale, :runtime_data, :business_data, :computed_data, :config
+      attr_reader :req, :sess, :cust, :locale, :runtime_data, :props, :computed_data, :config
 
-      def initialize(req, sess = nil, cust = nil, locale_override = nil, business_data: {}, config: nil)
+      def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
         @req           = req
         @sess          = sess || default_session
         @cust          = cust || default_customer
         @config        = config || Rhales.configuration
         @locale        = locale_override || @config.default_locale
 
-        # Normalize business data keys to strings for consistent access
-        @business_data = normalize_keys(business_data).freeze
+        # Normalize props keys to strings for consistent access
+        @props = normalize_keys(props).freeze
 
         # Build context layers
         @runtime_data  = build_runtime_data.freeze
         @computed_data = build_computed_data.freeze
 
         # Pre-compute all_data before freezing
-        # Business data takes precedence over computed data
-        @all_data = @runtime_data.merge(@computed_data).merge(@business_data).freeze
+        # Props take precedence over computed data
+        @all_data = @runtime_data.merge(@computed_data).merge(@props).freeze
 
         # Make context immutable after creation
         freeze
@@ -138,8 +139,8 @@ module Rhales
       # Determine theme class for CSS
       def determine_theme_class
         # Default theme logic - can be overridden by business data
-        if business_data['theme']
-          "theme-#{business_data['theme']}"
+        if props['theme']
+          "theme-#{props['theme']}"
         elsif cust && cust.respond_to?(:theme_preference)
           "theme-#{cust.theme_preference}"
         else
@@ -207,13 +208,13 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, sess, cust, locale, config: nil, **business_data)
-          new(req, sess, cust, locale, business_data: business_data, config: config)
+        def for_view(req, sess, cust, locale, config: nil, **props)
+          new(req, sess, cust, locale, props: props, config: config)
         end
 
         # Create minimal context for testing
-        def minimal(business_data: {}, config: nil)
-          new(nil, nil, nil, 'en', business_data: business_data, config: config)
+        def minimal(props: {}, config: nil)
+          new(nil, nil, nil, 'en', props: props, config: config)
         end
       end
   end

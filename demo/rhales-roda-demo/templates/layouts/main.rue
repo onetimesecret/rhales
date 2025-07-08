@@ -122,11 +122,11 @@
 
   <main>
     <div class="container">
-      {{#if runtime.flash.notice}}
-        <div class="flash">{{runtime.flash.notice}}</div>
+      {{#if flash_notice}}
+        <div class="flash">{{flash_notice}}</div>
       {{/if}}
-      {{#if runtime.flash.error}}
-        <div class="flash error">{{runtime.flash.error}}</div>
+      {{#if flash_error}}
+        <div class="flash error">{{flash_error}}</div>
       {{/if}}
 
       {{{content}}}
