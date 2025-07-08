@@ -186,14 +186,12 @@ class RhalesDemo < Roda
     # Home route - shows different content based on auth state
     r.root do
       if logged_in?
-        view('dashboard', template_locals({
+        view('dashboard', locals: template_locals({
           'welcome_message' => "Welcome back, #{current_user[:email]}!",
           'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-        },
-                                         )
-        )
+        }))
       else
-        view('home', template_locals)
+        view('home', locals: template_locals)
       end
     end
 
