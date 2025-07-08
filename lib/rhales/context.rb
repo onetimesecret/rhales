@@ -149,7 +149,7 @@ module Rhales
 
       # Check if user is authenticated
       def authenticated?
-        sess && sess.authenticated && cust && !cust.anonymous?
+        sess && sess.authenticated? && cust && !cust.anonymous?
       end
 
       # Get default session instance
