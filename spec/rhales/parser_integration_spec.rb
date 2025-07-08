@@ -133,7 +133,7 @@ RSpec.describe 'Parser Integration' do
       parser = Rhales::RueFormatParser.new(content)
 
       expect { parser.parse! }.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
-        expect(error.message).to include('Missing required sections: data, template')
+        expect(error.message).to include('Missing required sections: template')
       end
     end
   end

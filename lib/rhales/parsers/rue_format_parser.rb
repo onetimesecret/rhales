@@ -26,9 +26,12 @@ module Rhales
   # content := (text | handlebars_expression)*
   # handlebars_expression := '{{' expression '}}'
   class RueFormatParser
-    REQUIRED_SECTIONS = %w[data template].freeze
-    OPTIONAL_SECTIONS = ['logic'].freeze
+    REQUIRED_SECTIONS = %w[template].freeze
+    OPTIONAL_SECTIONS = %w[data logic].freeze
     ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+
+    # Regular expression to match HTML/XML comments outside of sections
+    COMMENT_REGEX = /<!--.*?-->/m
 
     class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
@@ -61,7 +64,7 @@ module Rhales
     end
 
     def initialize(content, file_path = nil)
-      @content   = content
+      @content   = preprocess_content(content)
       @file_path = file_path
       @position  = 0
       @line      = 1
@@ -308,6 +311,49 @@ module Rhales
 
     def parse_error(message)
       raise ParseError.new(message, line: @line, column: @column, offset: @position)
+    end
+
+    # Preprocess content to strip XML/HTML comments outside of sections
+    def preprocess_content(content)
+      # Simple regex-based approach that strips comments outside of sections
+      # This preserves comments within section content
+      result = content.dup
+
+      # Match sections to preserve their content
+      sections = []
+      section_pattern = /<(data|template|logic)(\s[^>]*)?>(.*?)<\/\1>/m
+
+      # Extract sections with their positions
+      result.scan(section_pattern) do |match|
+        sections << {
+          full_match: $&,
+          start_pos: $~.begin(0),
+          end_pos: $~.end(0),
+          tag: match[0],
+          content: match[2]
+        }
+      end
+
+      # Remove comments only from content outside sections
+      processed = ""
+      last_end = 0
+
+      sections.each do |section|
+        # Process content before this section (strip comments)
+        before_section = result[last_end...section[:start_pos]]
+        processed << before_section.gsub(/<!--.*?-->/m, '')
+
+        # Add the section as-is (preserving internal comments)
+        processed << section[:full_match]
+
+        last_end = section[:end_pos]
+      end
+
+      # Process remaining content after last section (strip comments)
+      after_sections = result[last_end..-1]
+      processed << after_sections.gsub(/<!--.*?-->/m, '')
+
+      processed
     end
   end
 end

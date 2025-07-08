@@ -31,8 +31,8 @@ module Rhales
     class SectionDuplicateError < ParseError; end
     class InvalidSyntaxError < ParseError; end
 
-    REQUIRED_SECTIONS = %w[data template].freeze
-    OPTIONAL_SECTIONS = ['logic'].freeze
+    REQUIRED_SECTIONS = %w[template].freeze
+    OPTIONAL_SECTIONS = %w[data logic].freeze
     ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
 
     attr_reader :content, :file_path, :grammar, :ast

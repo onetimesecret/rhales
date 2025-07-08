@@ -47,14 +47,19 @@ module Rhales
       # Build template path for error reporting
       template_path = build_template_path(parser)
 
-      # Check for collisions
-      if @window_attributes.key?(window_attr) && merge_strategy.nil?
-        existing = @window_attributes[window_attr]
-        raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
-      end
-
-      # Process the data section
+      # Process the data section first to check if it's empty
       processed_data = process_data_section(data_content, parser)
+
+      # Check for collisions only if the data is not empty
+      if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
+        existing = @window_attributes[window_attr]
+        existing_data = @merged_data[window_attr]
+
+        # Only raise collision error if existing data is also not empty
+        unless empty_data?(existing_data)
+          raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
+        end
+      end
 
       # Merge or set the data
       if @merged_data.key?(window_attr)
@@ -159,6 +164,15 @@ module Rhales
       else
         "<inline>:#{line_number}"
       end
+    end
+
+    # Check if data is considered empty for collision detection
+    def empty_data?(data)
+      return true if data.nil?
+      return true if data == {}
+      return true if data == []
+      return true if data.respond_to?(:empty?) && data.empty?
+      false
     end
   end
 end
