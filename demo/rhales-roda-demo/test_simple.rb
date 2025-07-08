@@ -7,7 +7,7 @@ require 'rack/mock'
 env = Rack::MockRequest.env_for('/', method: 'GET')
 
 begin
-  app = RhalesDemo.app
+  app                   = RhalesDemo.app
   status, headers, body = app.call(env)
   puts "Status: #{status}"
   puts "Headers: #{headers}"
@@ -18,7 +18,7 @@ begin
   else
     puts "\n❌ ERROR: Got status #{status}"
   end
-rescue => e
-  puts "\n❌ ERROR: #{e.class}: #{e.message}"
-  puts e.backtrace[0..5].join("\n")
+rescue StandardError => ex
+  puts "\n❌ ERROR: #{ex.class}: #{ex.message}"
+  puts ex.backtrace[0..5].join("\n")
 end
