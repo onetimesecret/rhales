@@ -126,10 +126,6 @@ class RhalesDemo < Roda
     # account_from_login
     # password_match?
 
-    # ===== RODAUTH INTEGRATION WITH RHALES =====
-    # No view method overrides needed!
-    # Rodauth automatically discovers .rue templates via the :rhales plugin
-    #
     # AVAILABLE VARIABLES FOR ALL RODAUTH VIEWS:
     # Global (auto-injected by plugin):
     #   - rodauth.* : Full Rodauth object (csrf_tag, logged_in?, etc.)
@@ -181,45 +177,34 @@ class RhalesDemo < Roda
     rodauth.logged_in?
   end
 
-  # Generate a single nonce per request and set CSP header
-  def csp_nonce
-    @csp_nonce ||= SecureRandom.hex(16)
-  end
-
-  # Set CSP header with nonce
+  # Set CSP header using upstream Rhales functionality
   def set_csp_header
-    response.headers['Content-Security-Policy'] = [
-      "default-src 'self'",
-      "script-src 'self' 'nonce-#{csp_nonce}'",
-      "style-src 'self' 'nonce-#{csp_nonce}'",
-      "img-src 'self' data:",
-      "font-src 'self'",
-      "connect-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join('; ')
+    # Get CSP header from request env (set by Rhales view rendering)
+    csp_header = request.env['csp_header']
+    response.headers['Content-Security-Policy'] = csp_header if csp_header
   end
 
   route do |r|
-    # Set CSP header for all requests
-    set_csp_header
-
     r.rodauth
 
     # Home route - shows different content based on auth state
     r.root do
-      if logged_in?
+      result = if logged_in?
         view('dashboard',
-             locals: template_locals({
-               'welcome_message' => "Welcome back, #{current_user[:email]}!",
-               'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-             }),
-             layout: false
+          locals: template_locals({
+            'welcome_message' => "Welcome back, #{current_user[:email]}!",
+            'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+          },
+                                 ),
+          layout: false,
         )
       else
         view('home', locals: template_locals, layout: false)
       end
+
+      # Set CSP header after view rendering
+      set_csp_header
+      result
     end
 
     # Simple API endpoint for RSFC hydration demo

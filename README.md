@@ -17,7 +17,7 @@ It all started with a simple mustache template many years ago. The successor to 
 - **Clear security boundaries** between server context and client data
 - **Partial support** for component composition
 - **Pluggable authentication adapters** for any auth system
-- **Security-first design** with XSS protection and CSP support
+- **Security-first design** with XSS protection and automatic CSP generation
 - **Dependency injection** for testability and flexibility
 
 ## Installation
@@ -51,6 +51,16 @@ Rhales.configure do |config|
   config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
+
+  # CSP configuration (enabled by default)
+  config.csp_enabled = true           # Enable automatic CSP header generation
+  config.auto_nonce = true            # Automatically generate nonces
+  config.csp_policy = {               # Customize CSP policy (optional)
+    'default-src' => ["'self'"],
+    'script-src' => ["'self'", "'nonce-{{nonce}}'"],
+    'style-src' => ["'self'", "'nonce-{{nonce}}'", "'unsafe-hashes'"]
+    # ... more directives
+  }
 end
 ```
 
@@ -658,6 +668,153 @@ When you intentionally want to share data between templates, use explicit merge 
 ```javascript
 // Layout: {"user": {"name": "John"}}
 // Page:   {"user": {"name": "Jane"}}  // ❌ Error: value conflict
+```
+
+## Content Security Policy (CSP)
+
+Rhales provides **security by default** with automatic CSP header generation and nonce management.
+
+### Automatic CSP Protection
+
+CSP is **enabled by default** when you configure Rhales:
+
+```ruby
+Rhales.configure do |config|
+  # CSP is enabled by default with secure settings
+  config.csp_enabled = true     # Default: true
+  config.auto_nonce = true      # Default: true
+end
+```
+
+### Default Security Policy
+
+Rhales ships with a secure default CSP policy:
+
+```ruby
+{
+  'default-src' => ["'self'"],
+  'script-src' => ["'self'", "'nonce-{{nonce}}'"],
+  'style-src' => ["'self'", "'nonce-{{nonce}}'", "'unsafe-hashes'"],
+  'img-src' => ["'self'", 'data:'],
+  'font-src' => ["'self'"],
+  'connect-src' => ["'self'"],
+  'base-uri' => ["'self'"],
+  'form-action' => ["'self'"],
+  'frame-ancestors' => ["'none'"],
+  'object-src' => ["'none'"],
+  'upgrade-insecure-requests' => []
+}
+```
+
+### Automatic Nonce Generation
+
+Rhales automatically generates and manages CSP nonces:
+
+```erb
+<!-- In your .rue templates -->
+<script nonce="{{app.nonce}}">
+  // Your inline JavaScript with automatic nonce
+  console.log('Secure script execution');
+</script>
+
+<style nonce="{{app.nonce}}">
+  /* Your inline styles with automatic nonce */
+  .component { color: blue; }
+</style>
+```
+
+### Framework Integration
+
+CSP headers are automatically set during view rendering:
+
+```ruby
+# Your framework code (Rails, Sinatra, Roda, etc.)
+def dashboard
+  view = Rhales::View.new(request, session, current_user, 'en')
+  html = view.render('dashboard', user: current_user)
+
+  # CSP header automatically added to response:
+  # Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; ...
+end
+```
+
+### Custom CSP Policies
+
+Customize the CSP policy for your specific needs:
+
+```ruby
+Rhales.configure do |config|
+  config.csp_policy = {
+    'default-src' => ["'self'"],
+    'script-src' => ["'self'", "'nonce-{{nonce}}'", 'https://cdn.example.com'],
+    'style-src' => ["'self'", "'nonce-{{nonce}}'", 'https://fonts.googleapis.com'],
+    'img-src' => ["'self'", 'data:', 'https://images.example.com'],
+    'connect-src' => ["'self'", 'https://api.example.com'],
+    'font-src' => ["'self'", 'https://fonts.gstatic.com'],
+    # Add your own directives...
+  }
+end
+```
+
+### Per-Framework CSP Setup
+
+#### Rails
+```ruby
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  after_action :set_csp_header
+
+  private
+
+  def set_csp_header
+    csp_header = request.env['csp_header']
+    response.headers['Content-Security-Policy'] = csp_header if csp_header
+  end
+end
+```
+
+#### Sinatra
+```ruby
+helpers do
+  def render_with_csp(template_name, data = {})
+    result = render_rhales(template_name, data)
+    csp_header = request.env['csp_header']
+    headers['Content-Security-Policy'] = csp_header if csp_header
+    result
+  end
+end
+```
+
+#### Roda
+```ruby
+class App < Roda
+  def render_with_csp(template_name, data = {})
+    result = render_rhales(template_name, data)
+    csp_header = request.env['csp_header']
+    response.headers['Content-Security-Policy'] = csp_header if csp_header
+    result
+  end
+end
+```
+
+### CSP Benefits
+
+- **Security by default**: Protection against XSS attacks out of the box
+- **Automatic nonce management**: No manual nonce coordination needed
+- **Template integration**: Nonces automatically available in templates
+- **Framework agnostic**: Works with any Ruby web framework
+- **Customizable policies**: Adapt CSP rules to your application needs
+- **Zero configuration**: Secure defaults work immediately
+
+### Disabling CSP
+
+If you need to disable CSP for specific environments:
+
+```ruby
+Rhales.configure do |config|
+  config.csp_enabled = false  # Disable CSP header generation
+  config.auto_nonce = false   # Disable automatic nonce generation
+end
 ```
 
 ## Testing

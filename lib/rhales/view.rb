@@ -7,6 +7,7 @@ require_relative 'template_engine'
 require_relative 'hydrator'
 require_relative 'view_composition'
 require_relative 'hydration_data_aggregator'
+require_relative 'csp'
 require_relative 'refinements/require_refinements'
 
 using Rhales::Ruequire
@@ -82,6 +83,9 @@ module Rhales
 
       # Generate hydration HTML with merged data
       hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
+
+      # Set CSP header if enabled
+      set_csp_header_if_enabled
 
       # Combine template and hydration
       inject_hydration_into_template(template_html, hydration_html)
@@ -364,6 +368,22 @@ module Rhales
     def nonce_attribute
       nonce = @rsfc_context.get('nonce')
       nonce ? " nonce=\"#{nonce}\"" : ''
+    end
+
+    # Set CSP header if enabled
+    def set_csp_header_if_enabled
+      return unless @config.csp_enabled
+      return unless @req && @req.respond_to?(:env)
+
+      # Get nonce from context
+      nonce = @rsfc_context.get('nonce')
+
+      # Create CSP instance and build header
+      csp = CSP.new(@config, nonce: nonce)
+      header_value = csp.build_header
+
+      # Set header in request environment for framework to use
+      @req.env['csp_header'] = header_value if header_value
     end
 
     class << self

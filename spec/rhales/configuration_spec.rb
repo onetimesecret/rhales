@@ -14,6 +14,9 @@ RSpec.describe Rhales::Configuration do
       expect(subject.development_enabled).to be(false)
       expect(subject.template_paths).to eq([])
       expect(subject.features).to eq({})
+      expect(subject.csp_enabled).to be(true)
+      expect(subject.auto_nonce).to be(true)
+      expect(subject.csp_policy).to be_a(Hash)
     end
   end
 
@@ -120,6 +123,24 @@ RSpec.describe Rhales::Configuration do
       it 'raises ConfigurationError' do
         expect { subject.validate! }.to raise_error(Rhales::Configuration::ConfigurationError)
       end
+    end
+  end
+
+  describe '#default_csp_policy' do
+    subject { described_class.new }
+
+    it 'returns secure default CSP policy' do
+      policy = subject.default_csp_policy
+      expect(policy).to be_a(Hash)
+      expect(policy).to be_frozen
+      expect(policy['default-src']).to eq(["'self'"])
+      expect(policy['script-src']).to include("'self'")
+      expect(policy['script-src']).to include("'nonce-{{nonce}}'")
+      expect(policy['style-src']).to include("'self'")
+      expect(policy['style-src']).to include("'nonce-{{nonce}}'")
+      expect(policy['frame-ancestors']).to eq(["'none'"])
+      expect(policy['object-src']).to eq(["'none'"])
+      expect(policy['upgrade-insecure-requests']).to eq([])
     end
   end
 end

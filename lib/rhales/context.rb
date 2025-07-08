@@ -4,6 +4,7 @@ require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
 require_relative 'adapters/base_request'
+require_relative 'csp'
 
 module Rhales
     # RSFCContext provides a clean interface for RSFC templates to access
@@ -104,10 +105,13 @@ module Rhales
         # Request context (from current runtime_data)
         if req && req.respond_to?(:env) && req.env
           app['csrf_token'] = req.env.fetch(@config.csrf_token_name, nil)
-          app['nonce'] = req.env.fetch(@config.nonce_header_name, nil)
+          app['nonce'] = get_or_generate_nonce
           app['request_id'] = req.env.fetch('request_id', nil)
           app['domain_strategy'] = req.env.fetch('domain_strategy', :default)
           app['display_domain'] = req.env.fetch('display_domain', nil)
+        else
+          # Generate nonce even without request if CSP is enabled
+          app['nonce'] = get_or_generate_nonce
         end
 
         # Configuration (from both layers)
@@ -196,6 +200,29 @@ module Rhales
         end
 
         paths
+      end
+
+      # Get or generate nonce for CSP
+      def get_or_generate_nonce
+        # Try to get existing nonce from request env
+        if req && req.respond_to?(:env) && req.env
+          existing_nonce = req.env.fetch(@config.nonce_header_name, nil)
+          return existing_nonce if existing_nonce
+        end
+
+        # Generate new nonce if auto_nonce is enabled or CSP is enabled
+        return CSP.generate_nonce if @config.auto_nonce || (@config.csp_enabled && csp_nonce_required?)
+
+        # Return nil if nonce is not needed
+        nil
+      end
+
+      # Check if CSP policy requires nonce
+      def csp_nonce_required?
+        return false unless @config.csp_enabled
+
+        csp = CSP.new(@config)
+        csp.nonce_required?
       end
 
       class << self
