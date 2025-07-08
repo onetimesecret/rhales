@@ -72,8 +72,8 @@ module Rhales
       template_name ||= self.class.default_template_name
 
       # Phase 1: Build view composition and aggregate data
-      composition = build_view_composition(template_name)
-      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      composition           = build_view_composition(template_name)
+      aggregator            = HydrationDataAggregator.new(@rsfc_context)
       merged_hydration_data = aggregator.aggregate(composition)
 
       # Phase 2: Render HTML with pre-computed data
@@ -103,8 +103,8 @@ module Rhales
       template_name ||= self.class.default_template_name
 
       # Build composition and aggregate data
-      composition = build_view_composition(template_name)
-      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      composition           = build_view_composition(template_name)
+      aggregator            = HydrationDataAggregator.new(@rsfc_context)
       merged_hydration_data = aggregator.aggregate(composition)
 
       # Generate hydration HTML
@@ -117,7 +117,7 @@ module Rhales
 
       # Build composition and aggregate data
       composition = build_view_composition(template_name)
-      aggregator = HydrationDataAggregator.new(@rsfc_context)
+      aggregator  = HydrationDataAggregator.new(@rsfc_context)
       aggregator.aggregate(composition)
     end
 
@@ -269,7 +269,7 @@ module Rhales
 
     # Build view composition for the given template
     def build_view_composition(template_name)
-      loader = method(:load_template_for_composition)
+      loader      = method(:load_template_for_composition)
       composition = ViewComposition.new(template_name, loader: loader)
       composition.resolve!
     end
@@ -278,6 +278,7 @@ module Rhales
     def load_template_for_composition(template_name)
       template_path = resolve_template_path(template_name)
       return nil unless File.exist?(template_path)
+
       require template_path
     rescue StandardError => ex
       raise TemplateNotFoundError, "Failed to load template #{template_name}: #{ex.message}"
@@ -285,7 +286,7 @@ module Rhales
 
     # Render template using the view composition
     def render_template_with_composition(composition, root_template_name)
-      root_parser = composition.template(root_template_name)
+      root_parser      = composition.template(root_template_name)
       template_content = root_parser.section('template')
       return '' unless template_content
 
@@ -299,23 +300,23 @@ module Rhales
       if root_parser.layout && composition.template(root_parser.layout)
         # Render content template first
         content_html = TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
-        
+
         # Then render layout with content
-        layout_parser = composition.template(root_parser.layout)
+        layout_parser  = composition.template(root_parser.layout)
         layout_content = layout_parser.section('template')
         return '' unless layout_content
-        
+
         # Create new context with content for layout rendering
-        layout_props = context_with_rue_data.props.merge('content' => content_html)
+        layout_props   = context_with_rue_data.props.merge('content' => content_html)
         layout_context = Context.new(
           context_with_rue_data.req,
           context_with_rue_data.sess,
           context_with_rue_data.cust,
           context_with_rue_data.locale,
           props: layout_props,
-          config: context_with_rue_data.config
+          config: context_with_rue_data.config,
         )
-        
+
         TemplateEngine.render(layout_content, layout_context, partial_resolver: partial_resolver)
       else
         # Render with full server context (no layout)
@@ -345,7 +346,7 @@ module Rhales
         HTML
 
         # Create hydration script
-        nonce_attr = nonce_attribute
+        nonce_attr       = nonce_attribute
         hydration_script = <<~HTML.strip
           <script#{nonce_attr}>
           window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
