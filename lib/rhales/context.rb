@@ -3,6 +3,7 @@
 require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
+require_relative 'adapters/base_request'
 
 module Rhales
     # RSFCContext provides a clean interface for RSFC templates to access

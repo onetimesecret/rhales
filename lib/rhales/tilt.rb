@@ -2,6 +2,7 @@
 
 require 'tilt'
 require 'rhales'
+require_relative 'adapters/base_request'
 
 module Rhales
   # Tilt integration for Rhales templates
@@ -101,60 +102,72 @@ module Rhales
     def build_rhales_context(scope, props)
       # Get shared nonce from scope if available, otherwise generate one
       shared_nonce = get_shared_nonce(scope)
-      
-      # Simple request adapter
+
+      # Use proper request adapter
       request_data = if scope.respond_to?(:request)
-        Struct.new(:path, :method, :ip, :params, :env).new(
-          scope.request.path,
-          scope.request.request_method,
-          scope.request.ip,
-          scope.request.params,
-          {
+        # Add CSP nonce to framework request env
+        framework_env = scope.request.env.merge({
+          'nonce' => shared_nonce,
+          'request_id' => SecureRandom.hex(8),
+        })
+
+        # Create wrapper that preserves original but adds our env
+        wrapped_request = Class.new do
+          def initialize(original, custom_env)
+            @original = original
+            @custom_env = custom_env
+          end
+
+          def method_missing(method, *args, &block)
+            @original.send(method, *args, &block)
+          end
+
+          def respond_to_missing?(method, include_private = false)
+            @original.respond_to?(method, include_private)
+          end
+
+          def env
+            @custom_env
+          end
+        end.new(scope.request, framework_env)
+
+        Rhales::Adapters::FrameworkRequest.new(wrapped_request)
+      else
+        Rhales::Adapters::SimpleRequest.new(
+          path: '/',
+          method: 'GET',
+          ip: '127.0.0.1',
+          params: {},
+          env: {
             'nonce' => shared_nonce,
             'request_id' => SecureRandom.hex(8),
+          }
+        )
+      end
+
+      # Use proper session adapter
+      session_data = if scope.respond_to?(:logged_in?) && scope.logged_in?
+        Rhales::Adapters::AuthenticatedSession.new(
+          {
+            id: SecureRandom.hex(8),
+            created_at: Time.now,
           },
         )
       else
-        Struct.new(:path, :method, :ip, :params, :env).new(
-          '/',
-          'GET',
-          '127.0.0.1',
-          {},
-          {
-            'nonce' => shared_nonce,
-            'request_id' => SecureRandom.hex(8),
-          },
-        )
-                     end
+        Rhales::Adapters::AnonymousSession.new
+      end
 
-      # Simple session adapter
-      session_data = Struct.new(:authenticated, :csrf_token).new(
-        scope.respond_to?(:logged_in?) ? scope.logged_in? : false,
-        nil, # Let framework handle CSRF
-      )
-
-      # Simple auth adapter
+      # Use proper auth adapter
       if scope.respond_to?(:logged_in?) && scope.logged_in? && scope.respond_to?(:current_user)
         user      = scope.current_user
-        auth_data = Struct.new(:authenticated, :anonymous?, :email, :user_data, :theme_preference, :user_id, :display_name).new(
-          true,
-          false,
-          user[:email],
-          { id: user[:id], email: user[:email] },
-          'light',
-          user[:id],
-          user[:email],
-        )
+        auth_data = Rhales::Adapters::AuthenticatedAuth.new({
+          id: user[:id],
+          email: user[:email],
+          authenticated: true,
+        },
+                                                           )
       else
-        auth_data = Struct.new(:authenticated, :anonymous?, :email, :user_data, :theme_preference, :user_id, :display_name).new(
-          false,
-          true,
-          nil,
-          nil,
-          'light',
-          nil,
-          nil,
-        )
+        auth_data = Rhales::Adapters::AnonymousAuth.new
       end
 
       ::Rhales::View.new(
