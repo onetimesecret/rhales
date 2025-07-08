@@ -39,6 +39,9 @@ dist/
 .rspec*
 .qodo
 *.gem
+bin/bundle
+bin/rspec
+
 
 # Ignore WIP or temp dev files with uppercase names
 [A-Z]*.rb

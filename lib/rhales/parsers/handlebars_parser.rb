@@ -145,7 +145,7 @@ module Rhales
     end
 
     def parse_expression_content(raw)
-      content        = ''
+      chars          = []
       closing_braces = raw ? '}}}' : '}}'
       brace_count    = 0
 
@@ -162,11 +162,11 @@ module Rhales
           end
         end
 
-        content << current_char
+        chars << current_char
         advance
       end
 
-      content.strip
+      chars.join.strip
     end
 
     def create_expression_node(content, raw, location)
@@ -590,14 +590,14 @@ module Rhales
     end
 
     def parse_text_until_handlebars
-      text = ''
+      chars = []
 
       while !at_end? && !(current_char == '{' && peek_char == '{')
-        text << current_char
+        chars << current_char
         advance
       end
 
-      text
+      chars.join
     end
 
     def collect_variables(node)
