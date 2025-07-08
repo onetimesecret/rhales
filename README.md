@@ -94,9 +94,44 @@ html = view.render('hello')
 # Returns HTML with embedded JSON for client-side hydration
 ```
 
-## Context and Data Boundaries
+## Context and Data Model
 
-Rhales implements a **two-phase security model**:
+Rhales uses a **two-layer data model** for template rendering:
+
+### 1. App Data (Framework Layer)
+All framework-provided data is available under the `app` namespace:
+
+```handlebars
+<!-- Framework data through app namespace -->
+{{app.csrf_token}}       <!-- CSRF token for forms -->
+{{app.nonce}}            <!-- CSP nonce for scripts -->
+{{app.authenticated}}    <!-- Authentication state -->
+{{app.environment}}      <!-- Current environment -->
+{{app.features.dark_mode}} <!-- Feature flags -->
+{{app.theme_class}}      <!-- Current theme -->
+```
+
+**Available App Variables:**
+- `app.api_base_url` - Base URL for API calls
+- `app.authenticated` - Whether user is authenticated
+- `app.csrf_token` - CSRF token for forms
+- `app.development` - Whether in development mode
+- `app.environment` - Current environment (production/staging/dev)
+- `app.features` - Feature flags hash
+- `app.nonce` - CSP nonce for inline scripts
+- `app.theme_class` - Current theme CSS class
+
+### 2. Props Data (Application Layer)
+Your application-specific data passed to each view:
+
+```handlebars
+<!-- Application data -->
+{{user.name}}            <!-- Direct access -->
+{{page_title}}           <!-- Props take precedence -->
+{{#if user.admin?}}
+  <a href="/admin">Admin Panel</a>
+{{/if}}
+```
 
 ### Server Templates: Full Context Access
 Templates have complete access to all server-side data:
@@ -110,7 +145,7 @@ Templates have complete access to all server-side data:
 {{#if user.admin?}}
   <a href="/admin">Admin Panel</a>
 {{/if}}
-<div class="{{theme_class}}">{{user.full_name}}</div>
+<div class="{{app.theme_class}}">{{user.full_name}}</div>
 ```
 
 ### Client Data: Explicit Allowlist

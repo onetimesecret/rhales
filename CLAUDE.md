@@ -17,7 +17,7 @@
 IMPORTANT: Always research and plan before coding. Use "think" or "think hard" for complex features.
 
 - Read relevant files and documentation WITHOUT writing code yet
-- Understand the three-layer data system (runtime, business, computed)
+- Understand the two-layer data system (app, props)
 - Review adapter interfaces and dependency injection patterns
 - Create implementation plan in markdown file or GitHub issue
 - Document security implications and edge cases
