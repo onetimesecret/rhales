@@ -180,7 +180,7 @@ class RhalesDemo < Roda
   # Set CSP header using upstream Rhales functionality
   def set_csp_header
     # Get CSP header from request env (set by Rhales view rendering)
-    csp_header = request.env['csp_header']
+    csp_header                                  = request.env['csp_header']
     response.headers['Content-Security-Policy'] = csp_header if csp_header
   end
 
@@ -190,12 +190,12 @@ class RhalesDemo < Roda
     # Home route - shows different content based on auth state
     r.root do
       result = if logged_in?
+        locals = {
+          'welcome_message' => "Welcome back, #{current_user[:email]}!",
+          'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+        }
         view('dashboard',
-          locals: template_locals({
-            'welcome_message' => "Welcome back, #{current_user[:email]}!",
-            'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-          },
-                                 ),
+          locals: template_locals(locals),
           layout: false,
         )
       else
