@@ -32,9 +32,9 @@ module Rhales
     # @param locals [Hash] Local variables for the template
     # @param block [Proc] Optional block content
     # @return [String] Rendered HTML
-    def evaluate(scope, locals = {}, &block)
+    def evaluate(scope, locals = {}, &)
       # Build template props from locals and scope
-      props = build_props(scope, locals, &block)
+      props = build_props(scope, locals, &)
 
       # Create Rhales context adapters from scope
       rhales_context = build_rhales_context(scope, props)
@@ -53,18 +53,18 @@ module Rhales
       props = locals.dup
 
       # Add block content if provided
-      props['content'] = block.call if block
+      props['content'] = yield if block
 
       # Add scope-specific data
       if scope.respond_to?(:request)
-        props['current_path'] = scope.request.path
+        props['current_path']   = scope.request.path
         props['request_method'] = scope.request.request_method
       end
 
       # Add flash messages if available
       if scope.respond_to?(:flash)
         props['flash_notice'] = scope.flash['notice']
-        props['flash_error'] = scope.flash['error']
+        props['flash_error']  = scope.flash['error']
       end
 
       # Add rodauth object if available
@@ -83,8 +83,8 @@ module Rhales
     # Build Rhales context objects from scope
     def build_rhales_context(scope, props)
       # Simple request adapter
-      if scope.respond_to?(:request)
-        request_data = Struct.new(:path, :method, :ip, :params, :env).new(
+      request_data = if scope.respond_to?(:request)
+        Struct.new(:path, :method, :ip, :params, :env).new(
           scope.request.path,
           scope.request.request_method,
           scope.request.ip,
@@ -92,10 +92,10 @@ module Rhales
           {
             'nonce' => SecureRandom.hex(16),
             'request_id' => SecureRandom.hex(8),
-          }
+          },
         )
       else
-        request_data = Struct.new(:path, :method, :ip, :params, :env).new(
+        Struct.new(:path, :method, :ip, :params, :env).new(
           '/',
           'GET',
           '127.0.0.1',
@@ -103,19 +103,19 @@ module Rhales
           {
             'nonce' => SecureRandom.hex(16),
             'request_id' => SecureRandom.hex(8),
-          }
+          },
         )
-      end
+                     end
 
       # Simple session adapter
       session_data = Struct.new(:authenticated, :csrf_token).new(
         scope.respond_to?(:logged_in?) ? scope.logged_in? : false,
-        nil # Let framework handle CSRF
+        nil, # Let framework handle CSRF
       )
 
       # Simple auth adapter
       if scope.respond_to?(:logged_in?) && scope.logged_in? && scope.respond_to?(:current_user)
-        user = scope.current_user
+        user      = scope.current_user
         auth_data = Struct.new(:authenticated, :anonymous?, :email, :user_data, :theme_preference, :user_id, :display_name).new(
           true,
           false,
@@ -123,7 +123,7 @@ module Rhales
           { id: user[:id], email: user[:email] },
           'light',
           user[:id],
-          user[:email]
+          user[:email],
         )
       else
         auth_data = Struct.new(:authenticated, :anonymous?, :email, :user_data, :theme_preference, :user_id, :display_name).new(
@@ -133,7 +133,7 @@ module Rhales
           nil,
           'light',
           nil,
-          nil
+          nil,
         )
       end
 
@@ -142,7 +142,7 @@ module Rhales
         session_data,
         auth_data,
         nil, # locale_override
-        props: props
+        props: props,
       )
     end
 
@@ -157,13 +157,15 @@ module Rhales
         # Check if this is in a subdirectory (relative to configured paths)
         if ::Rhales.configuration.template_paths
           ::Rhales.configuration.template_paths.each do |path|
-            if file.start_with?(path)
-              relative_path = file.sub(path + '/', '')
-              template_path = File.dirname(relative_path) == '.' ?
-                File.basename(relative_path, '.*') :
-                File.join(File.dirname(relative_path), File.basename(relative_path, '.*'))
-              break
-            end
+            next unless file.start_with?(path)
+
+            relative_path = file.sub(path + '/', '')
+            template_path = if File.dirname(relative_path) == '.'
+            File.basename(relative_path, '.*')
+          else
+            File.join(File.dirname(relative_path), File.basename(relative_path, '.*'))
+          end
+            break
           end
         end
 
