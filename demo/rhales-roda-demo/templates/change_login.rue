@@ -1,4 +1,4 @@
-<data>
+<data layout="layouts/main">
 {
   "page_title": "Change Login",
   "submit_text": "Change Login"

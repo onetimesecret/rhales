@@ -1,4 +1,4 @@
-<data>
+<data window="layout">
 {
   "app_name": "Rhales Demo",
   "year": 2025
@@ -99,6 +99,23 @@
     }
     .stat-card h3 { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
     .stat-card .value { font-size: 2rem; font-weight: bold; color: #2c3e50; }
+    
+    /* Home page styles */
+    .hero-section { text-align: center; padding: 4rem 0; }
+    .hero-title { font-size: 3rem; margin-bottom: 1rem; }
+    .hero-subtitle { font-size: 1.2rem; color: #666; margin-bottom: 2rem; }
+    .demo-login { background: #f8f9fa; padding: 2rem; border-radius: 8px; margin: 2rem auto; max-width: 400px; }
+    .demo-accounts { background: white; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+    .demo-account { margin-bottom: 0.5rem; }
+    .login-link { background: #007bff; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; }
+    .auth-notice { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin: 2rem auto; max-width: 400px; }
+    .features-section { margin: 3rem 0; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 2rem; }
+    .feature-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+    .feature-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .feature-title { margin-bottom: 1rem; }
+    .feature-description { color: #666; font-size: 0.9rem; }
+    .timestamp { font-size: 0.8rem; color: #999; }
   </style>
 </head>
 <body>

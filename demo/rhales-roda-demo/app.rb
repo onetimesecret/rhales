@@ -74,10 +74,11 @@ class RhalesDemo < Roda
   end
 
   # Use Roda's render plugin with Rhales engine
+  # Note: Layout handling is done by Rhales ViewComposition, not Roda
   plugin :render,
     engine: 'rue',
     views: File.join(opts[:root], 'templates'),
-    layout: 'layouts/main'
+    layout: false
 
   plugin :flash
   plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
@@ -187,24 +188,37 @@ class RhalesDemo < Roda
 
   # Set CSP header with nonce
   def set_csp_header
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'nonce-#{csp_nonce}'; style-src 'self' 'nonce-#{csp_nonce}'"
+    response.headers['Content-Security-Policy'] = [
+      "default-src 'self'",
+      "script-src 'self' 'nonce-#{csp_nonce}'",
+      "style-src 'self' 'nonce-#{csp_nonce}'",
+      "img-src 'self' data:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ')
   end
 
   route do |r|
     # Set CSP header for all requests
     set_csp_header
-    
+
     r.rodauth
 
     # Home route - shows different content based on auth state
     r.root do
       if logged_in?
-        view('dashboard', locals: template_locals({
-          'welcome_message' => "Welcome back, #{current_user[:email]}!",
-          'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-        }))
+        view('dashboard',
+             locals: template_locals({
+               'welcome_message' => "Welcome back, #{current_user[:email]}!",
+               'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+             }),
+             layout: false
+        )
       else
-        view('home', locals: template_locals)
+        view('home', locals: template_locals, layout: false)
       end
     end
 

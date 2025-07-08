@@ -50,15 +50,14 @@ module Rhales
 
       visited = Set.new
 
-      # Layout support not yet implemented
-      # TODO: Add layout support when RueDocument supports it
-      # root_doc = @templates[@root_template_name]
-      # if root_doc && root_doc.respond_to?(:layout) && root_doc.layout
-      #   layout_name = root_doc.layout
-      #   if @templates[layout_name]
-      #     yield_template_recursive(layout_name, visited, &block)
-      #   end
-      # end
+      # Process layout first if specified
+      root_doc = @templates[@root_template_name]
+      if root_doc && root_doc.layout
+        layout_name = root_doc.layout
+        if @templates[layout_name]
+          yield_template_recursive(layout_name, visited, &block)
+        end
+      end
 
       # Then process the root template and its dependencies
       yield_template_recursive(@root_template_name, visited, &block)
@@ -115,11 +114,10 @@ module Rhales
           load_template_recursive(partial_name, template_name)
         end
 
-        # Layout support not yet implemented
-        # TODO: Add layout support when RueDocument supports it
-        # if parser.respond_to?(:layout) && parser.layout && !@templates.key?(parser.layout)
-        #   load_template_recursive(parser.layout, template_name)
-        # end
+        # Load layout if specified and not already loaded
+        if parser.layout && !@templates.key?(parser.layout)
+          load_template_recursive(parser.layout, template_name)
+        end
       ensure
         @loading.delete(template_name)
       end

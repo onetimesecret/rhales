@@ -1,4 +1,4 @@
-<data>
+<data layout="layouts/main">
 {
   "title": "Create Account",
   "fields": [

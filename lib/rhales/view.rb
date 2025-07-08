@@ -295,8 +295,32 @@ module Rhales
       # Merge .rue file data with existing context
       context_with_rue_data = create_context_with_rue_data(root_parser)
 
-      # Render with full server context
-      TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+      # Check if template has a layout
+      if root_parser.layout && composition.template(root_parser.layout)
+        # Render content template first
+        content_html = TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+        
+        # Then render layout with content
+        layout_parser = composition.template(root_parser.layout)
+        layout_content = layout_parser.section('template')
+        return '' unless layout_content
+        
+        # Create new context with content for layout rendering
+        layout_props = context_with_rue_data.props.merge('content' => content_html)
+        layout_context = Context.new(
+          context_with_rue_data.req,
+          context_with_rue_data.sess,
+          context_with_rue_data.cust,
+          context_with_rue_data.locale,
+          props: layout_props,
+          config: context_with_rue_data.config
+        )
+        
+        TemplateEngine.render(layout_content, layout_context, partial_resolver: partial_resolver)
+      else
+        # Render with full server context (no layout)
+        TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+      end
     end
 
     # Create partial resolver that uses pre-loaded templates from composition

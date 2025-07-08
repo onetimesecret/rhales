@@ -124,6 +124,10 @@ module Rhales
       data_attributes['merge']
     end
 
+    def layout
+      data_attributes['layout']
+    end
+
     def section?(name)
       @grammar.sections.key?(name)
     end
