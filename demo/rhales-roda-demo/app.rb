@@ -8,10 +8,8 @@ require 'rack/session'
 # Add the lib directory to the load path
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
+require 'rhales/tilt'
 require 'mail'
-
-# Load our custom Rhales plugin
-require_relative 'lib/roda/plugins/rhales'
 
 Mail.defaults do
   delivery_method :smtp, {
@@ -21,7 +19,6 @@ Mail.defaults do
     enable_starttls_auto: false,
   }
 end
-
 
 class RhalesDemo < Roda
   # Demo accounts for testing - matches migration seed data
@@ -70,15 +67,17 @@ class RhalesDemo < Roda
 
   opts[:root] = File.dirname(__FILE__)
 
-  # Load render plugin but configure it to not interfere with our Rhales plugin
-  plugin :render, views: 'nonexistent', layout: false
+  # Configure Rhales with Tilt integration
+  Rhales.configure do |config|
+    config.template_paths  = [File.join(opts[:root], 'templates')]
+    config.cache_templates = false
+  end
 
-  # Configure Rhales plugin for template rendering
-  plugin :rhales,
-    template_paths: [File.join(opts[:root], 'templates')],
-    layout: 'layouts/main',
-    cache_templates: false,
-    auto_data: { 'demo_accounts' => DEMO_ACCOUNTS }
+  # Use Roda's render plugin with Rhales engine
+  plugin :render,
+    engine: 'rue',
+    views: File.join(opts[:root], 'templates'),
+    layout: 'layouts/main'
 
   plugin :flash
   plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
@@ -166,7 +165,6 @@ class RhalesDemo < Roda
     #   change_login.rue, change_password.rue, reset_password.rue, close_account.rue
   end
 
-
   # Simple auth helper - uses Rodauth's session management
   def current_user
     return nil unless rodauth.logged_in?
@@ -182,19 +180,20 @@ class RhalesDemo < Roda
     rodauth.logged_in?
   end
 
-
   route do |r|
     r.rodauth
 
     # Home route - shows different content based on auth state
     r.root do
       if logged_in?
-        view('dashboard', {
-          welcome_message: "Welcome back, #{current_user[:email]}!",
-          login_time: Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-        })
+        view('dashboard', template_locals({
+          'welcome_message' => "Welcome back, #{current_user[:email]}!",
+          'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+        },
+                                         )
+        )
       else
-        view('home')
+        view('home', template_locals)
       end
     end
 
@@ -222,5 +221,13 @@ class RhalesDemo < Roda
         random_number: rand(1000),
       }.to_json
     end
+  end
+
+  # Helper method to provide common template data
+  def template_locals(additional_locals = {})
+    {
+      'demo_accounts' => DEMO_ACCOUNTS,
+      'authenticated' => respond_to?(:logged_in?) ? logged_in? : false,
+    }.merge(additional_locals)
   end
 end

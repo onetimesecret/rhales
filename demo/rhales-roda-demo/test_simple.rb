@@ -3,27 +3,22 @@
 require_relative 'app'
 require 'rack/mock'
 
-# Test the view method directly
-class TestApp < RhalesDemo
-  def test_view
-    # Mock request/response
-    env = Rack::MockRequest.env_for('/', method: 'GET')
-    @request = Rack::Request.new(env)
-    @response = Rack::Response.new
+# Create a mock rack env for the home page
+env = Rack::MockRequest.env_for('/', method: 'GET')
 
-    # Test calling view method
-    begin
-      result = view('home')
-      puts "✅ SUCCESS: view('home') returned #{result.length} characters"
-      puts "Preview: #{result[0..200]}..."
-      return true
-    rescue => e
-      puts "❌ ERROR: #{e.class}: #{e.message}"
-      puts e.backtrace[0..3].join("\n")
-      return false
-    end
+begin
+  app = RhalesDemo.app
+  status, headers, body = app.call(env)
+  puts "Status: #{status}"
+  puts "Headers: #{headers}"
+  puts "Body preview: #{body.first[0..200]}..."
+
+  if status == 200
+    puts "\n✅ SUCCESS: Tilt integration is working! Rhales templates are rendering."
+  else
+    puts "\n❌ ERROR: Got status #{status}"
   end
+rescue => e
+  puts "\n❌ ERROR: #{e.class}: #{e.message}"
+  puts e.backtrace[0..5].join("\n")
 end
-
-app = TestApp.new
-app.test_view
