@@ -201,7 +201,14 @@ module Rhales
       # Convert Ruby objects to JSON for data sections
       case value
       when Hash, Array
-        value.to_json
+        begin
+          value.to_json
+        rescue JSON::GeneratorError, SystemStackError => ex
+          # Handle serialization errors (circular references, unsupported types, etc.)
+          raise JSONSerializationError,
+            "Failed to serialize Ruby object to JSON: #{ex.message}. " \
+            "Object type: #{value.class}, var path: #{variable_path}..."
+        end
       else
         value
       end
