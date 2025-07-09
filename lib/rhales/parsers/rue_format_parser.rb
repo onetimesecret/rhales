@@ -26,9 +26,10 @@ module Rhales
   # content := (text | handlebars_expression)*
   # handlebars_expression := '{{' expression '}}'
   class RueFormatParser
-    REQUIRED_SECTIONS = %w[template].freeze
-    OPTIONAL_SECTIONS = %w[data logic].freeze
-    ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+    # At least one of these sections must be present
+    REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
+    KNOWN_SECTIONS = %w[data template logic].freeze
+    ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
     # Regular expression to match HTML/XML comments outside of sections
     COMMENT_REGEX = /<!--.*?-->/m
@@ -296,16 +297,22 @@ module Rhales
     def validate_ast!
       sections = @ast.children.map { |node| node.value[:tag] }
 
-      # Check for required sections
-      missing = REQUIRED_SECTIONS - sections
-      if missing.any?
-        raise ParseError.new("Missing required sections: #{missing.join(', ')}", line: 1, column: 1)
+      # Check that at least one required section is present
+      required_present = REQUIRES_ONE_OF_SECTIONS & sections
+      if required_present.empty?
+        raise ParseError.new("Must have at least one of: #{REQUIRES_ONE_OF_SECTIONS.join(', ')}", line: 1, column: 1)
       end
 
       # Check for duplicates
       duplicates = sections.select { |tag| sections.count(tag) > 1 }.uniq
       if duplicates.any?
         raise ParseError.new("Duplicate sections: #{duplicates.join(', ')}", line: 1, column: 1)
+      end
+
+      # Check for unknown sections
+      unknown = sections - KNOWN_SECTIONS
+      if unknown.any?
+        raise ParseError.new("Unknown sections: #{unknown.join(', ')}", line: 1, column: 1)
       end
     end
 
@@ -314,46 +321,83 @@ module Rhales
     end
 
     # Preprocess content to strip XML/HTML comments outside of sections
+    # Uses Ruby 3.4+ pattern matching for robust, secure parsing
     def preprocess_content(content)
-      # Simple regex-based approach that strips comments outside of sections
-      # This preserves comments within section content
-      result = content.dup
+      tokens = tokenize_content(content)
 
-      # Match sections to preserve their content
-      sections = []
-      section_pattern = /<(data|template|logic)(\s[^>]*)?>(.*?)<\/\1>/m
+      # Use pattern matching to filter out comments outside sections
+      result_parts = []
+      in_section = false
 
-      # Extract sections with their positions
-      result.scan(section_pattern) do |match|
-        sections << {
-          full_match: $&,
-          start_pos: $~.begin(0),
-          end_pos: $~.end(0),
-          tag: match[0],
-          content: match[2]
-        }
+      tokens.each do |token|
+        case token
+        in { type: :comment } unless in_section
+          # Skip comments outside sections
+          next
+        in { type: :section_start }
+          in_section = true
+          result_parts << token[:content]
+        in { type: :section_end }
+          in_section = false
+          result_parts << token[:content]
+        in { type: :comment | :text, content: content }
+          # Include comments inside sections and all text
+          result_parts << content
+        end
       end
 
-      # Remove comments only from content outside sections
-      processed = ""
-      last_end = 0
+      result_parts.join
+    end
 
-      sections.each do |section|
-        # Process content before this section (strip comments)
-        before_section = result[last_end...section[:start_pos]]
-        processed << before_section.gsub(/<!--.*?-->/m, '')
+    private
 
-        # Add the section as-is (preserving internal comments)
-        processed << section[:full_match]
+    # Tokenize content into structured tokens for pattern matching
+    def tokenize_content(content)
+      tokens = []
+      i = 0
 
-        last_end = section[:end_pos]
+      while i < content.length
+        case
+        when content[i, 4] == '<!--'
+          # Comment token
+          comment_end = content.index('-->', i + 4)
+          if comment_end
+            comment_content = content[i..comment_end + 2]
+            tokens << { type: :comment, content: comment_content }
+            i = comment_end + 3
+          else
+            # Unclosed comment - treat as text
+            tokens << { type: :text, content: content[i] }
+            i += 1
+          end
+        when content[i] == '<' && content[i + 1] != '!' && content[i + 1] != '/'
+          # Potential section start
+          tag_end = content.index('>', i)
+          if tag_end && (match = content[i..tag_end].match(/^<(data|template|logic)(\s[^>]*)?>/))
+            tokens << { type: :section_start, content: content[i..tag_end] }
+            i = tag_end + 1
+          else
+            tokens << { type: :text, content: content[i] }
+            i += 1
+          end
+        when content[i, 2] == '</'
+          # Potential section end
+          tag_end = content.index('>', i)
+          if tag_end && (match = content[i..tag_end].match(/^<\/(data|template|logic)>/))
+            tokens << { type: :section_end, content: content[i..tag_end] }
+            i = tag_end + 1
+          else
+            tokens << { type: :text, content: content[i] }
+            i += 1
+          end
+        else
+          # Regular text
+          tokens << { type: :text, content: content[i] }
+          i += 1
+        end
       end
 
-      # Process remaining content after last section (strip comments)
-      after_sections = result[last_end..-1]
-      processed << after_sections.gsub(/<!--.*?-->/m, '')
-
-      processed
+      tokens
     end
   end
 end

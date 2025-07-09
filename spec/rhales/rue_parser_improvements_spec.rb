@@ -168,5 +168,195 @@ RSpec.describe 'Rue Parser Improvements' do
       expect { document.parse! }.not_to raise_error
       expect(document.section('template')).to include('<!-- This comment should be preserved -->')
     end
+
+    it 'handles multiple complex comments outside sections' do
+      content = <<~RUE
+        <!--
+          Multi-line comment
+          with lots of content
+        -->
+        <!-- Another comment -->
+        <!-- Yet another -->
+        <data>{"user": "john"}</data>
+        <!-- Comment between sections -->
+        <!--
+          Another multi-line
+          comment
+        -->
+        <template>
+          <h1>Hello World</h1>
+        </template>
+        <!-- Final comment -->
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      expect { document.parse! }.not_to raise_error
+      expect(document.section('data')).to eq('{"user": "john"}')
+      expect(document.section('template')).to include('<h1>Hello World</h1>')
+    end
+  end
+
+  describe 'JSON object interpolation in data sections' do
+    it 'supports Ruby Hash object interpolation' do
+      context = Rhales::Context.minimal(props: {
+        'onetime_window' => { 'csrf' => 'abc123', 'user' => { 'id' => 123, 'name' => 'Alice' } }
+      })
+
+      content = <<~RUE
+        <data>{{{onetime_window}}}</data>
+        <template>
+          <h1>Hello World</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      document.parse!
+
+      # Process the data section through the aggregator
+      aggregator = Rhales::HydrationDataAggregator.new(context)
+      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+
+      expect(processed_data).to eq({
+        'csrf' => 'abc123',
+        'user' => { 'id' => 123, 'name' => 'Alice' }
+      })
+    end
+
+    it 'supports Ruby Array object interpolation' do
+      context = Rhales::Context.minimal(props: {
+        'items' => [{ 'id' => 1, 'name' => 'Item 1' }, { 'id' => 2, 'name' => 'Item 2' }]
+      })
+
+      content = <<~RUE
+        <data>{{{items}}}</data>
+        <template>
+          <h1>Items</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      document.parse!
+
+      aggregator = Rhales::HydrationDataAggregator.new(context)
+      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+
+      expect(processed_data).to eq([
+        { 'id' => 1, 'name' => 'Item 1' },
+        { 'id' => 2, 'name' => 'Item 2' }
+      ])
+    end
+
+    it 'maintains backward compatibility with string values' do
+      context = Rhales::Context.minimal(props: {
+        'simple_string' => 'hello world'
+      })
+
+      content = <<~RUE
+        <data>"{{simple_string}}"</data>
+        <template>
+          <h1>Test</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      document.parse!
+
+      aggregator = Rhales::HydrationDataAggregator.new(context)
+      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+
+      expect(processed_data).to eq('hello world')
+    end
+  end
+
+  describe 'Unknown attribute warnings' do
+    it 'warns about unknown data section attributes' do
+      content = <<~RUE
+        <data window="onetime" schema="@/types/window.d.ts" unknown="value">
+        {"test": "data"}
+        </data>
+        <template>
+          <h1>Test</h1>
+        </template>
+      RUE
+
+      expect {
+        document = Rhales::RueDocument.new(content, 'test.rue')
+        document.parse!
+      }.to output(/Warning: data section encountered '(schema|unknown)' attribute - not yet supported, ignoring in test.rue/).to_stderr
+    end
+
+    it 'does not warn about known attributes' do
+      content = <<~RUE
+        <data window="onetime" merge="deep" layout="main">
+        {"test": "data"}
+        </data>
+        <template>
+          <h1>Test</h1>
+        </template>
+      RUE
+
+      expect {
+        document = Rhales::RueDocument.new(content)
+        document.parse!
+      }.not_to output.to_stderr
+    end
+  end
+
+  describe 'Flexible section requirements' do
+    it 'allows data-only files' do
+      content = <<~RUE
+        <data window="onetime">
+        {"csrf": "abc123", "user": "john"}
+        </data>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      expect { document.parse! }.not_to raise_error
+      expect(document.section('data')).to include('"csrf": "abc123"')
+      expect(document.section('template')).to be_nil
+    end
+
+    it 'allows template-only files' do
+      content = <<~RUE
+        <template>
+          <h1>Hello World</h1>
+          <p>Template only content</p>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      expect { document.parse! }.not_to raise_error
+      expect(document.section('template')).to include('<h1>Hello World</h1>')
+      expect(document.section('data')).to be_nil
+    end
+
+    it 'requires at least one of data or template' do
+      content = <<~RUE
+        <logic>
+        # Just logic, no data or template
+        </logic>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      expect { document.parse! }.to raise_error(Rhales::RueDocument::ParseError) do |error|
+        expect(error.message).to include('Must have at least one of: data, template')
+      end
+    end
+
+    it 'rejects unknown sections' do
+      content = <<~RUE
+        <unknown>
+        Content
+        </unknown>
+        <template>
+          <h1>Test</h1>
+        </template>
+      RUE
+
+      document = Rhales::RueDocument.new(content)
+      expect { document.parse! }.to raise_error(Rhales::RueDocument::ParseError) do |error|
+        expect(error.message).to include('Unknown sections: unknown')
+      end
+    end
   end
 end

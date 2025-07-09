@@ -52,7 +52,7 @@ RSpec.describe 'Two Parser Architecture' do
       expect do
         Rhales::RueFormatParser.new('<logic>Only logic section</logic>').parse!
       end.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
-        expect(error.message).to include('Missing required sections: template')
+        expect(error.message).to include('Must have at least one of: data, template')
       end
     end
 

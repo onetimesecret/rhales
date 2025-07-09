@@ -82,8 +82,11 @@ module Rhales
     end
 
     def process_data_section(data_content, parser)
+      # Create a JSON-aware context wrapper for data sections
+      json_context = JsonAwareContext.new(@context)
+
       # Process template variables in the data section
-      processed_content = TemplateEngine.render(data_content, @context)
+      processed_content = TemplateEngine.render(data_content, json_context)
 
       # Parse as JSON
       begin
@@ -174,5 +177,37 @@ module Rhales
       return true if data.respond_to?(:empty?) && data.empty?
       false
     end
+  end
+
+  # Context wrapper that automatically converts Ruby objects to JSON in data sections
+  class JsonAwareContext
+    def initialize(context)
+      @context = context
+    end
+
+    # Delegate all methods to the wrapped context
+    def method_missing(method, *args, &block)
+      @context.send(method, *args, &block)
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      @context.respond_to?(method, include_private)
+    end
+
+    # Override get method to return JSON-serialized objects
+    def get(variable_path)
+      value = @context.get(variable_path)
+
+      # Convert Ruby objects to JSON for data sections
+      case value
+      when Hash, Array
+        value.to_json
+      else
+        value
+      end
+    end
+
+    # Alias for compatibility with template engine
+    alias_method :resolve_variable, :get
   end
 end

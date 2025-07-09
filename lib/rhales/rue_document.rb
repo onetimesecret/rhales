@@ -31,9 +31,13 @@ module Rhales
     class SectionDuplicateError < ParseError; end
     class InvalidSyntaxError < ParseError; end
 
-    REQUIRED_SECTIONS = %w[template].freeze
-    OPTIONAL_SECTIONS = %w[data logic].freeze
-    ALL_SECTIONS      = (REQUIRED_SECTIONS + OPTIONAL_SECTIONS).freeze
+    # At least one of these sections must be present
+    REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
+    KNOWN_SECTIONS = %w[data template logic].freeze
+    ALL_SECTIONS = KNOWN_SECTIONS.freeze
+
+    # Known data section attributes
+    KNOWN_DATA_ATTRIBUTES = %w[window merge layout].freeze
 
     attr_reader :content, :file_path, :grammar, :ast
 
@@ -262,10 +266,26 @@ module Rhales
 
       if data_section
         @data_attributes = data_section.value[:attributes].dup
+
+        # Validate attributes and warn about unknown ones
+        validate_data_attributes!
       end
 
       # Set default window attribute
       @data_attributes['window'] ||= 'data'
+    end
+
+    def validate_data_attributes!
+      unknown_attributes = @data_attributes.keys - KNOWN_DATA_ATTRIBUTES
+
+      unknown_attributes.each do |attr|
+        warn_unknown_attribute(attr)
+      end
+    end
+
+    def warn_unknown_attribute(attribute)
+      file_info = @file_path ? " in #{@file_path}" : ""
+      warn "Warning: data section encountered '#{attribute}' attribute - not yet supported, ignoring#{file_info}"
     end
 
     class << self
