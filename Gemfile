@@ -4,6 +4,7 @@ source 'https://rubygems.org'
 gemspec
 
 group :development, :test do
+  gem 'benchmark'
   gem 'rack-test'
   gem 'rspec', '~> 3.12'
   gem 'simplecov', '~> 0.22'
