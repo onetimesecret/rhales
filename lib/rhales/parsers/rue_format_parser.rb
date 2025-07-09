@@ -1,5 +1,6 @@
 # lib/rhales/parsers/rue_format_parser.rb
 
+require 'strscan'
 require_relative 'handlebars_parser'
 
 module Rhales
@@ -352,48 +353,29 @@ module Rhales
     private
 
     # Tokenize content into structured tokens for pattern matching
+    # Uses StringScanner for better performance and cleaner code
     def tokenize_content(content)
+      scanner = StringScanner.new(content)
       tokens = []
-      i = 0
 
-      while i < content.length
+      until scanner.eos?
         case
-        when content[i, 4] == '<!--'
-          # Comment token
-          comment_end = content.index('-->', i + 4)
-          if comment_end
-            comment_content = content[i..comment_end + 2]
-            tokens << { type: :comment, content: comment_content }
-            i = comment_end + 3
-          else
-            # Unclosed comment - treat as text
-            tokens << { type: :text, content: content[i] }
-            i += 1
-          end
-        when content[i] == '<' && content[i + 1] != '!' && content[i + 1] != '/'
-          # Potential section start
-          tag_end = content.index('>', i)
-          if tag_end && (match = content[i..tag_end].match(/^<(data|template|logic)(\s[^>]*)?>/))
-            tokens << { type: :section_start, content: content[i..tag_end] }
-            i = tag_end + 1
-          else
-            tokens << { type: :text, content: content[i] }
-            i += 1
-          end
-        when content[i, 2] == '</'
-          # Potential section end
-          tag_end = content.index('>', i)
-          if tag_end && (match = content[i..tag_end].match(/^<\/(data|template|logic)>/))
-            tokens << { type: :section_end, content: content[i..tag_end] }
-            i = tag_end + 1
-          else
-            tokens << { type: :text, content: content[i] }
-            i += 1
-          end
+        when scanner.scan(/<!--.*?-->/m)
+          # Comment token - non-greedy match for complete comments
+          tokens << { type: :comment, content: scanner.matched }
+        when scanner.scan(/<(data|template|logic)(\s[^>]*)?>/m)
+          # Section start token - matches opening tags with optional attributes
+          tokens << { type: :section_start, content: scanner.matched }
+        when scanner.scan(/<\/(data|template|logic)>/m)
+          # Section end token - matches closing tags
+          tokens << { type: :section_end, content: scanner.matched }
+        when scanner.scan(/[^<]+/)
+          # Text token - consolidates runs of non-< characters for efficiency
+          tokens << { type: :text, content: scanner.matched }
         else
-          # Regular text
-          tokens << { type: :text, content: content[i] }
-          i += 1
+          # Fallback for single characters (< that don't match patterns)
+          # This maintains compatibility with the original character-by-character behavior
+          tokens << { type: :text, content: scanner.getch }
         end
       end
 
