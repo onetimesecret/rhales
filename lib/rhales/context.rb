@@ -4,21 +4,24 @@ require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
 require_relative 'adapters/base_request'
+require_relative 'csp'
 
 module Rhales
     # RSFCContext provides a clean interface for RSFC templates to access
     # server-side data. Follows the established pattern from InitScriptContext
     # and EnvironmentContext for focused, single-responsibility context objects.
     #
-    # The context provides three layers of data:
-    # 1. Runtime: Request metadata (CSRF tokens, nonces, request ID)
+    # The context provides two layers of data:
+    # 1. App: Framework-provided data (CSRF tokens, authentication, config)
     # 2. Props: Application data passed to the view (user, content, features)
-    # 3. Computed: Server-side transformations and derived values
+    #
+    # App data is accessible as both direct variables and through the app.* namespace.
+    # Props take precedence over app data for variable resolution.
     #
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :sess, :cust, :locale, :runtime_data, :props, :computed_data, :config
+      attr_reader :req, :sess, :cust, :locale, :props, :config, :app_data
 
       def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
         @req           = req
@@ -30,13 +33,12 @@ module Rhales
         # Normalize props keys to strings for consistent access
         @props = normalize_keys(props).freeze
 
-        # Build context layers
-        @runtime_data  = build_runtime_data.freeze
-        @computed_data = build_computed_data.freeze
+        # Build context layers (two-layer model: app + props)
+        @app_data = build_app_data.freeze
 
         # Pre-compute all_data before freezing
-        # Props take precedence over computed data
-        @all_data = @runtime_data.merge(@computed_data).merge(@props).freeze
+        # Props take precedence over app data, and add app namespace
+        @all_data = @app_data.merge(@props).merge({ 'app' => @app_data }).freeze
 
         # Make context immutable after creation
         freeze
@@ -95,40 +97,34 @@ module Rhales
 
     private
 
-      # Build runtime data (request metadata)
-      def build_runtime_data
-        runtime = {}
 
+      # Build consolidated app data (replaces runtime_data + computed_data)
+      def build_app_data
+        app = {}
+
+        # Request context (from current runtime_data)
         if req && req.respond_to?(:env) && req.env
-          runtime['csrf_token']      = req.env.fetch(@config.csrf_token_name, nil)
-          runtime['nonce']           = req.env.fetch(@config.nonce_header_name, nil)
-          runtime['request_id']      = req.env.fetch('request_id', nil)
-          runtime['domain_strategy'] = req.env.fetch('domain_strategy', :default)
-          runtime['display_domain']  = req.env.fetch('display_domain', nil)
+          app['csrf_token'] = req.env.fetch(@config.csrf_token_name, nil)
+          app['nonce'] = get_or_generate_nonce
+          app['request_id'] = req.env.fetch('request_id', nil)
+          app['domain_strategy'] = req.env.fetch('domain_strategy', :default)
+          app['display_domain'] = req.env.fetch('display_domain', nil)
+        else
+          # Generate nonce even without request if CSP is enabled
+          app['nonce'] = get_or_generate_nonce
         end
 
-        # Add basic app environment info
-        runtime['app_environment'] = @config.app_environment
-        runtime['api_base_url']    = @config.api_base_url
+        # Configuration (from both layers)
+        app['environment'] = @config.app_environment
+        app['api_base_url'] = @config.api_base_url
+        app['features'] = @config.features
+        app['development'] = @config.development?
 
-        runtime
-      end
+        # Authentication & UI (from current computed_data)
+        app['authenticated'] = authenticated?
+        app['theme_class'] = determine_theme_class
 
-      # Build computed data (derived values)
-      def build_computed_data
-        computed = {}
-
-        # Theme and UI state
-        computed['theme_class']   = determine_theme_class
-        computed['authenticated'] = authenticated?
-
-        # Feature flags from configuration
-        computed['features'] = @config.features
-
-        # Development mode flags
-        computed['development'] = @config.development?
-
-        computed
+        app
       end
 
       # Build API base URL from configuration (deprecated - moved to config)
@@ -204,6 +200,29 @@ module Rhales
         end
 
         paths
+      end
+
+      # Get or generate nonce for CSP
+      def get_or_generate_nonce
+        # Try to get existing nonce from request env
+        if req && req.respond_to?(:env) && req.env
+          existing_nonce = req.env.fetch(@config.nonce_header_name, nil)
+          return existing_nonce if existing_nonce
+        end
+
+        # Generate new nonce if auto_nonce is enabled or CSP is enabled
+        return CSP.generate_nonce if @config.auto_nonce || (@config.csp_enabled && csp_nonce_required?)
+
+        # Return nil if nonce is not needed
+        nil
+      end
+
+      # Check if CSP policy requires nonce
+      def csp_nonce_required?
+        return false unless @config.csp_enabled
+
+        csp = CSP.new(@config)
+        csp.nonce_required?
       end
 
       class << self

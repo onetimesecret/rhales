@@ -47,14 +47,19 @@ module Rhales
       # Build template path for error reporting
       template_path = build_template_path(parser)
 
-      # Check for collisions
-      if @window_attributes.key?(window_attr) && merge_strategy.nil?
-        existing = @window_attributes[window_attr]
-        raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
-      end
-
-      # Process the data section
+      # Process the data section first to check if it's empty
       processed_data = process_data_section(data_content, parser)
+
+      # Check for collisions only if the data is not empty
+      if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
+        existing = @window_attributes[window_attr]
+        existing_data = @merged_data[window_attr]
+
+        # Only raise collision error if existing data is also not empty
+        unless empty_data?(existing_data)
+          raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
+        end
+      end
 
       # Merge or set the data
       if @merged_data.key?(window_attr)
@@ -77,8 +82,11 @@ module Rhales
     end
 
     def process_data_section(data_content, parser)
+      # Create a JSON-aware context wrapper for data sections
+      json_context = JsonAwareContext.new(@context)
+
       # Process template variables in the data section
-      processed_content = TemplateEngine.render(data_content, @context)
+      processed_content = TemplateEngine.render(data_content, json_context)
 
       # Parse as JSON
       begin
@@ -160,5 +168,53 @@ module Rhales
         "<inline>:#{line_number}"
       end
     end
+
+    # Check if data is considered empty for collision detection
+    def empty_data?(data)
+      return true if data.nil?
+      return true if data == {}
+      return true if data == []
+      return true if data.respond_to?(:empty?) && data.empty?
+      false
+    end
+  end
+
+  # Context wrapper that automatically converts Ruby objects to JSON in data sections
+  class JsonAwareContext
+    def initialize(context)
+      @context = context
+    end
+
+    # Delegate all methods to the wrapped context
+    def method_missing(method, *args, &block)
+      @context.send(method, *args, &block)
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      @context.respond_to?(method, include_private)
+    end
+
+    # Override get method to return JSON-serialized objects
+    def get(variable_path)
+      value = @context.get(variable_path)
+
+      # Convert Ruby objects to JSON for data sections
+      case value
+      when Hash, Array
+        begin
+          value.to_json
+        rescue JSON::GeneratorError, SystemStackError => ex
+          # Handle serialization errors (circular references, unsupported types, etc.)
+          raise JSONSerializationError,
+            "Failed to serialize Ruby object to JSON: #{ex.message}. " \
+            "Object type: #{value.class}, var path: #{variable_path}..."
+        end
+      else
+        value
+      end
+    end
+
+    # Alias for compatibility with template engine
+    alias_method :resolve_variable, :get
   end
 end

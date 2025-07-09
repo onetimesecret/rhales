@@ -52,6 +52,24 @@ RSpec.describe Rhales::Context do
       expect(subject.get('theme_class')).to eq('theme-dark')
     end
 
+    it 'retrieves app data through app namespace' do
+      expect(subject.get('app.csrf_token')).to eq('test-csrf')
+      expect(subject.get('app.nonce')).to eq('test-nonce')
+      expect(subject.get('app.authenticated')).to be(true)
+      expect(subject.get('app.theme_class')).to eq('theme-dark')
+    end
+
+    it 'has app_data attribute' do
+      expect(subject.app_data).to be_a(Hash)
+      expect(subject.app_data['csrf_token']).to eq('test-csrf')
+      expect(subject.app_data['authenticated']).to be(true)
+    end
+
+    it 'accesses environment through app namespace' do
+      expect(subject.get('app.environment')).to eq('test')
+      expect(subject.get('environment')).to eq('test')
+    end
+
     it 'supports dot notation' do
       nested_data = { user: { profile: { name: 'John' } } }
       context     = described_class.new(nil, nil, nil, 'en', props: nested_data)
@@ -83,7 +101,7 @@ RSpec.describe Rhales::Context do
       variables = subject.available_variables
       expect(variables).to include('user')
       expect(variables).to include('user.name')
-      expect(variables).to include('app_environment')
+      expect(variables).to include('environment')
       expect(variables).to include('authenticated')
     end
   end
@@ -120,8 +138,92 @@ RSpec.describe Rhales::Context do
 
     it 'uses custom configuration' do
       expect(subject.locale).to eq('fr')
-      expect(subject.get('app_environment')).to eq('staging')
+      expect(subject.get('environment')).to eq('staging')
       expect(subject.get('features.custom_feature')).to be(true)
+    end
+  end
+
+  describe 'CSP nonce generation' do
+    context 'with existing nonce in request env' do
+      let(:mock_request) { double('request', env: { 'nonce' => 'existing-nonce' }) }
+      subject { described_class.new(mock_request, nil, nil, 'en') }
+
+      it 'uses existing nonce' do
+        expect(subject.get('nonce')).to eq('existing-nonce')
+      end
+    end
+
+    context 'with auto_nonce enabled' do
+      let(:config) do
+        config = Rhales::Configuration.new
+        config.auto_nonce = true
+        config.csp_enabled = false
+        config
+      end
+      let(:mock_request) { double('request', env: {}) }
+      subject { described_class.new(mock_request, nil, nil, 'en', config: config) }
+
+      it 'generates nonce automatically' do
+        nonce = subject.get('nonce')
+        expect(nonce).to be_a(String)
+        expect(nonce.length).to eq(32)
+        expect(nonce).to match(/\A[0-9a-f]{32}\z/)
+      end
+    end
+
+    context 'with CSP enabled and nonce required' do
+      let(:config) do
+        config = Rhales::Configuration.new
+        config.csp_enabled = true
+        config.auto_nonce = false
+        config.csp_policy = {
+          'script-src' => ["'self'", "'nonce-{{nonce}}'"]
+        }
+        config
+      end
+      let(:mock_request) { double('request', env: {}) }
+      subject { described_class.new(mock_request, nil, nil, 'en', config: config) }
+
+      it 'generates nonce when CSP requires it' do
+        nonce = subject.get('nonce')
+        expect(nonce).to be_a(String)
+        expect(nonce.length).to eq(32)
+        expect(nonce).to match(/\A[0-9a-f]{32}\z/)
+      end
+    end
+
+    context 'with CSP enabled but no nonce required' do
+      let(:config) do
+        config = Rhales::Configuration.new
+        config.csp_enabled = true
+        config.auto_nonce = false
+        config.csp_policy = {
+          'script-src' => ["'self'"]
+        }
+        config
+      end
+      let(:mock_request) { double('request', env: {}) }
+      subject { described_class.new(mock_request, nil, nil, 'en', config: config) }
+
+      it 'does not generate nonce' do
+        expect(subject.get('nonce')).to be_nil
+      end
+    end
+
+    context 'without request object' do
+      let(:config) do
+        config = Rhales::Configuration.new
+        config.auto_nonce = true
+        config
+      end
+      subject { described_class.new(nil, nil, nil, 'en', config: config) }
+
+      it 'generates nonce even without request' do
+        nonce = subject.get('nonce')
+        expect(nonce).to be_a(String)
+        expect(nonce.length).to eq(32)
+        expect(nonce).to match(/\A[0-9a-f]{32}\z/)
+      end
     end
   end
 end

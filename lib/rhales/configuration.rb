@@ -20,7 +20,7 @@ module Rhales
     attr_accessor :template_paths, :template_root, :cache_templates
 
     # Security settings
-    attr_accessor :csrf_token_name, :nonce_header_name
+    attr_accessor :csrf_token_name, :nonce_header_name, :csp_enabled, :csp_policy, :auto_nonce
 
     # Feature flags
     attr_accessor :features
@@ -40,6 +40,9 @@ module Rhales
       @cache_templates        = true
       @csrf_token_name        = 'csrf_token'
       @nonce_header_name      = 'nonce'
+      @csp_enabled            = true
+      @auto_nonce             = true
+      @csp_policy             = default_csp_policy
       @features               = {}
       @site_ssl_enabled       = false
       @cache_parsed_templates = true
@@ -64,6 +67,27 @@ module Rhales
     # Check if production mode
     def production?
       @app_environment == 'production'
+    end
+
+    # Default CSP policy with secure defaults
+    def default_csp_policy
+      {
+        'default-src' => ["'self'"],
+        'script-src' => ["'self'", "'nonce-{{nonce}}'"],
+        'style-src' => ["'self'", "'nonce-{{nonce}}'", "'unsafe-hashes'"],
+        'img-src' => ["'self'", 'data:'],
+        'font-src' => ["'self'"],
+        'connect-src' => ["'self'"],
+        'base-uri' => ["'self'"],
+        'form-action' => ["'self'"],
+        'frame-ancestors' => ["'none'"],
+        'object-src' => ["'none'"],
+        'media-src' => ["'self'"],
+        'worker-src' => ["'self'"],
+        'manifest-src' => ["'self'"],
+        'prefetch-src' => ["'self'"],
+        'upgrade-insecure-requests' => []
+      }.freeze
     end
 
     # Get feature flag value

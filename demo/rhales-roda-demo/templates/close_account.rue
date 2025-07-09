@@ -1,4 +1,4 @@
-<data>
+<data layout="layouts/main">
 {
   "page_title": "Close Account",
   "submit_text": "Close Account",

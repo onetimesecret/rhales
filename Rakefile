@@ -1,5 +1,7 @@
 # Rakefile
 
+$:.unshift(File.expand_path('lib', __dir__))
+
 require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 

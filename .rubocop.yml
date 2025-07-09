@@ -118,12 +118,6 @@ Style/ModuleFunction:
   AutoCorrect: false
   EnforcedStyle: extend_self
 
-# Prefer 3 line if/else over one-liner
-Style/GuardClause:
-  Enabled: true
-  MinBodyLength: 3
-  AllowConsecutiveConditionals: false
-
 Style/SymbolArray:
   EnforcedStyle: brackets
   Enabled: true
@@ -179,11 +173,21 @@ Layout/EndAlignment:
   # Leave commented out. When we set align with, endless "error occurred"
   # EnforcedStyle: keyword # keyword, variable, start_of_line
 
+## vvvvvv Causing ruby-lsp errors in zed ? (July 8)
+##
+# Prefer 3 line if/else over one-liner
+Style/GuardClause:
+  Enabled: false
+  MinBodyLength: 3
+  AllowConsecutiveConditionals: false
+
 Layout/ExtraSpacing:
-  Enabled: true
+  Enabled: false
   AllowForAlignment: true
   AllowBeforeTrailingComments: true
   ForceEqualSignAlignment: true
+## ^^^^^^
+
 
 Layout/IndentationConsistency:
   EnforcedStyle: indented_internal_methods

@@ -56,6 +56,48 @@ plugin :render, engine: 'myengine'
 render('template') # renders template.myengine
 ```
 
+## Layouts
+
+ In Roda, you can specify layouts and create defaults through the render plugin configuration:
+
+  Specifying a Layout File
+```ruby
+  # Set a specific layout file
+  plugin :render, layout: 'my_layout'
+
+  # Or specify per-render
+  render('template', layout: 'specific_layout')
+```
+
+  Creating Default Layout
+
+  Roda automatically looks for layout.erb (or .engine extension) in your views directory. To create a default layout:
+
+```html
+  # views/layout.erb
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>My App</title>
+  </head>
+  <body>
+    <%= yield %>
+  </body>
+  </html>
+```
+
+  Layout Configuration Options
+
+```ruby
+  plugin :render,
+    layout: 'layout',           # Default layout file
+    layout_opts: {engine: 'erb'}, # Layout-specific options
+    views: 'views'              # Views directory
+```
+
+  The layout file receives the rendered template content via yield and can access the same instance variables and locals as your templates.
+
+
 ## Using Custom Template Classes Directly
 
 For maximum control, you can bypass Tilt entirely and provide your own template class using the `:template_class` option:

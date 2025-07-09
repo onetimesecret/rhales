@@ -1,4 +1,4 @@
-<data window="demoData">
+<data window="data" layout="layouts/main">
 {
   "page_type": "public",
   "features": [
@@ -28,59 +28,58 @@
 </data>
 
 <template>
-<div style="text-align: center; padding: 4rem 0;">
-  <h1 style="font-size: 3rem; margin-bottom: 1rem;">Welcome to Rhales Demo</h1>
-  <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">
+<div class="hero-section">
+  <h1 class="hero-title">Welcome to Rhales Demo</h1>
+  <p class="hero-subtitle">
     Experience the power of Ruby Single File Components
   </p>
 
   {{#unless authenticated}}
-  <div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; margin: 2rem auto; max-width: 400px;">
+  <div class="demo-login">
     <h3>Demo Login</h3>
     <p>Use these credentials to see the authenticated experience:</p>
 
-    <div style="background: white; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+    <div class="demo-accounts">
       {{#each demo_accounts}}
-        <div style="margin-bottom: 0.5rem;">
+        <div class="demo-account">
           <p><strong>{{role}} Account:</strong> {{email}} / {{password}}</p>
         </div>
       {{/each}}
     </div>
 
-    <a href="/login" style="background: #007bff; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px;">Login Now</a>
+    <a href="/login" class="login-link">Login Now</a>
   </div>
   {{/unless}}
 
   {{#if authenticated}}
-  <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin: 2rem auto; max-width: 400px;">
+  <div class="auth-notice">
     <p>✓ You're logged in! <a href="/">View Dashboard</a></p>
   </div>
   {{/if}}
 
-  <div class="features" style="margin: 3rem 0;">
+  <div class="features-section">
     <h2>RSFC Features Demonstrated</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 2rem;">
+    <div class="features-grid">
       {{#each features}}
-        <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
-          <div style="font-size: 3rem; margin-bottom: 1rem;">{{icon}}</div>
-          <h3 style="margin-bottom: 1rem;">{{title}}</h3>
-          <p style="color: #666; font-size: 0.9rem;">{{description}}</p>
+        <div class="feature-card">
+          <div class="feature-icon">{{icon}}</div>
+          <h3 class="feature-title">{{title}}</h3>
+          <p class="feature-description">{{description}}</p>
         </div>
       {{/each}}
     </div>
   </div>
 </div>
 
-<script>
+<script nonce="{{app.nonce}}">
 // Demonstrate client-side access to hydrated data
 document.addEventListener('DOMContentLoaded', function() {
-  if (window.demoData) {
-    console.log('Rhales Demo hydrated with data:', window.demoData);
+  if (window.data) {
+    console.log('Rhales Demo hydrated with data:', window.data);
 
     // Add a dynamic timestamp
     const timestamp = document.createElement('p');
-    timestamp.style.fontSize = '0.8rem';
-    timestamp.style.color = '#999';
+    timestamp.className = 'timestamp';
     timestamp.innerHTML = 'Page rendered at: ' + new Date().toLocaleString();
     document.body.appendChild(timestamp);
   }

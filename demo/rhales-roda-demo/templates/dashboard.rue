@@ -1,4 +1,4 @@
-<data window="userDashboard">
+<data window="userDashboard" layout="layouts/main">
 {
   "welcome_message": "{{welcome_message}}",
   "login_time": "{{login_time}}",
