@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rhales (0.2.0)
+    rhales (0.2.5)
 
 GEM
   remote: https://rubygems.org/
