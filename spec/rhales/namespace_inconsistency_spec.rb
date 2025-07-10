@@ -2,32 +2,34 @@
 
 require 'spec_helper'
 
-# TDD - demonstrates current behavior before fix
+# TDD - demonstrates current BROKEN behavior that needs to be fixed
 #
-# NAMESPACE INCONSISTENCY PROBLEM SUMMARY:
-# ========================================
+# NAMESPACE INCONSISTENCY PROBLEM:
+# ================================
 #
-# Current Behavior:
-# - Direct access to data section variables works: {{variable}}
-# - Namespaced access does NOT work: {{windowName.variable}}
-# - Client-side gets data under window namespace: window.windowName.variable
+# Current Broken Behavior:
+# - Direct access to data section variables FAILS: {{variable}} → empty
+# - Namespaced access also FAILS: {{windowName.variable}} → empty
+# - Client-side gets data under window namespace: window.windowName.variable (works)
+# - Server-side templates CANNOT access processed data from <data> sections
 #
 # The UX Problem:
-# - Users see `<data window="myData">` and expect `{{myData.variable}}` to work
-# - But only `{{variable}}` works in server templates
-# - This creates confusion about data access patterns
+# - Users see `<data window="myData">{"message": "{{greeting}}}</data>`
+# - They expect `{{message}}` to work in templates but it doesn't
+# - This creates major confusion about data access patterns
+# - Only client-side JavaScript can access the data, not server templates
 #
-# Expected Behavior (to be implemented):
-# - Direct access should work: {{variable}}
-# - Namespaced access should work: {{windowName.variable}}
-# - Both should access the same processed data from the <data> section
+# Expected Behavior (needs implementation):
+# - Direct access should work: {{variable}} ✅ (CURRENTLY BROKEN)
+# - Data from <data> section should be accessible in server templates
 # - Client-side continues to use: window.windowName.variable
+# - Window attributes should only affect client organization, not server access
 #
-# Key Issues Demonstrated:
-# 1. Namespaced template access fails ({{myData.variable}} doesn't work)
-# 2. Window attribute name doesn't provide expected namespaced access
-# 3. UX inconsistency between server template syntax and client data access
-RSpec.describe 'Namespace Inconsistency Problem' do
+# Key Issues That Need Fixing:
+# 1. Server templates cannot access processed data from <data> sections
+# 2. create_context_with_rue_data doesn't properly merge processed data
+# 3. Major disconnect between server template context and client hydration data
+RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
   let(:props) do
     {
       greeting: 'Hello World',
@@ -41,12 +43,11 @@ RSpec.describe 'Namespace Inconsistency Problem' do
   end
 
   describe 'Core Issue: Data in templates vs client hydration inconsistency' do
-    it 'demonstrates that data section values are not accessible in server templates' do
-      # TDD - demonstrates current behavior before fix
-      # The issue: <data> section defines processed values, but server templates
-      # can't access them - they only get the original props context
+    it 'demonstrates that main templates WITH data sections work (not the real issue)' do
+      # This shows that main templates with <data> sections already work correctly
+      template_path = File.join('spec', 'fixtures', 'templates', 'main_template_works.rue')
       template_content = <<~RUE
-        <data window="appData">
+        <data>
         {
           "displayMessage": "Welcome: {{greeting}}",
           "userInfo": "User is {{user.name}}"
@@ -61,32 +62,82 @@ RSpec.describe 'Namespace Inconsistency Problem' do
         </template>
       RUE
 
-      parser = Rhales::RueDocument.new(template_content)
-      parser.parse!
+      File.write(template_path, template_content)
 
-      # Using just the original context (what templates currently get)
-      engine = Rhales::TemplateEngine.new(parser.section('template'), context)
-      result = engine.render
+      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      allow(view).to receive(:resolve_template_path).and_return(template_path)
 
-      # The processed data values are NOT available in the template
-      expect(result).not_to include('Welcome: Hello World')
-      expect(result).not_to include('User is John Doe')
-      expect(result).to include('<h1></h1>')  # Empty because {{displayMessage}} not found
-      expect(result).to include('<p></p>')  # Empty because {{userInfo}} not found
+      result = view.render('main_template_works')
 
-      # But the hydration data contains the processed values
-      hydrator = Rhales::Hydrator.new(parser, context)
-      client_data = hydrator.processed_data_hash
+      # This actually WORKS for main templates without window attributes
+      expect(result).to include('Welcome: Hello World')
+      expect(result).to include('User is John Doe')
+      expect(result).to include('<h1>Welcome: Hello World</h1>')
+      expect(result).to include('<p>User is John Doe</p>')
 
-      expect(client_data['displayMessage']).to eq('Welcome: Hello World')
-      expect(client_data['userInfo']).to eq('User is John Doe')
+      # Clean up
+      File.delete(template_path) if File.exist?(template_path)
     end
 
-    it 'demonstrates the window attribute creates a namespace barrier' do
-      # TDD - demonstrates current behavior before fix
-      # The window attribute should not prevent template access to the data values
+    it 'demonstrates the REAL issue: partials with window attributes fail (BROKEN)' do
+      # TDD: The real broken behavior is in partials when they use window attributes
+
+      # First create a main template that includes the problematic partial
+      main_template_path = File.join('spec', 'fixtures', 'templates', 'main_includes_broken_partial.rue')
+      main_content = <<~RUE
+        <template>
+        <div class="main">
+          <h1>Main Template</h1>
+          {{> broken_partial_demo}}
+        </div>
+        </template>
+      RUE
+
+      # Then create the partial with window attribute
+      partial_path = File.join('spec', 'fixtures', 'templates', 'broken_partial_demo.rue')
+      partial_content = <<~RUE
+        <data window="partialData">
+        {
+          "partialMessage": "Hello from partial: {{greeting}}",
+          "partialUser": "Partial user: {{user.name}}"
+        }
+        </data>
+
+        <template>
+        <div class="partial">
+          <p>Direct: {{partialMessage}}</p>
+          <p>Namespaced: {{partialData.partialMessage}}</p>
+          <span>User: {{partialUser}}</span>
+        </div>
+        </template>
+      RUE
+
+      File.write(main_template_path, main_content)
+      File.write(partial_path, partial_content)
+
+      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      allow(view).to receive(:resolve_template_path).with('main_includes_broken_partial').and_return(main_template_path)
+      allow(view).to receive(:resolve_template_path).with('broken_partial_demo').and_return(partial_path)
+
+      result = view.render_template_only('main_includes_broken_partial')
+
+      # BROKEN: The partial's data section variables are NOT accessible
+      expect(result).not_to include('Hello from partial: Hello World')
+      expect(result).not_to include('Partial user: John Doe')
+      expect(result).to include('<p>Direct: </p>')        # Empty
+      expect(result).to include('<p>Namespaced: </p>')    # Empty
+      expect(result).to include('<span>User: </span>')    # Empty
+
+      # Clean up
+      File.delete(main_template_path) if File.exist?(main_template_path)
+      File.delete(partial_path) if File.exist?(partial_path)
+    end
+
+    it 'shows that main templates with window attributes actually work (not the issue)' do
+      # Actually, main templates with window attributes work fine - this isn't the real issue
+      template_path = File.join('spec', 'fixtures', 'templates', 'main_with_window_works.rue')
       template_content = <<~RUE
-        <data window="appData">
+        <data window="mySpecialData">
         {
           "message": "{{greeting}}",
           "userName": "{{user.name}}"
@@ -95,38 +146,94 @@ RSpec.describe 'Namespace Inconsistency Problem' do
 
         <template>
         <div>
-          <h1>{{message}}</h1>
+          <h1>Direct access: {{message}}</h1>
+          <p>Namespaced access: {{mySpecialData.message}}</p>
+          <span>User: {{userName}}</span>
+        </div>
+        </template>
+      RUE
+
+      File.write(template_path, template_content)
+
+      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      allow(view).to receive(:resolve_template_path).and_return(template_path)
+
+      result = view.render('main_with_window_works')
+
+      # Main templates with window attributes actually work fine for direct access
+      expect(result).to include('<h1>Direct access: Hello World</h1>')
+      expect(result).to include('<span>User: John Doe</span>')
+
+      # Namespaced access doesn't work (and shouldn't - that's not the intended solution)
+      expect(result).to include('<p>Namespaced access: </p>')
+
+      # Client-side data is properly namespaced
+      expect(result).to include('window.mySpecialData = JSON.parse(')
+      expect(result).to include('"message":"Hello World"')
+      expect(result).to include('"userName":"John Doe"')
+
+      # Clean up
+      File.delete(template_path) if File.exist?(template_path)
+    end
+  end
+
+  describe 'Expected Behavior: What SHOULD work but currently does not' do
+    it 'should allow partials with window attributes to access data section variables directly (FAILING)' do
+      # TDD: This test should FAIL until we implement the fix
+
+      # Create a main template that includes a partial
+      main_template_path = File.join('spec', 'fixtures', 'templates', 'main_should_work.rue')
+      main_content = <<~RUE
+        <template>
+        <div class="main">
+          <h1>Main Template</h1>
+          {{> partial_should_work}}
+        </div>
+        </template>
+      RUE
+
+      # Create the partial that should work after the fix
+      partial_path = File.join('spec', 'fixtures', 'templates', 'partial_should_work.rue')
+      partial_content = <<~RUE
+        <data window="partialData">
+        {
+          "message": "Processed: {{greeting}}",
+          "userName": "User: {{user.name}}"
+        }
+        </data>
+
+        <template>
+        <div class="partial">
+          <p>Message: {{message}}</p>
           <p>User: {{userName}}</p>
         </div>
         </template>
       RUE
 
-      parser = Rhales::RueDocument.new(template_content)
-      parser.parse!
+      File.write(main_template_path, main_content)
+      File.write(partial_path, partial_content)
 
-      # Current issue: Template engine doesn't have access to processed data section values
-      engine = Rhales::TemplateEngine.new(parser.section('template'), context)
-      result = engine.render
+      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      allow(view).to receive(:resolve_template_path).with('main_should_work').and_return(main_template_path)
+      allow(view).to receive(:resolve_template_path).with('partial_should_work').and_return(partial_path)
 
-      # These processed values from the data section are not accessible in templates
-      expect(result).not_to include('Hello World')
-      expect(result).not_to include('John Doe')
-      expect(result).to include('<h1></h1>')  # Empty
-      expect(result).to include('<p>User: </p>')  # Empty
+      result = view.render_template_only('main_should_work')
 
-      # But the client will receive this data under the window namespace
-      hydrator = Rhales::Hydrator.new(parser, context)
-      client_data = hydrator.processed_data_hash
+      # EXPECTED BEHAVIOR (should work after fix): Direct access to data section variables
+      expect(result).to include('<p>Message: Processed: Hello World</p>')
+      expect(result).to include('<p>User: User: John Doe</p>')
 
-      expect(client_data['message']).to eq('Hello World')
-      expect(client_data['userName']).to eq('John Doe')
+      # Window attribute should not affect template variable access
+      expect(result).not_to include('<p>Message: </p>')  # Should not be empty
+      expect(result).not_to include('<p>User: </p>')     # Should not be empty
 
-      # Client-side JavaScript would access as: window.appData.message
-      # But server-side template cannot access these values at all
+      # Clean up
+      File.delete(main_template_path) if File.exist?(main_template_path)
+      File.delete(partial_path) if File.exist?(partial_path)
     end
   end
 
-  describe 'Expected Behavior: Direct variable access should work' do
+  describe 'Current Working Behavior: What already works' do
     it 'shows that templates without window attributes work correctly' do
       # TDD - demonstrates current behavior before fix
       # Templates WITHOUT window attributes work as expected
