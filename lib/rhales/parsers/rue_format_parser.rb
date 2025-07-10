@@ -28,14 +28,9 @@ module Rhales
   # handlebars_expression := '{{' expression '}}'
   class RueFormatParser
     # At least one of these sections must be present
-    REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
-    KNOWN_SECTIONS = %w[data template logic].freeze
-    ALL_SECTIONS = KNOWN_SECTIONS.freeze
     unless defined?(REQUIRES_ONE_OF_SECTIONS)
       REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
 
-    # Regular expression to match HTML/XML comments outside of sections
-    COMMENT_REGEX = /<!--.*?-->/m
       KNOWN_SECTIONS = %w[data template logic].freeze
       ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
