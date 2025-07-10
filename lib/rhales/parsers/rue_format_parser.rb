@@ -28,12 +28,15 @@ module Rhales
   # handlebars_expression := '{{' expression '}}'
   class RueFormatParser
     # At least one of these sections must be present
-    REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
-    KNOWN_SECTIONS = %w[data template logic].freeze
-    ALL_SECTIONS = KNOWN_SECTIONS.freeze
+    unless defined?(REQUIRES_ONE_OF_SECTIONS)
+      REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
 
-    # Regular expression to match HTML/XML comments outside of sections
-    COMMENT_REGEX = /<!--.*?-->/m
+      KNOWN_SECTIONS = %w[data template logic].freeze
+      ALL_SECTIONS = KNOWN_SECTIONS.freeze
+
+      # Regular expression to match HTML/XML comments outside of sections
+      COMMENT_REGEX = /<!--.*?-->/m
+    end
 
     class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
@@ -145,7 +148,7 @@ module Rhales
     def parse_tag_name
       start_pos = @position
 
-      advance while !at_end? && current_char.match?(/[a-zA-Z]/)
+      advance while !at_end? && current_char.match?(/[a-zA-Z0-9_]/)
 
       if start_pos == @position
         parse_error('Expected tag name')
@@ -178,28 +181,40 @@ module Rhales
       attributes
     end
 
+    # Uses StringScanner to parse "content" in <section>content</section>
     def parse_section_content(tag_name)
-      start_pos     = @position
       content_start = @position
+      closing_tag = "</#{tag_name}>"
 
-      # Extract the raw content between section tags
-      raw_content = ''
-      while !at_end? && !peek_closing_tag?(tag_name)
-        raw_content << current_char
-        advance
-      end
+      # Create scanner from remaining content
+      scanner = StringScanner.new(@content[content_start..])
 
-      # For template sections, use HandlebarsParser to parse the content
-      if tag_name == 'template'
-        handlebars_parser = HandlebarsParser.new(raw_content)
-        handlebars_parser.parse!
-        handlebars_parser.ast.children
+      # Find the closing tag position
+      if scanner.scan_until(/(?=#{Regexp.escape(closing_tag)})/)
+        # Calculate content length (scanner.charpos gives us position right before closing tag)
+        content_length = scanner.charpos
+        raw_content = @content[content_start, content_length]
+
+        # Advance position tracking to end of content
+        advance_to_position(content_start + content_length)
+
+        # Process content based on tag type
+        if tag_name == 'template'
+          handlebars_parser = HandlebarsParser.new(raw_content)
+          handlebars_parser.parse!
+          handlebars_parser.ast.children
+        else
+          # For data and logic sections, keep as simple text
+          raw_content.empty? ? [] : [Node.new(:text, current_location, value: raw_content)]
+        end
       else
-        # For data and logic sections, keep as simple text
-        return [Node.new(:text, current_location, value: raw_content)] unless raw_content.empty?
-
-        []
+        parse_error("Expected '#{closing_tag}' to close section")
       end
+    end
+
+    # Add this helper method to advance position tracking to a specific offset
+    def advance_to_position(target_position)
+      advance while @position < target_position && !at_end?
     end
 
     def parse_quoted_string
@@ -209,7 +224,7 @@ module Rhales
       end
 
       advance # Skip opening quote
-      value = ''
+      value = []
 
       while !at_end? && current_char != quote_char
         value << current_char
@@ -217,7 +232,11 @@ module Rhales
       end
 
       consume(quote_char) || parse_error('Unterminated quoted string')
-      value
+
+      # NOTE: Character-by-character parsing is acceptable here since attribute values
+      # in section tags (e.g., <tag attribute="value">) are typically short strings.
+      # Using StringScanner would be overkill for this use case.
+      value.join
     end
 
     def parse_identifier
@@ -350,8 +369,6 @@ module Rhales
       result_parts.join
     end
 
-    private
-
     # Tokenize content into structured tokens for pattern matching
     # Uses StringScanner for better performance and cleaner code
     def tokenize_content(content)
@@ -359,23 +376,23 @@ module Rhales
       tokens = []
 
       until scanner.eos?
-        case
+        tokens << case
         when scanner.scan(/<!--.*?-->/m)
           # Comment token - non-greedy match for complete comments
-          tokens << { type: :comment, content: scanner.matched }
+          { type: :comment, content: scanner.matched }
         when scanner.scan(/<(data|template|logic)(\s[^>]*)?>/m)
           # Section start token - matches opening tags with optional attributes
-          tokens << { type: :section_start, content: scanner.matched }
-        when scanner.scan(/<\/(data|template|logic)>/m)
+          { type: :section_start, content: scanner.matched }
+        when scanner.scan(%r{</(data|template|logic)>}m)
           # Section end token - matches closing tags
-          tokens << { type: :section_end, content: scanner.matched }
+          { type: :section_end, content: scanner.matched }
         when scanner.scan(/[^<]+/)
           # Text token - consolidates runs of non-< characters for efficiency
-          tokens << { type: :text, content: scanner.matched }
+          { type: :text, content: scanner.matched }
         else
           # Fallback for single characters (< that don't match patterns)
           # This maintains compatibility with the original character-by-character behavior
-          tokens << { type: :text, content: scanner.getch }
+          { type: :text, content: scanner.getch }
         end
       end
 

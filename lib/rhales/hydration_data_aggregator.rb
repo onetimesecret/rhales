@@ -37,7 +37,7 @@ module Rhales
 
     private
 
-    def process_template(template_name, parser)
+    def process_template(_template_name, parser)
       data_content = parser.section('data')
       return unless data_content
 
@@ -62,22 +62,22 @@ module Rhales
       end
 
       # Merge or set the data
-      if @merged_data.key?(window_attr)
-        @merged_data[window_attr] = merge_data(
+      @merged_data[window_attr] = if @merged_data.key?(window_attr)
+        merge_data(
           @merged_data[window_attr],
           processed_data,
           merge_strategy || 'deep',
           window_attr,
-          template_path
+          template_path,
         )
       else
-        @merged_data[window_attr] = processed_data
-      end
+        processed_data
+                                  end
 
       # Track the window attribute
       @window_attributes[window_attr] = {
         path: template_path,
-        merge_strategy: merge_strategy
+        merge_strategy: merge_strategy,
       }
     end
 
@@ -116,11 +116,11 @@ module Rhales
       result = target.dup
 
       source.each do |key, value|
-        if result.key?(key) && result[key].is_a?(Hash) && value.is_a?(Hash)
-          result[key] = deep_merge(result[key], value)
+        result[key] = if result.key?(key) && result[key].is_a?(Hash) && value.is_a?(Hash)
+          deep_merge(result[key], value)
         else
-          result[key] = value
-        end
+          value
+                      end
       end
 
       result
@@ -134,7 +134,7 @@ module Rhales
           raise ::Rhales::HydrationCollisionError.new(
             "#{window_attr}.#{key}",
             @window_attributes[window_attr][:path],
-            template_path
+            template_path,
           )
         end
         result[key] = value
@@ -146,13 +146,13 @@ module Rhales
     def strict_merge(target, source, window_attr, template_path)
       # In strict mode, any collision is an error
       target.each_key do |key|
-        if source.key?(key)
-          raise ::Rhales::HydrationCollisionError.new(
-            "#{window_attr}.#{key}",
-            @window_attributes[window_attr][:path],
-            template_path
-          )
-        end
+        next unless source.key?(key)
+
+        raise ::Rhales::HydrationCollisionError.new(
+          "#{window_attr}.#{key}",
+          @window_attributes[window_attr][:path],
+          template_path,
+        )
       end
 
       target.merge(source)
@@ -175,6 +175,7 @@ module Rhales
       return true if data == {}
       return true if data == []
       return true if data.respond_to?(:empty?) && data.empty?
+
       false
     end
   end
@@ -186,8 +187,8 @@ module Rhales
     end
 
     # Delegate all methods to the wrapped context
-    def method_missing(method, *args, &block)
-      @context.send(method, *args, &block)
+    def method_missing(method, *, &)
+      @context.send(method, *, &)
     end
 
     def respond_to_missing?(method, include_private = false)
@@ -215,6 +216,6 @@ module Rhales
     end
 
     # Alias for compatibility with template engine
-    alias_method :resolve_variable, :get
+    alias resolve_variable get
   end
 end

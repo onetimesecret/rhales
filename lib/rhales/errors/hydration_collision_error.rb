@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# lib/rhales/errors/hydration_collision_error.rb
 
 module Rhales
   class HydrationCollisionError < Error

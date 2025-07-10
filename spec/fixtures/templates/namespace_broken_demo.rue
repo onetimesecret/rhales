@@ -1,0 +1,13 @@
+<data window="appData">
+{
+  "displayMessage": "Welcome: {{greeting}}",
+  "userInfo": "User is {{user.name}}"
+}
+</data>
+
+<template>
+<div>
+  <h1>{{displayMessage}}</h1>
+  <p>{{userInfo}}</p>
+</div>
+</template>

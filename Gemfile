@@ -17,7 +17,7 @@ group :development do
   gem 'rack', '~> 2.0'
   gem 'rack-proxy', require: false
   gem 'rake', '~> 13.0'
-  gem 'rubocop', '~> 1.50'
+  gem 'rubocop', '1.78' # '~> 1.76.2'
   gem 'rubocop-performance', require: false
   gem 'rubocop-rspec', require: false
   gem 'rubocop-thread_safety', require: false

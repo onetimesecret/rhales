@@ -1,0 +1,16 @@
+<data window="mainData">
+{
+  "page_title": "Partials with Window Attributes",
+  "main_message": "Main template data"
+}
+</data>
+
+<template>
+  <div class="main-with-windows">
+    <h1>{{page_title}}</h1>
+    <p>{{main_message}}</p>
+
+    {{> test_partial_window1}}
+    {{> test_partial_window2}}
+  </div>
+</template>

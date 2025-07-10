@@ -19,6 +19,7 @@ gem 'sqlite3', '~> 2.0'
 # Templates and utilities
 gem 'logger'
 gem 'mail'
+gem 'rake'
 gem 'rhales', path: '../..'  # Using local gem
 gem 'rspec'
 gem 'tilt'

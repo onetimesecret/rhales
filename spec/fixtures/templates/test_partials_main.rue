@@ -1,0 +1,31 @@
+<data>
+{
+  "page_title": "Partials Test Page",
+  "parent_message": "Message from parent template",
+  "override_test": "Parent value"
+}
+</data>
+
+<template>
+  <div class="main-template">
+    <h1>{{page_title}}</h1>
+    <p>Parent message: {{parent_message}}</p>
+
+    <section class="shared-context-partial">
+      <h2>Shared Context Partial</h2>
+      {{> test_shared_context}}
+    </section>
+
+    <section class="inline-data-partial">
+      <h2>Inline Data Partial</h2>
+      {{> test_inline_data}}
+    </section>
+
+    <section class="scope-test">
+      <h2>Scope Resolution Test</h2>
+      <p>Override test in parent: {{override_test}}</p>
+      <!-- The partial below will define its own override_test value -->
+      {{> test_scope_override}}
+    </section>
+  </div>
+</template>

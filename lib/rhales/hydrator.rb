@@ -63,8 +63,8 @@ module Rhales
       # This method is now deprecated in favor of the two-pass architecture
       # It's kept for backward compatibility but will be removed in future versions
       def generate_hydration_html
-        warn "[DEPRECATION] Hydrator#generate_hydration_html is deprecated. Use the two-pass rendering architecture instead."
-        ""
+        warn '[DEPRECATION] Hydrator#generate_hydration_html is deprecated. Use the two-pass rendering architecture instead.'
+        ''
       end
 
       # Process <data> section and return JSON string
@@ -123,7 +123,7 @@ module Rhales
         # Convenience method to generate hydration HTML
         # DEPRECATED: Use the two-pass rendering architecture instead
         def generate(parser, context)
-          warn "[DEPRECATION] Hydrator.generate is deprecated. Use the two-pass rendering architecture instead."
+          warn '[DEPRECATION] Hydrator.generate is deprecated. Use the two-pass rendering architecture instead.'
           new(parser, context).generate_hydration_html
         end
 

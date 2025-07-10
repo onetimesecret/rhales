@@ -86,7 +86,7 @@ module Rhales
         'worker-src' => ["'self'"],
         'manifest-src' => ["'self'"],
         'prefetch-src' => ["'self'"],
-        'upgrade-insecure-requests' => []
+        'upgrade-insecure-requests' => [],
       }.freeze
     end
 

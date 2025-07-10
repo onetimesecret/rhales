@@ -24,6 +24,10 @@ AllCops:
     - 'tmp/**/*'
     - 'vendor/**/*'
 
+RSpec/MultipleExpectations:
+  Enabled: true
+  Max: 5
+
 Layout/CaseIndentation:
   Enabled: true
   EnforcedStyle: end # case, end

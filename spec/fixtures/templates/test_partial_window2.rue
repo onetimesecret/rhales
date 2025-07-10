@@ -1,0 +1,16 @@
+<data window="partial2Data">
+{
+  "partial2_message": "Data from partial 2"
+}
+</data>
+
+<template>
+  <div class="partial2">
+
+    <!-- SHOULD have a value -->
+    <p>Main message in partial 2: {{main_message}}</p>
+
+    <!-- SHOULD NOT have a value (b/c "partial2Data" is only relevant in the DOM, window[partial2Data]) -->
+    <p>Partial 2 message: {{partial2Data.partial2_message}}</p>
+  </div>
+</template>

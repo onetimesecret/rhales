@@ -29,7 +29,6 @@ Follow test-driven development when possible:
 2. Confirm tests fail appropriately
 3. Commit tests
 4. Implement code to pass tests WITHOUT modifying tests
-5. Ensure no global state dependencies (OT.conf references)
 6. Verify HTML escaping and security measures
 7. Commit implementation
 

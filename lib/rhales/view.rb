@@ -182,11 +182,7 @@ module Rhales
 
     # Get templates root directory
     def templates_root
-      boot_root = if defined?(OT) && OT.respond_to?(:boot_root)
-                    OT.boot_root
-                  else
-                    File.expand_path('../../..', __dir__)
-                  end
+      boot_root = File.expand_path('../../..', __dir__)
       File.join(boot_root, 'templates')
     end
 
@@ -220,11 +216,9 @@ module Rhales
         partial_path = File.join(templates_dir, "#{partial_name}.rue")
 
         if File.exist?(partial_path)
-          # Parse partial and return template section
-          partial_parser = require(partial_path)
-          partial_parser.section('template')
-        else
-          nil
+          # Return full partial content so TemplateEngine can process
+          # data sections, otherwise nil.
+          File.read(partial_path)
         end
       end
     end
@@ -255,6 +249,7 @@ module Rhales
       hydrator = Hydrator.new(parser, @rsfc_context)
       hydrator.processed_data_hash
     rescue JSON::ParserError, Hydrator::JSONSerializationError => ex
+      puts "Error processing data section: #{ex.message}"
       # If data section isn't valid JSON, return empty hash
       # This allows templates to work even with malformed data sections
       {}
@@ -332,7 +327,7 @@ module Rhales
     def create_partial_resolver_from_composition(composition)
       proc do |partial_name|
         parser = composition.template(partial_name)
-        parser ? parser.section('template') : nil
+        parser ? parser.content : nil
       end
     end
 

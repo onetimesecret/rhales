@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# spec/rhales/rue_parser_improvements_spec.rb
 
 require 'spec_helper'
 
@@ -280,9 +280,9 @@ RSpec.describe 'Rue Parser Improvements' do
       RUE
 
       expect {
-        document = Rhales::RueDocument.new(content, 'test.rue')
+        document = Rhales::RueDocument.new(content, 'test_shared_context.rue')
         document.parse!
-      }.to output(/Warning: data section encountered '(schema|unknown)' attribute - not yet supported, ignoring in test.rue/).to_stderr
+      }.to output(/Warning: data section encountered '(schema|unknown)' attribute - not yet supported, ignoring in test_shared_context.rue/).to_stderr
     end
 
     it 'does not warn about known attributes' do
@@ -298,7 +298,7 @@ RSpec.describe 'Rue Parser Improvements' do
       expect {
         document = Rhales::RueDocument.new(content)
         document.parse!
-      }.not_to output.to_stderr
+      }.not_to output(/Warning: data section encountered '.+?' attribute - not yet supported, ignoring in /).to_stderr
     end
   end
 

@@ -1,0 +1,36 @@
+# Rakefile for rhales-roda-demo
+
+desc 'Run CI integration test (replicates GitHub Actions workflow)'
+task :ci_test do
+  puts "Installing demo dependencies..."
+  system('bundle install') || (puts "Failed to install dependencies" && exit(1))
+
+  puts "Starting demo server..."
+  server_pid = spawn('bundle exec rackup -p 9393')
+  puts "Server PID: #{server_pid}"
+
+  begin
+    # Wait for server to start
+    sleep 1
+
+    # Test the server (replicates: curl -f http://localhost:9393/ || exit 1)
+    puts "Testing demo server..."
+    success = system('curl -f http://localhost:9393/')
+    puts "Curl exit status: #{$?.exitstatus}"
+
+    if success
+      puts "✓ Demo integration test passed"
+    else
+      puts "✗ Demo integration test failed"
+      exit 1
+    end
+  ensure
+    # Clean up (replicates: pkill -f rackup || true)
+    if server_pid
+      Process.kill('TERM', server_pid) rescue nil
+      Process.wait(server_pid) rescue nil
+    end
+  end
+end
+
+task default: :ci_test
