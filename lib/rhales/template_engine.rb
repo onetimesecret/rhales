@@ -4,6 +4,7 @@ require 'erb'
 require_relative 'parsers/rue_format_parser'
 require_relative 'parsers/handlebars_parser'
 require_relative 'rue_document'
+require_relative 'hydrator'
 
 module Rhales
   # Rhales - Ruby Handlebars-style template engine
@@ -214,9 +215,35 @@ module Rhales
       partial_content = @partial_resolver.call(partial_name)
       raise PartialNotFoundError, "Partial '#{partial_name}' not found" unless partial_content
 
-      # Recursively render the partial content
-      engine = self.class.new(partial_content, @context, partial_resolver: @partial_resolver)
-      engine.render
+      # Check if this is a .rue document with sections
+      if partial_content.match?(/^<(data|template|logic)\b/)
+        # Parse as RueDocument to handle data sections properly
+        partial_doc = RueDocument.new(partial_content)
+        partial_doc.parse!
+
+        # Extract template section
+        template_content = partial_doc.section('template')
+        raise PartialNotFoundError, "Partial '#{partial_name}' missing template section" unless template_content
+
+        # Process data section if present and merge with parent context
+        merged_context = @context
+        if partial_doc.section('data')
+          # Create hydrator with parent context to process interpolations
+          hydrator = Hydrator.new(partial_doc, @context)
+          local_data = hydrator.processed_data_hash
+
+          # Create merged context (local data takes precedence)
+          merged_context = create_merged_context(@context, local_data)
+        end
+
+        # Render template with merged context
+        engine = self.class.new(template_content, merged_context, partial_resolver: @partial_resolver)
+        engine.render
+      else
+        # Simple template without sections - render as before
+        engine = self.class.new(partial_content, @context, partial_resolver: @partial_resolver)
+        engine.render
+      end
     end
 
     # Get variable value from context
@@ -270,6 +297,23 @@ module Rhales
     # HTML escape for XSS protection
     def escape_html(string)
       ERB::Util.html_escape(string)
+    end
+
+    # Create a new context with merged data
+    def create_merged_context(parent_context, local_data)
+      # Extract all props from parent context and merge with local data
+      # Local data takes precedence over parent props
+      merged_props = parent_context.props.merge(local_data)
+
+      # Create new context with merged props, preserving other context attributes
+      Context.for_view(
+        parent_context.req,
+        parent_context.sess,
+        parent_context.cust,
+        parent_context.locale,
+        config: parent_context.config,
+        **merged_props
+      )
     end
 
     # Context wrapper for {{#each}} iterations
