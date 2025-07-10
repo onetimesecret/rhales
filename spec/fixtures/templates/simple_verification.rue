@@ -1,0 +1,12 @@
+<data window="testData">
+{
+  "message": "{{greeting}}"
+}
+</data>
+
+<template>
+<div>
+  <p>Direct: {{message}}</p>
+  <p>Namespaced: {{testData.message}}</p>
+</div>
+</template>

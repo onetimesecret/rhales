@@ -1,0 +1,13 @@
+<data window="viewData">
+{
+  "pageTitle": "{{greeting}}",
+  "currentUser": "{{user.name}}"
+}
+</data>
+
+<template>
+<div>
+  <h1>{{pageTitle}}</h1>
+  <p>Welcome, {{currentUser}}!</p>
+</div>
+</template>
