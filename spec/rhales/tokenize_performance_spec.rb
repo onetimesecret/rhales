@@ -3,56 +3,9 @@
 require 'spec_helper'
 require 'benchmark'
 
-RSpec.describe 'Tokenize Performance Baseline' do
-  # Original tokenize_content implementation preserved for performance comparison
-  # This serves as a baseline for measuring StringScanner improvements
-  def tokenize_content_baseline(content)
-    tokens = []
-    i = 0
+RSpec.describe 'Tokenize Performance Baseline', type: :feature do
 
-    while i < content.length
-      case
-      when content[i, 4] == '<!--'
-        # Comment token
-        comment_end = content.index('-->', i + 4)
-        if comment_end
-          comment_content = content[i..comment_end + 2]
-          tokens << { type: :comment, content: comment_content }
-          i = comment_end + 3
-        else
-          # Unclosed comment - treat as text
-          tokens << { type: :text, content: content[i] }
-          i += 1
-        end
-      when content[i] == '<' && content[i + 1] != '!' && content[i + 1] != '/'
-        # Potential section start
-        tag_end = content.index('>', i)
-        if tag_end && (match = content[i..tag_end].match(/^<(data|template|logic)(\s[^>]*)?>/))
-          tokens << { type: :section_start, content: content[i..tag_end] }
-          i = tag_end + 1
-        else
-          tokens << { type: :text, content: content[i] }
-          i += 1
-        end
-      when content[i, 2] == '</'
-        # Potential section end
-        tag_end = content.index('>', i)
-        if tag_end && (match = content[i..tag_end].match(/^<\/(data|template|logic)>/))
-          tokens << { type: :section_end, content: content[i..tag_end] }
-          i = tag_end + 1
-        else
-          tokens << { type: :text, content: content[i] }
-          i += 1
-        end
-      else
-        # Regular text
-        tokens << { type: :text, content: content[i] }
-        i += 1
-      end
-    end
-
-    tokens
-  end
+  let(:iterations) { 1000 }
 
   describe 'Baseline tokenize_content behavior' do
     it 'tokenizes simple content correctly' do
@@ -152,14 +105,16 @@ RSpec.describe 'Tokenize Performance Baseline' do
     end
 
     it 'benchmarks baseline simple content tokenization' do
+
+
       # Warm up
       5.times { tokenize_content_baseline(simple_content) }
 
       time = Benchmark.realtime do
-        100.times { tokenize_content_baseline(simple_content) }
+        iterations.times { tokenize_content_baseline(simple_content) }
       end
 
-      puts "\nBaseline tokenization (simple): #{(time * 1000).round(2)}ms for 100 iterations"
+      puts "\nBaseline tokenization (simple): #{(time * 1000).round(2)}ms for #{iterations} iterations"
       expect(time).to be < 0.1 # Should complete in less than 100ms
     end
 
@@ -168,16 +123,14 @@ RSpec.describe 'Tokenize Performance Baseline' do
       5.times { parser.send(:tokenize_content, simple_content) }
 
       time = Benchmark.realtime do
-        100.times { parser.send(:tokenize_content, simple_content) }
+        iterations.times { parser.send(:tokenize_content, simple_content) }
       end
 
-      puts "StringScanner tokenization (simple): #{(time * 1000).round(2)}ms for 100 iterations"
+      puts "StringScanner tokenization (simple): #{(time * 1000).round(2)}ms for #{iterations} iterations"
       expect(time).to be < 0.1 # Should complete in less than 100ms
     end
 
     it 'benchmarks baseline complex content tokenization' do
-      iterations = 50
-
       # Warm up
       5.times { tokenize_content_baseline(complex_content) }
 
@@ -190,8 +143,6 @@ RSpec.describe 'Tokenize Performance Baseline' do
     end
 
     it 'benchmarks StringScanner complex content tokenization' do
-      iterations = 50
-
       # Warm up
       5.times { parser.send(:tokenize_content, complex_content) }
 
@@ -204,8 +155,6 @@ RSpec.describe 'Tokenize Performance Baseline' do
     end
 
     it 'compares performance directly' do
-      iterations = 100
-
       # Baseline performance
       baseline_time = Benchmark.realtime do
         iterations.times { tokenize_content_baseline(simple_content) }
@@ -248,5 +197,55 @@ RSpec.describe 'Tokenize Performance Baseline' do
       expect(scanner_counts[:section_start]).to eq(baseline_counts[:section_start])
       expect(scanner_counts[:section_end]).to eq(baseline_counts[:section_end])
     end
+  end
+
+  # Original tokenize_content implementation preserved for performance comparison
+  # This serves as a baseline for measuring StringScanner improvements
+  def tokenize_content_baseline(content)
+    tokens = []
+    i = 0
+
+    while i < content.length
+      case
+      when content[i, 4] == '<!--'
+        # Comment token
+        comment_end = content.index('-->', i + 4)
+        if comment_end
+          comment_content = content[i..comment_end + 2]
+          tokens << { type: :comment, content: comment_content }
+          i = comment_end + 3
+        else
+          # Unclosed comment - treat as text
+          tokens << { type: :text, content: content[i] }
+          i += 1
+        end
+      when content[i] == '<' && content[i + 1] != '!' && content[i + 1] != '/'
+        # Potential section start
+        tag_end = content.index('>', i)
+        if tag_end && (match = content[i..tag_end].match(/^<(data|template|logic)(\s[^>]*)?>/))
+          tokens << { type: :section_start, content: content[i..tag_end] }
+          i = tag_end + 1
+        else
+          tokens << { type: :text, content: content[i] }
+          i += 1
+        end
+      when content[i, 2] == '</'
+        # Potential section end
+        tag_end = content.index('>', i)
+        if tag_end && (match = content[i..tag_end].match(/^<\/(data|template|logic)>/))
+          tokens << { type: :section_end, content: content[i..tag_end] }
+          i = tag_end + 1
+        else
+          tokens << { type: :text, content: content[i] }
+          i += 1
+        end
+      else
+        # Regular text
+        tokens << { type: :text, content: content[i] }
+        i += 1
+      end
+    end
+
+    tokens
   end
 end
