@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# spec/rhales/rue_parser_improvements_spec.rb
 
 require 'spec_helper'
 

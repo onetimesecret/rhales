@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# spec/rhales/hydration_data_aggregator_spec.rb
 
 require 'spec_helper'
 
