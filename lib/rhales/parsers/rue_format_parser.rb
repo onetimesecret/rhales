@@ -181,41 +181,33 @@ module Rhales
       attributes
     end
 
-
-    # Uses StringScanner to parse "content" in <section>content</section>
+    # Uses manual parsing to handle UTF-8 characters correctly
     def parse_section_content(tag_name)
       content_start = @position
       closing_tag = "</#{tag_name}>"
+      content_chars = []
 
-      # Create scanner from remaining content
-      scanner = StringScanner.new(@content[content_start..])
+      # Parse character by character to maintain proper position tracking
+      while !at_end? && !peek_string?(closing_tag)
+        content_chars << current_char
+        advance
+      end
 
-      # Find the closing tag position
-      if scanner.scan_until(/(?=#{Regexp.escape(closing_tag)})/)
-        # Calculate content length (scanner.pos gives us position right before closing tag)
-        content_length = scanner.pos
-        raw_content = @content[content_start, content_length]
-
-        # Advance position tracking to end of content
-        advance_to_position(content_start + content_length)
-
-        # Process content based on tag type
-        if tag_name == 'template'
-          handlebars_parser = HandlebarsParser.new(raw_content)
-          handlebars_parser.parse!
-          handlebars_parser.ast.children
-        else
-          # For data and logic sections, keep as simple text
-          raw_content.empty? ? [] : [Node.new(:text, current_location, value: raw_content)]
-        end
-      else
+      unless peek_string?(closing_tag)
         parse_error("Expected '#{closing_tag}' to close section")
       end
-    end
 
-    # Add this helper method to advance position tracking to a specific offset
-    def advance_to_position(target_position)
-      advance while @position < target_position && !at_end?
+      raw_content = content_chars.join
+
+      # Process content based on tag type
+      if tag_name == 'template'
+        handlebars_parser = HandlebarsParser.new(raw_content)
+        handlebars_parser.parse!
+        handlebars_parser.ast.children
+      else
+        # For data and logic sections, keep as simple text
+        raw_content.empty? ? [] : [Node.new(:text, current_location, value: raw_content)]
+      end
     end
 
     def parse_quoted_string

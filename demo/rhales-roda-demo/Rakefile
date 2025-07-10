@@ -2,10 +2,10 @@
 
 desc 'Run CI integration test (replicates GitHub Actions workflow)'
 task :ci_test do
-  puts "Installing demo dependencies..."
-  system('bundle install') || (puts "Failed to install dependencies" && exit(1))
+  puts 'Installing demo dependencies...'
+  system('bundle install') || (puts exit(1))
 
-  puts "Starting demo server..."
+  puts 'Starting demo server...'
   server_pid = spawn('bundle exec rackup -p 9393')
   puts "Server PID: #{server_pid}"
 
@@ -14,21 +14,29 @@ task :ci_test do
     sleep 1
 
     # Test the server (replicates: curl -f http://localhost:9393/ || exit 1)
-    puts "Testing demo server..."
+    puts 'Testing demo server...'
     success = system('curl -f http://localhost:9393/')
     puts "Curl exit status: #{$?.exitstatus}"
 
     if success
-      puts "✓ Demo integration test passed"
+      puts '✓ Demo integration test passed'
     else
-      puts "✗ Demo integration test failed"
+      puts '✗ Demo integration test failed'
       exit 1
     end
   ensure
     # Clean up (replicates: pkill -f rackup || true)
     if server_pid
-      Process.kill('TERM', server_pid) rescue nil
-      Process.wait(server_pid) rescue nil
+      begin
+        Process.kill('TERM', server_pid)
+      rescue StandardError
+        nil
+      end
+      begin
+        Process.wait(server_pid)
+      rescue StandardError
+        nil
+      end
     end
   end
 end
