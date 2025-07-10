@@ -148,7 +148,7 @@ module Rhales
     def parse_tag_name
       start_pos = @position
 
-      advance while !at_end? && current_char.match?(/[a-zA-Z]/)
+      advance while !at_end? && current_char.match?(/[a-zA-Z0-9_]/)
 
       if start_pos == @position
         parse_error('Expected tag name')
