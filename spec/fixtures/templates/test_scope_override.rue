@@ -1,0 +1,15 @@
+<data>
+{
+  "override_test": "Child value",
+  "child_only": "Only in child"
+}
+</data>
+
+<template>
+  <div class="scope-override">
+    <p>Override test in child: {{override_test}}</p>
+    <p>Child only value: {{child_only}}</p>
+    <p>Parent message accessible: {{parent_message}}</p>
+    <p>User from context: {{user.name}}</p>
+  </div>
+</template>

@@ -1,0 +1,12 @@
+<data window="partial2Data">
+{
+  "partial2_message": "Data from partial 2"
+}
+</data>
+
+<template>
+  <div class="partial2">
+    <p>Main message in partial 2: {{main_message}}</p>
+    <p>Partial 2 message: {{partial2Data.partial2_message}}</p>
+  </div>
+</template>
