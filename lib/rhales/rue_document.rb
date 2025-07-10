@@ -163,11 +163,11 @@ module Rhales
 
     private
 
-    def extract_partials_from_node(node, partials)
+    def extract_partials_from_node(_node, partials)
       return unless @ast
 
       # Extract from all sections
-      @grammar.sections.each do |section_name, section_node|
+      @grammar.sections.each do |_section_name, section_node|
         content_nodes = section_node.value[:content]
         next unless content_nodes.is_a?(Array)
 
@@ -243,8 +243,6 @@ module Rhales
       end
     end
 
-    private
-
     def extract_variables_from_text(text, variables, exclude_partials: false)
       # Find all handlebars expressions in text content
       text.scan(/\{\{(.+?)\}\}/) do |match|
@@ -284,7 +282,7 @@ module Rhales
     end
 
     def warn_unknown_attribute(attribute)
-      file_info = @file_path ? " in #{@file_path}" : ""
+      file_info = @file_path ? " in #{@file_path}" : ''
       warn "Warning: data section encountered '#{attribute}' attribute - not yet supported, ignoring#{file_info}"
     end
 

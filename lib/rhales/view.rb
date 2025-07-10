@@ -216,10 +216,9 @@ module Rhales
         partial_path = File.join(templates_dir, "#{partial_name}.rue")
 
         if File.exist?(partial_path)
-          # Return full partial content so TemplateEngine can process data sections
+          # Return full partial content so TemplateEngine can process
+          # data sections, otherwise nil.
           File.read(partial_path)
-        else
-          nil
         end
       end
     end
@@ -250,6 +249,7 @@ module Rhales
       hydrator = Hydrator.new(parser, @rsfc_context)
       hydrator.processed_data_hash
     rescue JSON::ParserError, Hydrator::JSONSerializationError => ex
+      puts "Error processing data section: #{ex.message}"
       # If data section isn't valid JSON, return empty hash
       # This allows templates to work even with malformed data sections
       {}

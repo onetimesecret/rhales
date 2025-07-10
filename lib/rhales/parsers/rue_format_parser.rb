@@ -181,7 +181,6 @@ module Rhales
       attributes
     end
 
-
     # Uses StringScanner to parse "content" in <section>content</section>
     def parse_section_content(tag_name)
       content_start = @position
@@ -370,8 +369,6 @@ module Rhales
       result_parts.join
     end
 
-    private
-
     # Tokenize content into structured tokens for pattern matching
     # Uses StringScanner for better performance and cleaner code
     def tokenize_content(content)
@@ -379,23 +376,23 @@ module Rhales
       tokens = []
 
       until scanner.eos?
-        case
+        tokens << case
         when scanner.scan(/<!--.*?-->/m)
           # Comment token - non-greedy match for complete comments
-          tokens << { type: :comment, content: scanner.matched }
+          { type: :comment, content: scanner.matched }
         when scanner.scan(/<(data|template|logic)(\s[^>]*)?>/m)
           # Section start token - matches opening tags with optional attributes
-          tokens << { type: :section_start, content: scanner.matched }
-        when scanner.scan(/<\/(data|template|logic)>/m)
+          { type: :section_start, content: scanner.matched }
+        when scanner.scan(%r{</(data|template|logic)>}m)
           # Section end token - matches closing tags
-          tokens << { type: :section_end, content: scanner.matched }
+          { type: :section_end, content: scanner.matched }
         when scanner.scan(/[^<]+/)
           # Text token - consolidates runs of non-< characters for efficiency
-          tokens << { type: :text, content: scanner.matched }
+          { type: :text, content: scanner.matched }
         else
           # Fallback for single characters (< that don't match patterns)
           # This maintains compatibility with the original character-by-character behavior
-          tokens << { type: :text, content: scanner.getch }
+          { type: :text, content: scanner.getch }
         end
       end
 

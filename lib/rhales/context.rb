@@ -97,7 +97,6 @@ module Rhales
 
     private
 
-
       # Build consolidated app data (replaces runtime_data + computed_data)
       def build_app_data
         app = {}

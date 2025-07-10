@@ -261,8 +261,6 @@ module Rhales
         @context.get(variable_name)
       elsif @context.respond_to?(:[])
         @context[variable_name] || @context[variable_name.to_sym]
-      else
-        nil
       end
     end
 
@@ -312,7 +310,7 @@ module Rhales
         parent_context.cust,
         parent_context.locale,
         config: parent_context.config,
-        **merged_props
+        **merged_props,
       )
     end
 
@@ -387,8 +385,6 @@ module Rhales
             # Load and parse the partial .rue file
             document = RueDocument.parse_file(partial_path)
             document.section('template')
-          else
-            nil
           end
         end
       end

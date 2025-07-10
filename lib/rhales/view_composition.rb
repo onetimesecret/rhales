@@ -69,7 +69,7 @@ module Rhales
     end
 
     # Check if a template exists in the composition
-    def has_template?(name)
+    def template?(name)
       @templates.key?(name)
     end
 
@@ -85,7 +85,7 @@ module Rhales
 
     private
 
-    def load_template_recursive(template_name, parent_path = nil)
+    def load_template_recursive(template_name, _parent_path = nil)
       # Check for circular dependencies
       if @loading.include?(template_name)
         raise CircularDependencyError, "Circular dependency detected: #{template_name} -> #{@loading.to_a.join(' -> ')}"
