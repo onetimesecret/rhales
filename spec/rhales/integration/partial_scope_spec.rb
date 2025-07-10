@@ -28,10 +28,9 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       expect(html).to include('<p>Hello, John Doe!</p>')
       expect(html).to include('class="theme-dark"')
 
-      # Verify inline data partial renders but shows "Please log in" because
-      # is_user_authenticated is not defined in template context
-      expect(html).to include('<span data-var="message"></span>')
-      expect(html).to include('Please log in.')
+      # Verify inline data partial can access parent context and shows authenticated user
+      expect(html).to include('<span data-var="message">Welcome to Rhales</span>')
+      expect(html).to include('Welcome back, <span data-var="user.display_name">John Doe!</span>')
     end
 
     it 'handles scope override correctly' do
@@ -44,11 +43,11 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       # Verify parent template shows parent value
       expect(html).to include('Override test in parent: Parent value')
 
-      # Verify child partial shows parent value (inline data doesn't override template context)
-      expect(html).to include('Override test in child: Parent value')
+      # Verify child partial local data overrides parent context (correct precedence)
+      expect(html).to include('Override test in child: Child value')
 
-      # Verify child-only variables from inline data are empty in template context
-      expect(html).to include('Child only value: </p>')
+      # Verify child-only variables from inline data are accessible
+      expect(html).to include('Child only value: Only in child</p>')
 
       # Verify child can access parent scope
       expect(html).to include('Parent message accessible: Message from parent template')
@@ -203,11 +202,11 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       # Main template can access its own data section ✅
       expect(html).to include('<h1>Main: From main template</h1>')
 
-      # THE CORE ISSUE: Partial cannot access parent's data ❌
-      expect(html).to include('<p>Parent data: </p>')  # Should show "From main template"
+      # FIXED: Partial can access parent's data ✅
+      expect(html).to include('<p>Parent data: From main template</p>')
 
-      # THE CORE ISSUE: Partial cannot access its own data section ❌
-      expect(html).to include('<p>Own data: </p>')     # Should show "From partial data section"
+      # FIXED: Partial can access its own data section ✅
+      expect(html).to include('<p>Own data: From partial data section</p>')
 
       # This demonstrates the exact same issue as the original failing test,
       # but with simpler data that's easier to understand

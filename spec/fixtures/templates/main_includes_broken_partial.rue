@@ -1,6 +1,0 @@
-<template>
-<div class="main">
-  <h1>Main Template</h1>
-  {{> broken_partial_demo}}
-</div>
-</template>
