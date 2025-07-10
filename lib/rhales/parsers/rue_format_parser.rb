@@ -148,7 +148,7 @@ module Rhales
     def parse_tag_name
       start_pos = @position
 
-      advance while !at_end? && current_char.match?(/[a-zA-Z]/)
+      advance while !at_end? && current_char.match?(/[a-zA-Z0-9_]/)
 
       if start_pos == @position
         parse_error('Expected tag name')
@@ -192,8 +192,8 @@ module Rhales
 
       # Find the closing tag position
       if scanner.scan_until(/(?=#{Regexp.escape(closing_tag)})/)
-        # Calculate content length (scanner.pos gives us position right before closing tag)
-        content_length = scanner.pos
+        # Calculate content length (scanner.charpos gives us position right before closing tag)
+        content_length = scanner.charpos
         raw_content = @content[content_start, content_length]
 
         # Advance position tracking to end of content
