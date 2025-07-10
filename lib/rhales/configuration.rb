@@ -1,6 +1,29 @@
 # lib/rhales/configuration.rb
 
 module Rhales
+  # Hydration-specific configuration settings
+  #
+  # Controls how hydration scripts are injected into HTML templates.
+  # Supports two injection strategies:
+  # - :late (default) - injects before </body> tag (backwards compatible)
+  # - :early - injects before detected mount points for improved performance
+  class HydrationConfiguration
+    # Injection strategy: :late or :early
+    attr_accessor :injection_strategy
+
+    # Array of CSS selectors to detect frontend mount points
+    attr_accessor :mount_point_selectors
+
+    # Whether to fallback to late injection when no mount points detected
+    attr_accessor :fallback_to_late
+
+    def initialize
+      @injection_strategy = :late
+      @mount_point_selectors = ['#app', '#root', '[data-rsfc-mount]', '[data-mount]']
+      @fallback_to_late = true
+    end
+  end
+
   # Configuration management for Rhales library
   #
   # Provides a clean, testable alternative to global configuration access.
@@ -31,6 +54,9 @@ module Rhales
     # Performance settings
     attr_accessor :cache_parsed_templates, :cache_ttl
 
+    # Hydration settings
+    attr_accessor :hydration
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -47,6 +73,7 @@ module Rhales
       @site_ssl_enabled       = false
       @cache_parsed_templates = true
       @cache_ttl              = 3600 # 1 hour
+      @hydration              = HydrationConfiguration.new
     end
 
     # Build API base URL from site configuration

@@ -28,6 +28,10 @@ RSpec/MultipleExpectations:
   Enabled: true
   Max: 5
 
+RSpec/ExampleLength:
+  Enabled: true
+  Max: 10
+
 Layout/CaseIndentation:
   Enabled: true
   EnforcedStyle: end # case, end

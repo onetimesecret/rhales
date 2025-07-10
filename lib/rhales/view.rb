@@ -87,8 +87,8 @@ module Rhales
       # Set CSP header if enabled
       set_csp_header_if_enabled
 
-      # Combine template and hydration
-      inject_hydration_into_template(template_html, hydration_html)
+      # Smart hydration injection with mount point detection
+      inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
     rescue StandardError => ex
       raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
     end
@@ -255,7 +255,14 @@ module Rhales
       {}
     end
 
-    # Inject hydration HTML into template
+    # Smart hydration injection with mount point detection
+    def inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
+      mount_point = composition.mount_point_for(template_name)
+      injector = HydrationInjector.new(@config)
+      injector.inject(template_html, hydration_html, mount_point)
+    end
+
+    # Legacy injection method (kept for backwards compatibility)
     def inject_hydration_into_template(template_html, hydration_html)
       # Try to inject before closing </body> tag
       if template_html.include?('</body>')
@@ -269,7 +276,7 @@ module Rhales
     # Build view composition for the given template
     def build_view_composition(template_name)
       loader      = method(:load_template_for_composition)
-      composition = ViewComposition.new(template_name, loader: loader)
+      composition = ViewComposition.new(template_name, loader: loader, config: @config)
       composition.resolve!
     end
 

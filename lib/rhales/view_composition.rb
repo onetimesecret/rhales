@@ -26,19 +26,22 @@ module Rhales
     class TemplateNotFoundError < StandardError; end
     class CircularDependencyError < StandardError; end
 
-    attr_reader :root_template_name, :templates, :dependencies
+    attr_reader :root_template_name, :templates, :dependencies, :mount_points
 
-    def initialize(root_template_name, loader:)
+    def initialize(root_template_name, loader:, config: nil)
       @root_template_name = root_template_name
       @loader             = loader
+      @config             = config
       @templates          = {}
       @dependencies       = {}
+      @mount_points       = {}
       @loading            = Set.new
     end
 
     # Resolve all template dependencies
     def resolve!
       load_template_recursive(@root_template_name)
+      detect_mount_points if @config
       freeze_composition
       self
     end
@@ -81,6 +84,11 @@ module Rhales
     # Get direct dependencies of a template
     def dependencies_of(template_name)
       @dependencies[template_name] || []
+    end
+
+    # Get mount point data for a template
+    def mount_point_for(template_name)
+      @mount_points[template_name]
     end
 
     private
@@ -154,9 +162,25 @@ module Rhales
       end
     end
 
+    def detect_mount_points
+      return unless @config&.hydration
+
+      detector = MountPointDetector.new
+      custom_selectors = @config.hydration.mount_point_selectors || []
+
+      @templates.each do |name, parser|
+        template_content = parser.section('template')
+        next unless template_content
+
+        mount_point = detector.detect(template_content, custom_selectors)
+        @mount_points[name] = mount_point if mount_point
+      end
+    end
+
     def freeze_composition
       @templates.freeze
       @dependencies.freeze
+      @mount_points.freeze
       @templates.each_value(&:freeze)
       @dependencies.each_value(&:freeze)
       freeze
