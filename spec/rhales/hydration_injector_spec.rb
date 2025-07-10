@@ -1,16 +1,16 @@
 require 'spec_helper'
 
 RSpec.describe Rhales::HydrationInjector do
-  let(:config) { double('config') }
   let(:hydration_config) { double('hydration_config') }
-  let(:injector) { described_class.new(config) }
+  let(:injector) { described_class.new(hydration_config) }
   let(:template_html) { '<html><body><div id="app">Content</div></body></html>' }
   let(:hydration_html) { '<script>window.data = {"test": "value"};</script>' }
 
   before do
-    allow(config).to receive(:hydration).and_return(hydration_config)
     allow(hydration_config).to receive(:injection_strategy).and_return(:late)
     allow(hydration_config).to receive(:fallback_to_late).and_return(true)
+    allow(hydration_config).to receive(:fallback_when_unsafe).and_return(true)
+    allow(hydration_config).to receive(:disable_early_for_templates).and_return([])
   end
 
   describe '#inject' do
@@ -110,20 +110,6 @@ RSpec.describe Rhales::HydrationInjector do
       end
     end
 
-    context 'with config that does not respond to hydration' do
-      let(:simple_config) { double('simple_config') }
-      let(:injector) { described_class.new(simple_config) }
-
-      before do
-        allow(simple_config).to receive(:respond_to?).with(:hydration).and_return(false)
-      end
-
-      it 'defaults to late injection strategy' do
-        result = injector.inject(template_html, hydration_html)
-
-        expect(result).to match(/#{Regexp.escape(hydration_html)}\s*<\/body>/)
-      end
-    end
   end
 
   describe 'edge cases' do

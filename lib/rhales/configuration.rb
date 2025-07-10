@@ -17,10 +17,18 @@ module Rhales
     # Whether to fallback to late injection when no mount points detected
     attr_accessor :fallback_to_late
 
+    # Whether to fallback to late injection when early injection is unsafe
+    attr_accessor :fallback_when_unsafe
+
+    # Disable early injection for specific templates (array of template names)
+    attr_accessor :disable_early_for_templates
+
     def initialize
       @injection_strategy = :late
       @mount_point_selectors = ['#app', '#root', '[data-rsfc-mount]', '[data-mount]']
       @fallback_to_late = true
+      @fallback_when_unsafe = true
+      @disable_early_for_templates = []
     end
   end
 

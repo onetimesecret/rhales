@@ -255,10 +255,11 @@ module Rhales
       {}
     end
 
-    # Smart hydration injection with mount point detection
+    # Smart hydration injection with mount point detection on rendered HTML
     def inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-      mount_point = composition.mount_point_for(template_name)
-      injector = HydrationInjector.new(@config)
+      # Detect mount points in the fully rendered HTML (after all partials are processed)
+      mount_point = detect_mount_point_in_rendered_html(template_html)
+      injector = HydrationInjector.new(@config.hydration, template_name)
       injector.inject(template_html, hydration_html, mount_point)
     end
 
@@ -271,6 +272,15 @@ module Rhales
       else
         "#{template_html}\n#{hydration_html}"
       end
+    end
+
+    # Detect mount points in fully rendered HTML
+    def detect_mount_point_in_rendered_html(template_html)
+      return nil unless @config&.hydration
+
+      custom_selectors = @config.hydration.mount_point_selectors || []
+      detector = MountPointDetector.new
+      detector.detect(template_html, custom_selectors)
     end
 
     # Build view composition for the given template
