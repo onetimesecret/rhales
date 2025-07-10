@@ -181,33 +181,41 @@ module Rhales
       attributes
     end
 
+
+    # Uses StringScanner to parse "content" in <section>content</section>
     def parse_section_content(tag_name)
-      start_pos     = @position
       content_start = @position
+      closing_tag = "</#{tag_name}>"
 
-      # Extract the raw content between section tags
-      raw_content = []
-      while !at_end? && !peek_closing_tag?(tag_name)
-        raw_content << current_char
-        advance
-      end
+      # Create scanner from remaining content
+      scanner = StringScanner.new(@content[content_start..])
 
-      # NOTE: This could be optimized to use StringScanner similar to how
-      # we handle tokenization in preprocess_content.
-      warn "Warning: #{self.class}: Parsing '#{tag_name}' section by char."
-      raw_content_str = raw_content.join
+      # Find the closing tag position
+      if scanner.scan_until(/(?=#{Regexp.escape(closing_tag)})/)
+        # Calculate content length (scanner.pos gives us position right before closing tag)
+        content_length = scanner.pos
+        raw_content = @content[content_start, content_length]
 
-      # For template sections, use HandlebarsParser to parse the content
-      if tag_name == 'template'
-        handlebars_parser = HandlebarsParser.new(raw_content_str)
-        handlebars_parser.parse!
-        handlebars_parser.ast.children
+        # Advance position tracking to end of content
+        advance_to_position(content_start + content_length)
+
+        # Process content based on tag type
+        if tag_name == 'template'
+          handlebars_parser = HandlebarsParser.new(raw_content)
+          handlebars_parser.parse!
+          handlebars_parser.ast.children
+        else
+          # For data and logic sections, keep as simple text
+          raw_content.empty? ? [] : [Node.new(:text, current_location, value: raw_content)]
+        end
       else
-        # For data and logic sections, keep as simple text
-        return [Node.new(:text, current_location, value: raw_content_str)] unless raw_content_str.empty?
-
-        []
+        parse_error("Expected '#{closing_tag}' to close section")
       end
+    end
+
+    # Add this helper method to advance position tracking to a specific offset
+    def advance_to_position(target_position)
+      advance while @position < target_position && !at_end?
     end
 
     def parse_quoted_string

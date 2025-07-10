@@ -176,26 +176,30 @@ RSpec.describe 'Tokenize Performance Baseline' do
     end
 
     it 'benchmarks baseline complex content tokenization' do
+      iterations = 50
+
       # Warm up
       5.times { tokenize_content_baseline(complex_content) }
 
       time = Benchmark.realtime do
-        50.times { tokenize_content_baseline(complex_content) }
+        iterations.times { tokenize_content_baseline(complex_content) }
       end
 
-      puts "\nBaseline tokenization (complex): #{(time * 1000).round(2)}ms for 50 iterations"
+      puts "\nBaseline tokenization (complex): #{(time * 1000).round(2)}ms for #{iterations} iterations"
       expect(time).to be < 0.5 # Should complete in less than 500ms
     end
 
     it 'benchmarks StringScanner complex content tokenization' do
+      iterations = 50
+
       # Warm up
       5.times { parser.send(:tokenize_content, complex_content) }
 
       time = Benchmark.realtime do
-        50.times { parser.send(:tokenize_content, complex_content) }
+        iterations.times { parser.send(:tokenize_content, complex_content) }
       end
 
-      puts "StringScanner tokenization (complex): #{(time * 1000).round(2)}ms for 50 iterations"
+      puts "StringScanner tokenization (complex): #{(time * 1000).round(2)}ms for #{iterations} iterations"
       expect(time).to be < 0.5 # Should complete in less than 500ms
     end
 
