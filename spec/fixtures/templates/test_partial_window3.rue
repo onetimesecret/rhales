@@ -1,0 +1,20 @@
+<data window="partial3Data">
+{
+  "partial3_message": "Data from partial 3"
+}
+</data>
+
+<template>
+  <div class="partial3">
+
+    <!-- SHOULD have a value -->
+    <p>Main message in partial 3: {{key1_from_hash_object}}</p>
+
+    <!-- SHOULD have a value -->
+    <p>Partial 3 message: {{key2_from_hash_object}}</p>
+
+    <!-- SHOULD have a value -->
+    <p>Partial 3 message: {{key3_from_hash_object}}</p>
+
+  </div>
+</template>

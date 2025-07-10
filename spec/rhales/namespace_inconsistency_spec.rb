@@ -731,6 +731,139 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
     end
   end
 
+  describe 'Object expansion and namespace inconsistency' do
+    it 'shows that object expansion works in main templates but fails in partials' do
+      # TDD - This test demonstrates how object expansion is affected by the same
+      # namespace inconsistency issue that affects regular data sections
+
+      # Props with an object that should be expanded using {{{object}}} syntax
+      object_expansion_props = {
+        greeting: 'Hello from expansion',
+        user: { name: 'Expansion User' },
+        directly_embedded_hash_object: {
+          key1_from_hash_object: 'Expanded Value 1',
+          key2_from_hash_object: 'Expanded Value 2',
+          key3_from_hash_object: 'Expanded Value 3'
+        }
+      }
+
+      # Test main template with object expansion - SHOULD work
+      main_template_path = File.join('spec', 'fixtures', 'templates', 'main_object_expansion.rue')
+      main_content = <<~RUE
+        <data window="expandedData">
+        {{{directly_embedded_hash_object}}}
+        </data>
+
+        <template>
+        <div class="main-expansion">
+          <h1>{{key1_from_hash_object}}</h1>
+          <p>{{key2_from_hash_object}}</p>
+          <span>Namespaced: {{expandedData.key1_from_hash_object}}</span>
+        </div>
+        </template>
+      RUE
+
+      File.write(main_template_path, main_content)
+
+      view = Rhales::View.new(nil, nil, nil, 'en', props: object_expansion_props)
+      allow(view).to receive(:resolve_template_path).and_return(main_template_path)
+
+      result = view.render('main_object_expansion')
+
+      # Main template object expansion works (View class handles this correctly)
+      expect(result).to include('<h1>Expanded Value 1</h1>')
+      expect(result).to include('<p>Expanded Value 2</p>')
+
+      # Namespaced access fails (expected - window attributes are for client-side)
+      expect(result).to include('<span>Namespaced: </span>')
+
+      # Client-side data is properly organized
+      data_hash = view.data_hash('main_object_expansion')
+      expect(data_hash['expandedData']['key1_from_hash_object']).to eq('Expanded Value 1')
+      expect(data_hash['expandedData']['key2_from_hash_object']).to eq('Expanded Value 2')
+      expect(data_hash['expandedData']['key3_from_hash_object']).to eq('Expanded Value 3')
+
+      # Clean up
+      File.delete(main_template_path) if File.exist?(main_template_path)
+    end
+
+    it 'demonstrates the BROKEN behavior: partials with object expansion cannot access expanded data' do
+      # TDD - This test shows the exact same namespace issue affects object expansion
+
+      object_expansion_props = {
+        greeting: 'Hello from expansion',
+        user: { name: 'Expansion User' },
+        directly_embedded_hash_object: {
+          key1_from_hash_object: 'Should appear in partial',
+          key2_from_hash_object: 'Should also appear',
+          key3_from_hash_object: 'Should be accessible'
+        }
+      }
+
+      # Create main template that includes a partial
+      main_template_path = File.join('spec', 'fixtures', 'templates', 'main_with_expansion_partial.rue')
+      main_content = <<~RUE
+        <data window="mainExpanded">
+        {{{directly_embedded_hash_object}}}
+        </data>
+
+        <template>
+        <div class="main-with-partial">
+          <h1>Main: {{key1_from_hash_object}}</h1>
+          {{> expansion_partial}}
+        </div>
+        </template>
+      RUE
+
+      # Create partial that should inherit the expanded object data
+      partial_path = File.join('spec', 'fixtures', 'templates', 'expansion_partial.rue')
+      partial_content = <<~RUE
+        <data window="partialExpanded">
+        {
+          "partialData": "Data from partial"
+        }
+        </data>
+
+        <template>
+        <div class="expansion-partial">
+          <p>Partial should access: {{key1_from_hash_object}}</p>
+          <p>Partial should access: {{key2_from_hash_object}}</p>
+          <p>Partial data: {{partialData}}</p>
+        </div>
+        </template>
+      RUE
+
+      File.write(main_template_path, main_content)
+      File.write(partial_path, partial_content)
+
+      view = Rhales::View.new(nil, nil, nil, 'en', props: object_expansion_props)
+      allow(view).to receive(:resolve_template_path).with('main_with_expansion_partial').and_return(main_template_path)
+      allow(view).to receive(:resolve_template_path).with('expansion_partial').and_return(partial_path)
+
+      result = view.render_template_only('main_with_expansion_partial')
+
+      # Main template works - can access expanded object data
+      expect(result).to include('<h1>Main: Should appear in partial</h1>')
+
+      # BROKEN: Partial cannot access parent's expanded object data
+      expect(result).to include('<p>Partial should access: </p>')  # Empty - no access to key1
+      expect(result).to include('<p>Partial should access: </p>')  # Empty - no access to key2
+
+      # BROKEN: Partial cannot access its own data section
+      expect(result).to include('<p>Partial data: </p>')  # Empty - no access to partialData
+
+      # This demonstrates the same core issue:
+      # 1. Main templates with object expansion work ✅
+      # 2. Partials cannot inherit expanded context ❌
+      # 3. Partials cannot access their own data sections ❌
+      # 4. The fix needs to address partial rendering context merging
+
+      # Clean up
+      File.delete(main_template_path) if File.exist?(main_template_path)
+      File.delete(partial_path) if File.exist?(partial_path)
+    end
+  end
+
   private
 
   # Helper method to extract rue data like View class does
