@@ -22,7 +22,7 @@ RSpec.describe 'Rhales Integration' do
       view = Rhales::View.new(nil, session, user, 'en', props: props)
 
       # Render the test template
-      html = view.render('test')
+      html = view.render('test_shared_context')
 
       # Verify template content
       expect(html).to include('<h1>Welcome to Rhales</h1>')
@@ -40,7 +40,7 @@ RSpec.describe 'Rhales Integration' do
     it 'handles anonymous users' do
       anon_props = props.merge(user: { name: 'Guest' })
       view               = Rhales::View.new(nil, nil, nil, 'en', props: anon_props)
-      html               = view.render('test')
+      html               = view.render('test_shared_context')
 
       expect(html).to include('<p>Please log in.</p>')
       expect(html).to include('"authenticated":"false"')
@@ -52,7 +52,7 @@ RSpec.describe 'Rhales Integration' do
     it 'renders just the template section' do
       test_data = props.merge(user: { name: 'Guest' })
       view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
-      html      = view.render_template_only('test')
+      html      = view.render_template_only('test_shared_context')
 
       expect(html).to include('<h1>Welcome to Rhales</h1>')
       expect(html).not_to include('<script')
@@ -63,7 +63,7 @@ RSpec.describe 'Rhales Integration' do
     it 'renders just the data hydration' do
       test_data = props.merge(user: { name: 'Guest' })
       view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
-      html      = view.render_hydration_only('test')
+      html      = view.render_hydration_only('test_shared_context')
 
       expect(html).to include('<script id="rsfc-data-')
       expect(html).to include('window.data = JSON.parse(')
@@ -75,7 +75,7 @@ RSpec.describe 'Rhales Integration' do
     it 'returns processed data as hash' do
       test_data = props.merge(user: { name: 'Guest' })
       view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
-      data      = view.data_hash('test')
+      data      = view.data_hash('test_shared_context')
 
       expect(data).to be_a(Hash)
       expect(data['data']).to be_a(Hash)
@@ -87,7 +87,7 @@ RSpec.describe 'Rhales Integration' do
 
   describe 'convenience methods' do
     it 'renders via Rhales.render' do
-      html = Rhales.render('test', **props)
+      html = Rhales.render('test_shared_context', **props)
 
       expect(html).to include('Welcome to Rhales')
       expect(html).to include('<script')
