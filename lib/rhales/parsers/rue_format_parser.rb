@@ -31,9 +31,17 @@ module Rhales
     REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
     KNOWN_SECTIONS = %w[data template logic].freeze
     ALL_SECTIONS = KNOWN_SECTIONS.freeze
+    unless defined?(REQUIRES_ONE_OF_SECTIONS)
+      REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
 
     # Regular expression to match HTML/XML comments outside of sections
     COMMENT_REGEX = /<!--.*?-->/m
+      KNOWN_SECTIONS = %w[data template logic].freeze
+      ALL_SECTIONS = KNOWN_SECTIONS.freeze
+
+      # Regular expression to match HTML/XML comments outside of sections
+      COMMENT_REGEX = /<!--.*?-->/m
+    end
 
     class ParseError < ::Rhales::ParseError
       def initialize(message, line: nil, column: nil, offset: nil)
