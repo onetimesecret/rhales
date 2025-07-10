@@ -43,7 +43,6 @@ module Rhales
     end
 
     def render
-
       # Check if this is a simple template or a full .rue file
       if simple_template?
         # Use HandlebarsParser for simple templates
