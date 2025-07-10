@@ -131,6 +131,8 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
     end
 
     it 'benchmarks baseline complex content tokenization' do
+      iterations = 50
+
       # Warm up
       5.times { tokenize_content_baseline(complex_content) }
 
@@ -143,6 +145,8 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
     end
 
     it 'benchmarks StringScanner complex content tokenization' do
+      iterations = 50
+
       # Warm up
       5.times { parser.send(:tokenize_content, complex_content) }
 
