@@ -111,11 +111,7 @@ module Rhales
 
         parser
       rescue StandardError => ex
-        if defined?(OT) && OT.respond_to?(:le)
-          OT.le "[RSFC] Failed to process .rue file #{path}: #{ex.message}"
-        else
-          puts "[RSFC] Failed to process .rue file #{path}: #{ex.message}"
-        end
+        puts "[RSFC] Failed to process .rue file #{path}: #{ex.message}"
         raise
       end
 
@@ -130,7 +126,7 @@ module Rhales
         return File.expand_path(path) if File.exist?(path)
 
         # Search in templates directory
-        boot_root      = defined?(OT) && OT.respond_to?(:boot_root) ? OT.boot_root : File.expand_path('../../..', __dir__)
+        boot_root      = File.expand_path('../../..', __dir__)
         templates_path = File.join(boot_root, 'templates', path)
         return templates_path if File.exist?(templates_path)
 
@@ -197,9 +193,7 @@ module Rhales
               current_mtime = File.mtime(full_path)
 
               if current_mtime > last_mtime
-                if defined?(OT) && OT.respond_to?(:ld)
-                  OT.ld "[RSFC] File changed, clearing cache: #{full_path}"
-                end
+                puts "[RSFC] File changed, clearing cache: #{full_path}"
 
                 # Thread-safe cache removal
                 Rhales::Ruequire.instance_variable_get(:@cache_mutex).synchronize do
@@ -210,9 +204,7 @@ module Rhales
               end
             rescue StandardError => ex
               # File might have been deleted
-              if defined?(OT) && OT.respond_to?(:ld)
-                OT.ld "[RSFC] File watcher error for #{full_path}: #{ex.message}"
-              end
+              puts "[RSFC] File watcher error for #{full_path}: #{ex.message}"
 
               # Clean up watcher entry on error
               watchers_mutex.synchronize do
