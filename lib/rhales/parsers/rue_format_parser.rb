@@ -186,20 +186,25 @@ module Rhales
       content_start = @position
 
       # Extract the raw content between section tags
-      raw_content = ''
+      raw_content = []
       while !at_end? && !peek_closing_tag?(tag_name)
         raw_content << current_char
         advance
       end
 
+      # NOTE: This could be optimized to use StringScanner similar to how
+      # we handle tokenization in preprocess_content.
+      warn "Warning: #{self.class}: Parsing '#{tag_name}' section by char."
+      raw_content_str = raw_content.join
+
       # For template sections, use HandlebarsParser to parse the content
       if tag_name == 'template'
-        handlebars_parser = HandlebarsParser.new(raw_content)
+        handlebars_parser = HandlebarsParser.new(raw_content_str)
         handlebars_parser.parse!
         handlebars_parser.ast.children
       else
         # For data and logic sections, keep as simple text
-        return [Node.new(:text, current_location, value: raw_content)] unless raw_content.empty?
+        return [Node.new(:text, current_location, value: raw_content_str)] unless raw_content_str.empty?
 
         []
       end
@@ -212,7 +217,7 @@ module Rhales
       end
 
       advance # Skip opening quote
-      value = ''
+      value = []
 
       while !at_end? && current_char != quote_char
         value << current_char
@@ -220,7 +225,11 @@ module Rhales
       end
 
       consume(quote_char) || parse_error('Unterminated quoted string')
-      value
+
+      # NOTE: Character-by-character parsing is acceptable here since attribute values
+      # in section tags (e.g., <tag attribute="value">) are typically short strings.
+      # Using StringScanner would be overkill for this use case.
+      value.join
     end
 
     def parse_identifier
