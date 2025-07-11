@@ -13,7 +13,13 @@ RSpec.describe Rhales::HydrationEndpoint do
   let(:context) do
     double('Context',
       to_h: { user: 'john', role: 'admin' },
-      get: proc { |key| { user: 'john', role: 'admin' }[key] }
+      get: proc { |key| { user: 'john', role: 'admin' }[key] },
+      props: { user: 'john', role: 'admin' },
+      req: nil,
+      sess: nil,
+      cust: nil,
+      locale: 'en',
+      class: double('ContextClass', for_view: double('Context'))
     )
   end
 
@@ -22,13 +28,13 @@ RSpec.describe Rhales::HydrationEndpoint do
 
   before do
     # Mock the View and aggregator classes
-    allow(Rhales::View).to receive(:new).and_return(double('View', collect_template_dependencies: ['test_template']))
-    allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(
-      double('Aggregator',
-        merged_data: { 'userData' => { user: 'john' }, 'config' => { theme: 'dark' } },
-        collect_from_template: nil
-      )
-    )
+    composition_double = double('ViewComposition', resolve!: nil, templates: { 'test_template' => double('Document') })
+    view_double = double('View', build_view_composition: composition_double)
+    allow(view_double).to receive(:send).with(:build_view_composition, anything).and_return(composition_double)
+    allow(Rhales::View).to receive(:new).and_return(view_double)
+    aggregator_double = double('Aggregator')
+    allow(aggregator_double).to receive(:aggregate).with(anything).and_return({ 'userData' => { user: 'john' }, 'config' => { theme: 'dark' } })
+    allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(aggregator_double)
   end
 
   describe '#render_json' do
@@ -186,12 +192,9 @@ RSpec.describe Rhales::HydrationEndpoint do
       etag1 = endpoint.calculate_etag(template_name)
 
       # Mock different data and calculate second ETag
-      allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(
-        double('Aggregator',
-          merged_data: { 'userData' => { user: 'jane' } },
-          collect_from_template: nil
-        )
-      )
+      different_aggregator = double('Aggregator')
+      allow(different_aggregator).to receive(:aggregate).with(anything).and_return({ 'userData' => { user: 'jane' } })
+      allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(different_aggregator)
 
       etag2 = endpoint.calculate_etag(template_name)
 
@@ -228,12 +231,9 @@ RSpec.describe Rhales::HydrationEndpoint do
       circular_data = {}
       circular_data[:self] = circular_data
 
-      allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(
-        double('Aggregator',
-          merged_data: circular_data,
-          collect_from_template: nil
-        )
-      )
+      circular_aggregator = double('Aggregator')
+      allow(circular_aggregator).to receive(:aggregate).with(anything).and_return(circular_data)
+      allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(circular_aggregator)
 
       expect {
         endpoint.render_json(template_name)
@@ -246,8 +246,8 @@ RSpec.describe Rhales::HydrationEndpoint do
       it 'merges additional context with existing context' do
         additional_context = { extra_data: 'test' }
 
-        # Expect the context class to be instantiated with merged data
-        expect(context.class).to receive(:new).with(context.to_h.merge(additional_context)).and_return(context)
+        # Expect the context class to create a new context with merged props
+        expect(context.class).to receive(:for_view).with(context.req, context.sess, context.cust, context.locale, user: 'john', role: 'admin', extra_data: 'test').and_return(context)
 
         endpoint.render_json(template_name, additional_context)
       end
@@ -259,7 +259,7 @@ RSpec.describe Rhales::HydrationEndpoint do
       it 'creates minimal context with additional data' do
         additional_context = { extra_data: 'test' }
 
-        expect(Rhales::Context).to receive(:new).with(additional_context).and_return(context)
+        expect(Rhales::Context).to receive(:minimal).with(props: additional_context).and_return(context)
 
         endpoint_no_context.render_json(template_name, additional_context)
       end

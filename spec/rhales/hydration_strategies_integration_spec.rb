@@ -20,7 +20,16 @@ RSpec.describe 'Hydration Strategies Integration' do
       get: proc { |key|
         data = { user: { name: 'John Doe' }, app_config: { theme: 'dark' } }
         key.split('.').reduce(data) { |obj, k| obj[k.to_sym] }
-      }
+      },
+      props: {
+        user: { name: 'John Doe', role: 'admin' },
+        app_config: { theme: 'dark', api_url: 'https://api.example.com' }
+      },
+      req: nil,
+      sess: nil,
+      cust: nil,
+      locale: 'en',
+      class: double('ContextClass', for_view: double('Context'))
     )
   end
 
@@ -97,20 +106,18 @@ RSpec.describe 'Hydration Strategies Integration' do
   # Mock the necessary classes to avoid dependency issues
   before do
     # Mock View class
-    allow(Rhales::View).to receive(:new).and_return(
-      double('View', collect_template_dependencies: ['test_template'])
-    )
+    composition_double = double('ViewComposition', resolve!: nil, templates: { 'test_template' => double('Document') })
+    view_double = double('View', build_view_composition: composition_double)
+    allow(view_double).to receive(:send).with(:build_view_composition, anything).and_return(composition_double)
+    allow(Rhales::View).to receive(:new).and_return(view_double)
 
     # Mock HydrationDataAggregator
-    allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(
-      double('Aggregator',
-        merged_data: {
-          'userData' => { name: 'John', role: 'admin' },
-          'appConfig' => { theme: 'dark', api_url: 'https://api.example.com' }
-        },
-        collect_from_template: nil
-      )
-    )
+    aggregator_double = double('Aggregator')
+    allow(aggregator_double).to receive(:aggregate).with(anything).and_return({
+      'userData' => { name: 'John', role: 'admin' },
+      'appConfig' => { theme: 'dark', api_url: 'https://api.example.com' }
+    })
+    allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(aggregator_double)
   end
 
   describe 'Traditional Injection Strategies' do
