@@ -699,6 +699,56 @@ get '/api/hydration/:template', to: 'hydration#show'
 get '/api/hydration/:template.js', to: 'hydration#show', defaults: { format: :js }
 ```
 
+#### Advanced Non-Rails Example
+
+For applications using custom frameworks or middleware, here's a complete controller implementation from a production Rack-based application:
+
+```ruby
+# Example from OneTime Secret (non-Rails application)
+module Manifold
+  module Controllers
+    class Data
+      include Controllers::Base
+
+      def rhales_hydration
+        publically do
+          template_name = params[:template]
+
+          # Build Rhales context from your app's current state
+          context = Rhales::Context.for_view(req, sess, cust, locale)
+          endpoint = Rhales::HydrationEndpoint.new(Rhales.configuration, context)
+
+          # Handle different formats
+          result = case req.env['HTTP_ACCEPT']
+                   when /application\/javascript/
+                     endpoint.render_module(template_name)
+                   else
+                     endpoint.render_json(template_name)
+                   end
+
+          # Set response content type and headers
+          res['Content-Type'] = result[:content_type]
+          result[:headers]&.each { |key, value| res[key] = value }
+
+          # Return the content
+          res.body = result[:content]
+        end
+      end
+    end
+  end
+end
+
+# Route configuration (framework-specific)
+# GET /api/hydration/:template -> data#rhales_hydration
+```
+
+**Key differences from Rails:**
+- **Framework-agnostic**: Uses `req`, `res`, `sess`, `cust`, `locale` from your framework
+- **Context creation**: Manually creates `Rhales::Context.for_view` with app objects
+- **Global configuration**: Uses `Rhales.configuration` instead of passing custom config
+- **Direct response handling**: Sets headers and body directly instead of using `render`
+- **Custom format detection**: Uses `req.env['HTTP_ACCEPT']` instead of `request.format`
+
 ### Data Hydration Examples
 
 #### Traditional Inline Hydration
