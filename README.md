@@ -11,7 +11,8 @@ It all started with a simple mustache template many years ago. The successor to 
 ## Features
 
 - **Server-side template rendering** with Handlebars-style syntax
-- **Client-side data hydration** with secure JSON injection
+- **Enhanced hydration strategies** for optimal client-side performance
+- **API endpoint generation** for link-based hydration strategies
 - **Window collision detection** prevents silent data overwrites
 - **Explicit merge strategies** for controlled data sharing (shallow, deep, strict)
 - **Clear security boundaries** between server context and client data
@@ -19,6 +20,7 @@ It all started with a simple mustache template many years ago. The successor to 
 - **Pluggable authentication adapters** for any auth system
 - **Security-first design** with XSS protection and automatic CSP generation
 - **Dependency injection** for testability and flexibility
+- **Resource hint optimization** with browser preload/prefetch support
 
 ## Installation
 
@@ -51,6 +53,13 @@ Rhales.configure do |config|
   config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
+
+  # Enhanced Hydration Configuration
+  config.hydration.injection_strategy = :preload  # or :late, :early, :earliest, :prefetch, :modulepreload, :lazy
+  config.hydration.api_endpoint_path = '/api/hydration'
+  config.hydration.fallback_to_late = true
+  config.hydration.api_cache_enabled = true
+  config.hydration.cors_enabled = true
 
   # CSP configuration (enabled by default)
   config.csp_enabled = true           # Enable automatic CSP header generation
@@ -574,10 +583,125 @@ Rhales uses a Handlebars-style template syntax:
 {{> navigation}}
 ```
 
-## Data Hydration
+## Enhanced Hydration Strategies
 
-The `<data>` section creates client-side JavaScript:
+Rhales provides multiple hydration strategies optimized for different performance requirements and use cases:
 
+### Traditional Strategies
+
+#### `:late` (Default - Backwards Compatible)
+Injects scripts before the closing `</body>` tag. Safe and reliable for all scenarios.
+
+```ruby
+config.hydration.injection_strategy = :late
+```
+
+#### `:early` (Mount Point Optimization)
+Injects scripts immediately before frontend mount points (`#app`, `#root`, etc.) for improved Time-to-Interactive.
+
+```ruby
+config.hydration.injection_strategy = :early
+config.hydration.mount_point_selectors = ['#app', '#root', '[data-mount]']
+config.hydration.fallback_to_late = true
+```
+
+#### `:earliest` (Head Section Injection)
+Injects scripts in the HTML head section for maximum performance, after meta tags and stylesheets.
+
+```ruby
+config.hydration.injection_strategy = :earliest
+config.hydration.fallback_to_late = true
+```
+
+### Link-Based Strategies (API Endpoints)
+
+These strategies generate separate API endpoints for hydration data, enabling better caching, parallel loading, and reduced HTML payload sizes.
+
+#### `:preload` (High Priority Loading)
+Generates `<link rel="preload">` tags with immediate script execution for critical data.
+
+```ruby
+config.hydration.injection_strategy = :preload
+config.hydration.api_endpoint_path = '/api/hydration'
+config.hydration.link_crossorigin = true
+```
+
+#### `:prefetch` (Future Page Optimization)
+Generates `<link rel="prefetch">` tags for data that will be needed on subsequent page loads.
+
+```ruby
+config.hydration.injection_strategy = :prefetch
+```
+
+#### `:modulepreload` (ES Module Support)
+Generates `<link rel="modulepreload">` tags with ES module imports for modern applications.
+
+```ruby
+config.hydration.injection_strategy = :modulepreload
+```
+
+#### `:lazy` (Intersection Observer)
+Loads data only when mount points become visible using Intersection Observer API.
+
+```ruby
+config.hydration.injection_strategy = :lazy
+config.hydration.lazy_mount_selector = '#app'
+```
+
+#### `:link` (Manual Loading)
+Generates basic link references with manual loading functions for custom hydration logic.
+
+```ruby
+config.hydration.injection_strategy = :link
+```
+
+### Strategy Performance Comparison
+
+| Strategy | Time-to-Interactive | Caching | Parallel Loading | Best Use Case |
+|----------|-------------------|---------|------------------|---------------|
+| `:late` | Standard | Basic | No | Legacy compatibility |
+| `:early` | Improved | Basic | No | SPA mount point optimization |
+| `:earliest` | Excellent | Basic | No | Critical path optimization |
+| `:preload` | Excellent | Advanced | Yes | High-priority data |
+| `:prefetch` | Standard | Advanced | Yes | Multi-page apps |
+| `:modulepreload` | Excellent | Advanced | Yes | Modern ES modules |
+| `:lazy` | Variable | Advanced | Yes | Below-fold content |
+| `:link` | Manual | Advanced | Yes | Custom implementations |
+
+### API Endpoint Setup
+
+For link-based strategies, you'll need to set up API endpoints in your application:
+
+```ruby
+# Rails example
+class HydrationController < ApplicationController
+  def show
+    template_name = params[:template]
+    endpoint = Rhales::HydrationEndpoint.new(rhales_config, current_context)
+
+    case request.format
+    when :json
+      result = endpoint.render_json(template_name)
+    when :js
+      result = endpoint.render_module(template_name)
+    else
+      result = endpoint.render_json(template_name)
+    end
+
+    render json: result[:content],
+           content_type: result[:content_type],
+           headers: result[:headers]
+  end
+end
+
+# routes.rb
+get '/api/hydration/:template', to: 'hydration#show'
+get '/api/hydration/:template.js', to: 'hydration#show', defaults: { format: :js }
+```
+
+### Data Hydration Examples
+
+#### Traditional Inline Hydration
 ```erb
 <data window="myData">
 {
@@ -597,6 +721,131 @@ Generates:
 window.myData = JSON.parse(document.getElementById('rsfc-data-abc123').textContent);
 </script>
 ```
+
+#### Link-Based Hydration (`:preload` strategy)
+```erb
+<data window="myData">
+{
+  "apiUrl": "{{api_base_url}}",
+  "user": {{user}},
+  "csrfToken": "{{csrf_token}}"
+}
+</data>
+```
+
+Generates:
+```html
+<link rel="preload" href="/api/hydration/my_template" as="fetch" crossorigin>
+<script nonce="nonce123" data-hydration-target="myData">
+fetch('/api/hydration/my_template')
+  .then(r => r.json())
+  .then(data => {
+    window.myData = data;
+    window.dispatchEvent(new CustomEvent('rhales:hydrated', {
+      detail: { target: 'myData', data: data }
+    }));
+  })
+  .catch(err => console.error('Rhales hydration error:', err));
+</script>
+```
+
+#### ES Module Hydration (`:modulepreload` strategy)
+```html
+<link rel="modulepreload" href="/api/hydration/my_template.js">
+<script type="module" nonce="nonce123" data-hydration-target="myData">
+import data from '/api/hydration/my_template.js';
+window.myData = data;
+window.dispatchEvent(new CustomEvent('rhales:hydrated', {
+  detail: { target: 'myData', data: data }
+}));
+</script>
+```
+
+### Migration Guide
+
+#### From Basic to Enhanced Hydration
+
+**Step 1**: Update your configuration to use enhanced strategies:
+
+```ruby
+# Before (implicit :late strategy)
+Rhales.configure do |config|
+  # Basic configuration
+end
+
+# After (explicit strategy selection)
+Rhales.configure do |config|
+  # Choose your strategy based on your needs
+  config.hydration.injection_strategy = :preload  # or :early, :earliest, etc.
+  config.hydration.fallback_to_late = true        # Safe fallback
+  config.hydration.api_endpoint_path = '/api/hydration'
+  config.hydration.api_cache_enabled = true
+end
+```
+
+**Step 2**: Set up API endpoints for link-based strategies (if using `:preload`, `:prefetch`, `:modulepreload`, `:lazy`, or `:link`):
+
+```ruby
+# Add to your routes
+get '/api/hydration/:template', to: 'hydration#show'
+get '/api/hydration/:template.js', to: 'hydration#show', defaults: { format: :js }
+
+# Create controller
+class HydrationController < ApplicationController
+  def show
+    template_name = params[:template]
+    endpoint = Rhales::HydrationEndpoint.new(rhales_config, current_context)
+    result = endpoint.render_json(template_name)
+
+    render json: result[:content],
+           content_type: result[:content_type],
+           headers: result[:headers]
+  end
+end
+```
+
+**Step 3**: Update your frontend code to listen for hydration events (optional):
+
+```javascript
+// Listen for hydration completion
+window.addEventListener('rhales:hydrated', (event) => {
+  console.log('Data loaded:', event.detail.target, event.detail.data);
+
+  // Initialize your app with the loaded data
+  if (event.detail.target === 'appData') {
+    initializeApp(event.detail.data);
+  }
+});
+```
+
+### Troubleshooting
+
+#### Common Issues
+
+**1. Link-based strategies not working**
+- Ensure API endpoints are set up correctly
+- Check that `config.hydration.api_endpoint_path` matches your routes
+- Verify CORS settings if loading from different domains
+
+**2. Mount points not detected with `:early` strategy**
+- Check that your HTML contains valid mount point selectors (`#app`, `#root`, etc.)
+- Verify `config.hydration.mount_point_selectors` includes your selectors
+- Enable fallback: `config.hydration.fallback_to_late = true`
+
+**3. CSP violations with link-based strategies**
+- Ensure nonces are properly configured: `config.auto_nonce = true`
+- Add API endpoint domains to CSP `connect-src` directive
+- Check that `crossorigin` attribute is properly configured
+
+**4. Performance not improving with advanced strategies**
+- Verify browser support for chosen strategy (modulepreload requires modern browsers)
+- Check network timing in DevTools to confirm parallel loading
+- Consider using `:prefetch` for subsequent page loads vs `:preload` for current page
+
+**5. Hydration events not firing**
+- Ensure JavaScript is not blocked by CSP
+- Check browser console for script errors
+- Verify API endpoints return valid JSON responses
 
 ### Window Collision Detection
 
