@@ -28,9 +28,10 @@ module Rhales
 
     attr_reader :root_template_name, :templates, :dependencies
 
-    def initialize(root_template_name, loader:)
+    def initialize(root_template_name, loader:, config: nil)
       @root_template_name = root_template_name
       @loader             = loader
+      @config             = config
       @templates          = {}
       @dependencies       = {}
       @loading            = Set.new
@@ -82,6 +83,7 @@ module Rhales
     def dependencies_of(template_name)
       @dependencies[template_name] || []
     end
+
 
     private
 

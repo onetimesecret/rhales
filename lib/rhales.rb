@@ -13,6 +13,12 @@ require_relative 'rhales/template_engine'
 require_relative 'rhales/hydrator'
 require_relative 'rhales/view_composition'
 require_relative 'rhales/hydration_data_aggregator'
+require_relative 'rhales/mount_point_detector'
+require_relative 'rhales/safe_injection_validator'
+require_relative 'rhales/earliest_injection_detector'
+require_relative 'rhales/link_based_injection_detector'
+require_relative 'rhales/hydration_injector'
+require_relative 'rhales/hydration_endpoint'
 require_relative 'rhales/refinements/require_refinements'
 require_relative 'rhales/view'
 
@@ -30,9 +36,14 @@ require_relative 'rhales/view'
 #
 # Usage:
 #   Rhales.configure do |config|
-#     config.default_localhas_role?e = 'en'
+#     config.default_locale = 'en'
 #     config.template_paths = ['app/templates']
 #     config.features = { dark_mode: true }
+#
+#     # Hydration configuration
+#     config.hydration.injection_strategy = :early  # :early or :late (default)
+#     config.hydration.mount_point_selectors = ['#app', '#root', '[data-mount]']
+#     config.hydration.fallback_to_late = true
 #   end
 #
 #   view = Rhales::View.new(request, session, user)
