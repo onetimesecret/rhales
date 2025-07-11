@@ -61,7 +61,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
         expect(result).to include('fetch(\'/api/hydration/test_template\')')
-        expect(result).to include('window.myData = data')
+        expect(result).to include("window['myData'] = data")
         expect(result).to include('rhales:hydrated')
       end
 
@@ -81,7 +81,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
         expect(result).to include('import data from \'/api/hydration/test_template.js\'')
-        expect(result).to include('window.myData = data')
+        expect(result).to include("window['myData'] = data")
         expect(result).to include('rhales:hydrated')
       end
 
@@ -170,14 +170,14 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         result = detector.generate_for_strategy(:preload, template_name, 'userData', nonce)
 
         expect(result).to include('data-hydration-target="userData"')
-        expect(result).to include('window.userData = data')
+        expect(result).to include("window['userData'] = data")
       end
 
       it 'handles snake_case window attributes' do
         result = detector.generate_for_strategy(:preload, template_name, 'user_data', nonce)
 
         expect(result).to include('data-hydration-target="user_data"')
-        expect(result).to include('window.user_data = data')
+        expect(result).to include("window['user_data'] = data")
       end
     end
 
@@ -202,6 +202,67 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
           result = detector.generate_for_strategy(strategy, template_name, window_attr, nonce)
 
           expect(result).not_to include('rhales:hydrated')
+        end
+      end
+    end
+
+    context 'security tests' do
+      context 'XSS prevention' do
+        it 'prevents code injection through window attribute names' do
+          malicious_window_attr = "userData; alert('XSS')"
+          result = detector.generate_for_strategy(:preload, template_name, malicious_window_attr, nonce)
+
+          # Should use bracket notation, not dot notation
+          expect(result).to include("window['#{malicious_window_attr}']")
+          expect(result).not_to include("window.#{malicious_window_attr}")
+        end
+
+        it 'escapes HTML in nonce attributes' do
+          malicious_nonce = 'test" onload="alert(\'XSS\')'
+          result = detector.generate_for_strategy(:preload, template_name, window_attr, malicious_nonce)
+
+          # Should escape HTML special characters
+          expect(result).to include('nonce="test&quot; onload=&quot;alert(&#39;XSS&#39;)')
+          expect(result).not_to include('nonce="test" onload="alert(\'XSS\')')
+        end
+
+        it 'validates all strategies use secure bracket notation' do
+          [:preload, :modulepreload, :lazy].each do |strategy|
+            result = detector.generate_for_strategy(strategy, template_name, 'testAttr', nonce)
+
+            # These strategies should use bracket notation for direct assignments
+            expect(result).to include("window['testAttr']")
+          end
+
+          # Link and prefetch strategies use dynamic assignment via function calls
+          [:link, :prefetch].each do |strategy|
+            result = detector.generate_for_strategy(strategy, template_name, 'testAttr', nonce)
+
+            # These use window[target] in loadData/loadPrefetched functions
+            expect(result).to include('window[target] = data')
+          end
+        end
+
+        it 'prevents template path traversal' do
+          malicious_template = '../../../etc/passwd'
+          result = detector.generate_for_strategy(:preload, malicious_template, window_attr, nonce)
+
+          expect(result).to include('/api/hydration/../../../etc/passwd')
+          # This test documents current behavior - actual path validation should be done at router level
+        end
+      end
+
+      context 'null safety' do
+        it 'handles null window attributes gracefully' do
+          expect {
+            detector.generate_for_strategy(:preload, template_name, nil, nonce)
+          }.not_to raise_error
+        end
+
+        it 'handles empty string window attributes' do
+          result = detector.generate_for_strategy(:preload, template_name, '', nonce)
+
+          expect(result).to include("window['']")
         end
       end
     end

@@ -100,7 +100,7 @@ module Rhales
         fetch('#{endpoint_url}')
           .then(r => r.json())
           .then(data => {
-            window.#{window_attr} = data;
+            window['#{window_attr}'] = data;
             // Dispatch ready event
             window.dispatchEvent(new CustomEvent('rhales:hydrated', {
               detail: { target: '#{window_attr}', data: data }
@@ -122,7 +122,7 @@ module Rhales
         <script type="module"#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
         // Module preload strategy
         import data from '#{endpoint_url}';
-        window.#{window_attr} = data;
+        window['#{window_attr}'] = data;
 
         // Dispatch ready event
         window.dispatchEvent(new CustomEvent('rhales:hydrated', {
@@ -156,7 +156,7 @@ module Rhales
                 fetch('#{endpoint_url}')
                   .then(r => r.json())
                   .then(data => {
-                    window.#{window_attr} = data;
+                    window['#{window_attr}'] = data;
                     window.dispatchEvent(new CustomEvent('rhales:hydrated', {
                       detail: { target: '#{window_attr}', data: data }
                     }));
@@ -184,7 +184,8 @@ module Rhales
     end
 
     def nonce_attribute(nonce)
-      nonce ? " nonce=\"#{nonce}\"" : ''
+      require 'erb'
+      nonce ? " nonce=\"#{ERB::Util.html_escape(nonce)}\"" : ''
     end
   end
 end

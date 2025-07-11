@@ -432,7 +432,7 @@ module Rhales
         else
           <<~HTML.strip
             <script#{nonce_attr}#{hydration_attrs}>
-            window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
+            window['#{window_attr}'] = JSON.parse(document.getElementById('#{unique_id}').textContent);
             </script>
           HTML
         end
@@ -467,7 +467,7 @@ module Rhales
           },
           getDataForTarget: function(target) {
             var targetName = target.dataset.hydrationTarget;
-            return window[targetName];
+            return targetName ? window[targetName] : undefined;
           },
           getWindowAttribute: function(scriptEl) {
             return scriptEl.dataset.window;
@@ -478,7 +478,7 @@ module Rhales
           refreshData: function(target) {
             var targetName = target.dataset.hydrationTarget;
             var dataScript = document.querySelector('script[data-window="' + targetName + '"]');
-            if (dataScript) {
+            if (dataScript && targetName) {
               try {
                 window[targetName] = JSON.parse(dataScript.textContent);
                 return true;
@@ -493,7 +493,9 @@ module Rhales
             var data = {};
             this.getHydrationTargets().forEach(function(target) {
               var targetName = target.dataset.hydrationTarget;
-              data[targetName] = window[targetName];
+              if (targetName) {
+                data[targetName] = window[targetName];
+              }
             });
             return data;
           }
