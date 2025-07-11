@@ -266,8 +266,8 @@ RSpec.describe 'Hydration Strategies Integration' do
 
         # Should have immediate fetch scripts
         expect(result).to include('fetch(\'/api/hydration/react_app\')')
-        expect(result).to include('window.userData = data;')
-        expect(result).to include('window.appConfig = data;')
+        expect(result).to include("window['userData'] = data;")
+        expect(result).to include("window['appConfig'] = data;")
 
         # Should include nonce for CSP compliance
         expect(result).to include('nonce="test-nonce-abc123"')
@@ -315,8 +315,8 @@ RSpec.describe 'Hydration Strategies Integration' do
         expect(result).to include('<link rel="modulepreload" href="/api/hydration/react_app.js">')
         expect(result).to include('type="module"')
         expect(result).to include('import data from \'/api/hydration/react_app.js\';')
-        expect(result).to include('window.userData = data;')
-        expect(result).to include('window.appConfig = data;')
+        expect(result).to include("window['userData'] = data;")
+        expect(result).to include("window['appConfig'] = data;")
       end
     end
 
