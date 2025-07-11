@@ -20,6 +20,7 @@ module Rhales
   class HydrationConfiguration
     VALID_STRATEGIES = [:late, :early, :earliest, :link, :prefetch, :preload, :modulepreload, :lazy].freeze
     LINK_BASED_STRATEGIES = [:link, :prefetch, :preload, :modulepreload, :lazy].freeze
+    DEFAULT_API_CACHE_TTL = 300  # 5 minutes
 
     # Injection strategy - one of VALID_STRATEGIES
     attr_accessor :injection_strategy
@@ -83,7 +84,7 @@ module Rhales
 
       # Caching settings
       @api_cache_enabled = false
-      @api_cache_ttl = 300  # 5 minutes
+      @api_cache_ttl = DEFAULT_API_CACHE_TTL
 
       # CORS settings
       @cors_enabled = false

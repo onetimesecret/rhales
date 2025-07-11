@@ -52,11 +52,26 @@ module Rhales
         content_type: 'application/json',
         headers: json_headers(merged_data)
       }
-    rescue JSON::NestingError, JSON::GeneratorError => e
-      # Handle JSON serialization errors
+    rescue JSON::NestingError, JSON::GeneratorError, ArgumentError, Encoding::UndefinedConversionError => e
+      # Handle JSON serialization errors and encoding issues
       error_data = {
         error: {
           message: "Failed to serialize data to JSON: #{e.message}",
+          template: template_name,
+          timestamp: Time.now.iso8601
+        }
+      }
+
+      {
+        content: JSON.generate(error_data),
+        content_type: 'application/json',
+        headers: json_headers(error_data)
+      }
+    rescue StandardError => e
+      # Handle any other unexpected errors during JSON generation
+      error_data = {
+        error: {
+          message: "Unexpected error during JSON generation: #{e.message}",
           template: template_name,
           timestamp: Time.now.iso8601
         }

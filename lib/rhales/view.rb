@@ -505,7 +505,7 @@ module Rhales
     # Get nonce attribute if available
     def nonce_attribute
       nonce = @rsfc_context.get('nonce')
-      nonce ? " nonce=\"#{nonce}\"" : ''
+      nonce ? " nonce=\"#{ERB::Util.html_escape(nonce)}\"" : ''
     end
 
     # Set CSP header if enabled
