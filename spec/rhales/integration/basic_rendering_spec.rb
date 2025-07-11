@@ -33,7 +33,9 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       expect(html).to include('type="application/json"')
       expect(html).to include('"message":"Welcome to Rhales"')
       expect(html).to include('"authenticated":"true"')
-      expect(html).to include('window.data = JSON.parse(')
+      expect(html).to include('var dataScript = document.getElementById(')
+      expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'data\';')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
     end
 
     it 'handles anonymous users' do
@@ -65,7 +67,9 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       html      = view.render_hydration_only('test_shared_context')
 
       expect(html).to include('<script id="rsfc-data-')
-      expect(html).to include('window.data = JSON.parse(')
+      expect(html).to include('var dataScript = document.getElementById(')
+      expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'data\';')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
       expect(html).not_to include('<h1>')
     end
   end

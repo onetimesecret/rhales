@@ -87,7 +87,7 @@ module Rhales
       {
         content: "#{callback_name}(#{JSON.generate(merged_data)});",
         content_type: 'application/javascript',
-        headers: jsonp_headers(merged_data)
+        headers: jsonp_headers(merged_data),
       }
     end
 
@@ -111,33 +111,34 @@ module Rhales
       template_context = create_template_context(additional_context)
 
       # Process template to extract hydration data
-      view = View.new(template_name, @config, template_context)
+      view = View.new(@context.req, @context.sess, @context.cust, @context.locale, props: {})
       aggregator = HydrationDataAggregator.new(template_context)
 
-      # Collect data from template and its dependencies
-      view.collect_template_dependencies.each do |template_path|
-        aggregator.collect_from_template(template_path)
-      end
+      # Build composition to get template dependencies
+      composition = view.send(:build_view_composition, template_name)
+      composition.resolve!
 
-      aggregator.merged_data
-    rescue => e
+      # Aggregate data from all templates in the composition
+      aggregator.aggregate(composition)
+    rescue StandardError => ex
       # Return error structure that can be serialized
       {
         error: {
-          message: "Failed to process template data: #{e.message}",
+          message: "Failed to process template data: #{ex.message}",
           template: template_name,
-          timestamp: Time.now.iso8601
+          timestamp: Time.now.iso8601,
         }
       }
     end
 
     def create_template_context(additional_context)
       if @context
-        # Merge additional context into existing context
-        @context.class.new(@context.to_h.merge(additional_context))
+        # Merge additional context into existing context by reconstructing with merged props
+        merged_props = @context.props.merge(additional_context)
+        @context.class.for_view(@context.req, @context.sess, @context.cust, @context.locale, **merged_props)
       else
         # Create minimal context with just the additional data
-        Context.new(additional_context)
+        Context.minimal(props: additional_context)
       end
     end
 

@@ -421,11 +421,21 @@ module Rhales
         # Create hydration script with optional reflection attributes
         nonce_attr = nonce_attribute
         hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ""
-        hydration_script = <<~HTML.strip
-          <script#{nonce_attr}#{hydration_attrs}>
-          window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
-          </script>
-        HTML
+        hydration_script = if reflection_enabled?
+          <<~HTML.strip
+            <script#{nonce_attr}#{hydration_attrs}>
+            var dataScript = document.getElementById('#{unique_id}');
+            var targetName = dataScript.getAttribute('data-window') || '#{window_attr}';
+            window[targetName] = JSON.parse(dataScript.textContent);
+            </script>
+          HTML
+        else
+          <<~HTML.strip
+            <script#{nonce_attr}#{hydration_attrs}>
+            window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
+            </script>
+          HTML
+        end
 
         hydration_parts << json_script
         hydration_parts << hydration_script

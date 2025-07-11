@@ -48,13 +48,16 @@ module Rhales
 
       script_tag = <<~HTML.strip
         <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
-        // Basic link - manual fetch when needed
+        // Load hydration data for #{window_attr}
         window.__rhales__ = window.__rhales__ || {};
-        window.__rhales__.loadData = function(target) {
-          fetch('#{endpoint_url}')
-            .then(r => r.json())
-            .then(data => window[target] = data);
-        };
+        if (!window.__rhales__.loadData) {
+          window.__rhales__.loadData = function(target, url) {
+            fetch(url)
+              .then(r => r.json())
+              .then(data => window[target] = data);
+          };
+        }
+        window.__rhales__.loadData('#{window_attr}', '#{endpoint_url}');
         </script>
       HTML
 
@@ -69,13 +72,16 @@ module Rhales
 
       script_tag = <<~HTML.strip
         <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
-        // Prefetch strategy - data available in browser cache
+        // Prefetch hydration data for #{window_attr}
         window.__rhales__ = window.__rhales__ || {};
-        window.__rhales__.loadPrefetched = function(target) {
-          fetch('#{endpoint_url}')
-            .then(r => r.json())
-            .then(data => window[target] = data);
-        };
+        if (!window.__rhales__.loadPrefetched) {
+          window.__rhales__.loadPrefetched = function(target, url) {
+            fetch(url)
+              .then(r => r.json())
+              .then(data => window[target] = data);
+          };
+        }
+        window.__rhales__.loadPrefetched('#{window_attr}', '#{endpoint_url}');
         </script>
       HTML
 

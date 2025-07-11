@@ -348,7 +348,8 @@ RSpec.describe 'Hydration Strategies Integration' do
 
         expect(result).to include('<link href="/api/hydration/vue_app" type="application/json">')
         expect(result).to include('loadData')  # Manual loading function
-        expect(result).to include('fetch(\'/api/hydration/vue_app\')')  # Contains fetch in manual function
+        expect(result).to include('window.__rhales__.loadData(\'userData\', \'/api/hydration/vue_app\');')  # Calls load function
+        expect(result).to include('window.__rhales__.loadData(\'appConfig\', \'/api/hydration/vue_app\');')  # Calls load function
         expect(result).not_to include('window.userData = data;')  # No automatic assignment
       end
     end

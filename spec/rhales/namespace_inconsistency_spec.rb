@@ -168,8 +168,11 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       # Namespaced access doesn't work (and shouldn't - that's not the intended solution)
       expect(result).to include('<p>Namespaced access: </p>')
 
-      # Client-side data is properly namespaced
-      expect(result).to include('window.mySpecialData = JSON.parse(')
+      # Client-side data is properly namespaced with dynamic assignment
+      expect(result).to include('var dataScript = document.getElementById(')
+      expect(result).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'mySpecialData\';')
+      expect(result).to include('window[targetName] = JSON.parse(dataScript.textContent);')
+      expect(result).to include('data-window="mySpecialData"')
       expect(result).to include('"message":"Hello World"')
       expect(result).to include('"userName":"John Doe"')
 

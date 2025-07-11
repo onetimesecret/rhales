@@ -101,10 +101,13 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       expect(html).to include('Partial 1 message: </p>')
       expect(html).to include('Partial 2 message: </p>')
 
-      # Verify all hydration scripts are present
-      expect(html).to include('window.mainData = JSON.parse(')
-      expect(html).to include('window.partial1Data = JSON.parse(')
-      expect(html).to include('window.partial2Data = JSON.parse(')
+      # Verify all hydration scripts are present with dynamic window assignment
+      expect(html).to include('var dataScript = document.getElementById(')
+      expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'mainData\';')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
+      expect(html).to include('data-window="mainData"')
+      expect(html).to include('data-window="partial1Data"')
+      expect(html).to include('data-window="partial2Data"')
     end
 
     it 'demonstrates object expansion scenario: partials inherit parent context but cannot access own data' do
@@ -137,8 +140,11 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       expect(html).to include('Partial 3 message: </p>')          # {{key3_from_hash_object}} fails
 
       # However, client-side hydration should work correctly for the object expansion
-      expect(html).to include('window.mainData = JSON.parse(')
-      expect(html).to include('window.partial3Data = JSON.parse(')
+      expect(html).to include('var dataScript = document.getElementById(')
+      expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'mainData\';')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
+      expect(html).to include('data-window="mainData"')
+      expect(html).to include('data-window="partial3Data"')
 
       # The client-side data should receive the expanded object
       data_hash = view.data_hash('test_partials_with_object_expansion_in_parent')

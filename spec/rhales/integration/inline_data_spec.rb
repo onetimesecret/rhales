@@ -25,7 +25,9 @@ RSpec.describe 'Rhales Inline Data Integration' do
       expect(html).to include('Welcome back,')
 
       # Verify data hydration includes inline data
-      expect(html).to include('window.data = JSON.parse(')
+      expect(html).to include('var dataScript = document.getElementById(')
+      expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'data\';')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
       expect(html).to include('"message":"Welcome to Rhales"')
       expect(html).to include('"display_name":"John Doe"')
       expect(html).to include('"is_user_authenticated":"true"')
