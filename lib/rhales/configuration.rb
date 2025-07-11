@@ -4,11 +4,24 @@ module Rhales
   # Hydration-specific configuration settings
   #
   # Controls how hydration scripts are injected into HTML templates.
-  # Supports two injection strategies:
-  # - :late (default) - injects before </body> tag (backwards compatible)
-  # - :early - injects before detected mount points for improved performance
+  # Supports multiple injection strategies for different performance characteristics:
+  #
+  # ## Traditional Strategies
+  # - `:late` (default) - injects before </body> tag (safest, backwards compatible)
+  # - `:early` - injects before detected mount points for improved performance
+  # - `:earliest` - injects in HTML head section for maximum performance
+  #
+  # ## Link-Based Strategies (API endpoints)
+  # - `:link` - basic link reference to API endpoint
+  # - `:prefetch` - browser prefetch for future page loads
+  # - `:preload` - high priority preload for current page
+  # - `:modulepreload` - ES module preloading
+  # - `:lazy` - intersection observer-based lazy loading
   class HydrationConfiguration
-    # Injection strategy: :late or :early
+    VALID_STRATEGIES = [:late, :early, :earliest, :link, :prefetch, :preload, :modulepreload, :lazy].freeze
+    LINK_BASED_STRATEGIES = [:link, :prefetch, :preload, :modulepreload, :lazy].freeze
+
+    # Injection strategy - one of VALID_STRATEGIES
     attr_accessor :injection_strategy
 
     # Array of CSS selectors to detect frontend mount points
@@ -23,12 +36,76 @@ module Rhales
     # Disable early injection for specific templates (array of template names)
     attr_accessor :disable_early_for_templates
 
+    # API endpoint configuration for link-based strategies
+    attr_accessor :api_endpoint_enabled, :api_endpoint_path
+
+    # Link tag configuration
+    attr_accessor :link_crossorigin
+
+    # Module export configuration for :modulepreload strategy
+    attr_accessor :module_export_enabled
+
+    # Lazy loading configuration
+    attr_accessor :lazy_mount_selector
+
+    # Data attribute reflection system
+    attr_accessor :reflection_enabled
+
+    # Caching configuration for API endpoints
+    attr_accessor :api_cache_enabled, :api_cache_ttl
+
+    # CORS configuration for API endpoints
+    attr_accessor :cors_enabled, :cors_origin
+
     def initialize
+      # Traditional strategy settings
       @injection_strategy = :late
       @mount_point_selectors = ['#app', '#root', '[data-rsfc-mount]', '[data-mount]']
       @fallback_to_late = true
       @fallback_when_unsafe = true
       @disable_early_for_templates = []
+
+      # API endpoint settings
+      @api_endpoint_enabled = false
+      @api_endpoint_path = '/api/hydration'
+
+      # Link tag settings
+      @link_crossorigin = true
+
+      # Module export settings
+      @module_export_enabled = false
+
+      # Lazy loading settings
+      @lazy_mount_selector = '#app'
+
+      # Reflection system settings
+      @reflection_enabled = true
+
+      # Caching settings
+      @api_cache_enabled = false
+      @api_cache_ttl = 300  # 5 minutes
+
+      # CORS settings
+      @cors_enabled = false
+      @cors_origin = '*'
+    end
+
+    # Validate the injection strategy
+    def injection_strategy=(strategy)
+      unless VALID_STRATEGIES.include?(strategy)
+        raise ArgumentError, "Invalid injection strategy: #{strategy}. Valid options: #{VALID_STRATEGIES.join(', ')}"
+      end
+      @injection_strategy = strategy
+    end
+
+    # Check if current strategy is link-based
+    def link_based_strategy?
+      LINK_BASED_STRATEGIES.include?(@injection_strategy)
+    end
+
+    # Check if API endpoints should be enabled
+    def api_endpoints_required?
+      link_based_strategy? || @api_endpoint_enabled
     end
   end
 

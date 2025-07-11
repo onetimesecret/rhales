@@ -102,6 +102,51 @@ module Rhales
       render_template_with_composition(composition, template_name)
     end
 
+    # Render JSON response for API endpoints (link-based strategies)
+    def render_json_only(template_name = nil, additional_context = {})
+      require_relative 'hydration_endpoint'
+
+      template_name ||= self.class.default_template_name
+      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint.render_json(template_name, additional_context)
+    end
+
+    # Render ES module response for modulepreload strategy
+    def render_module_only(template_name = nil, additional_context = {})
+      require_relative 'hydration_endpoint'
+
+      template_name ||= self.class.default_template_name
+      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint.render_module(template_name, additional_context)
+    end
+
+    # Render JSONP response with callback
+    def render_jsonp_only(template_name = nil, callback_name = 'callback', additional_context = {})
+      require_relative 'hydration_endpoint'
+
+      template_name ||= self.class.default_template_name
+      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint.render_jsonp(template_name, callback_name, additional_context)
+    end
+
+    # Check if template data has changed for caching
+    def data_changed?(template_name = nil, etag = nil, additional_context = {})
+      require_relative 'hydration_endpoint'
+
+      template_name ||= self.class.default_template_name
+      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint.data_changed?(template_name, etag, additional_context)
+    end
+
+    # Calculate ETag for current template data
+    def calculate_etag(template_name = nil, additional_context = {})
+      require_relative 'hydration_endpoint'
+
+      template_name ||= self.class.default_template_name
+      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint.calculate_etag(template_name, additional_context)
+    end
+
     # Generate only the data hydration HTML
     def render_hydration_only(template_name = nil)
       template_name ||= self.class.default_template_name
@@ -257,10 +302,21 @@ module Rhales
 
     # Smart hydration injection with mount point detection on rendered HTML
     def inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-      # Detect mount points in the fully rendered HTML (after all partials are processed)
-      mount_point = detect_mount_point_in_rendered_html(template_html)
       injector = HydrationInjector.new(@config.hydration, template_name)
-      injector.inject(template_html, hydration_html, mount_point)
+
+      # Check if using link-based strategy
+      if @config.hydration.link_based_strategy?
+        # For link-based strategies, we need the merged data context
+        aggregator = HydrationDataAggregator.new(@rsfc_context)
+        merged_data = aggregator.aggregate(composition)
+        nonce = @rsfc_context.get('nonce')
+
+        injector.inject_link_based_strategy(template_html, merged_data, nonce)
+      else
+        # Traditional strategies (early, earliest, late)
+        mount_point = detect_mount_point_in_rendered_html(template_html)
+        injector.inject(template_html, hydration_html, mount_point)
+      end
     end
 
     # Legacy injection method (kept for backwards compatibility)
@@ -356,15 +412,17 @@ module Rhales
         # Generate unique ID for this data block
         unique_id = "rsfc-data-#{SecureRandom.hex(8)}"
 
-        # Create JSON script tag
+        # Create JSON script tag with optional reflection attributes
+        json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ""
         json_script = <<~HTML.strip
-          <script id="#{unique_id}" type="application/json">#{JSON.generate(data)}</script>
+          <script id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
         HTML
 
-        # Create hydration script
-        nonce_attr       = nonce_attribute
+        # Create hydration script with optional reflection attributes
+        nonce_attr = nonce_attribute
+        hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ""
         hydration_script = <<~HTML.strip
-          <script#{nonce_attr}>
+          <script#{nonce_attr}#{hydration_attrs}>
           window.#{window_attr} = JSON.parse(document.getElementById('#{unique_id}').textContent);
           </script>
         HTML
@@ -373,7 +431,65 @@ module Rhales
         hydration_parts << hydration_script
       end
 
+      # Add reflection utilities if enabled
+      if reflection_enabled? && !merged_data.empty?
+        hydration_parts << generate_reflection_utilities
+      end
+
       hydration_parts.join("\n")
+    end
+
+    # Check if reflection system is enabled
+    def reflection_enabled?
+      @config.hydration.reflection_enabled
+    end
+
+    # Generate JavaScript utilities for hydration reflection
+    def generate_reflection_utilities
+      nonce_attr = nonce_attribute
+
+      <<~HTML.strip
+        <script#{nonce_attr}>
+        // Rhales hydration reflection utilities
+        window.__rhales__ = window.__rhales__ || {
+          getHydrationTargets: function() {
+            return Array.from(document.querySelectorAll('[data-hydration-target]'));
+          },
+          getDataForTarget: function(target) {
+            var targetName = target.dataset.hydrationTarget;
+            return window[targetName];
+          },
+          getWindowAttribute: function(scriptEl) {
+            return scriptEl.dataset.window;
+          },
+          getDataScripts: function() {
+            return Array.from(document.querySelectorAll('script[data-window]'));
+          },
+          refreshData: function(target) {
+            var targetName = target.dataset.hydrationTarget;
+            var dataScript = document.querySelector('script[data-window="' + targetName + '"]');
+            if (dataScript) {
+              try {
+                window[targetName] = JSON.parse(dataScript.textContent);
+                return true;
+              } catch (e) {
+                console.error('Rhales: Failed to refresh data for ' + targetName, e);
+                return false;
+              }
+            }
+            return false;
+          },
+          getAllHydrationData: function() {
+            var data = {};
+            this.getHydrationTargets().forEach(function(target) {
+              var targetName = target.dataset.hydrationTarget;
+              data[targetName] = window[targetName];
+            });
+            return data;
+          }
+        };
+        </script>
+      HTML
     end
 
     # Get nonce attribute if available
