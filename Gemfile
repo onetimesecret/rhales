@@ -13,6 +13,7 @@ end
 group :development do
   gem 'benchmark-ips', '~> 2.0'
   gem 'bundler', '~> 2.0'
+  gem 'kramdown', '~> 2.0' # Required for YARD markdown processing
   gem 'pry-byebug', require: false
   gem 'rack', '~> 2.0'
   gem 'rack-proxy', require: false
