@@ -1,0 +1,56 @@
+# YARD Documentation Configuration
+# Systematic parameter specification for comprehensive API documentation generation
+
+# Access level configuration: Include protected and private methods for complete API coverage
+--protected
+--private
+
+# Markup processing configuration
+--markup markdown
+--markup-provider kramdown
+
+# Output directory specification
+--output-dir doc
+
+# Primary documentation entry point
+--readme README.md
+
+# Supplementary documentation files
+--files CHANGELOG.md,LICENSE.txt
+
+# Path exclusion patterns: Remove non-library code from documentation scope
+--exclude spec/**/*
+--exclude demo/**/*
+--exclude examples/**/*
+--exclude apps/**/*
+--exclude test/**/*
+--exclude tmp/**/*
+
+# Source file inclusion patterns: Target library implementation files
+lib/**/*.rb
+
+# Template specification for comprehensive documentation structure
+--template default
+
+# Additional processing directives
+--verbose
+
+# Documentation metadata
+--title "Rhales - Server-rendered Components with Client-side Hydration"
+
+# Tag processing configuration
+--tag param:"Parameters"
+--tag option:"Options"
+--tag return:"Returns"
+--tag raise:"Raises"
+--tag example:"Example Usage"
+--tag since:"Since"
+--tag todo:"TODO"
+--tag deprecated:"Deprecated"
+--tag api:"API"
+--tag internal:"Internal Use"
+
+# Additional files for processing
+-
+README.md
+CHANGELOG.md
