@@ -46,7 +46,7 @@ module Rhales
       end
 
       def self.instantiate(class_name)
-        Rhales::Parsers.const_get(class_name).new
+        class_name.split('::').reduce(Rhales::Parsers) { |mod, name| mod.const_get(name) }.new
       end
     end
   end

@@ -123,6 +123,7 @@ DEPENDENCIES
   rack-proxy
   rack-test
   rake (~> 13.0)
+  rexml
   rhales!
   rspec (~> 3.12)
   rubocop (= 1.78)

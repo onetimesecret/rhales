@@ -1,5 +1,6 @@
 # lib/rhales/parsers/xml_strategy/nokogiri_parser.rb
 
+require 'nokogiri'
 require_relative 'base_parser'
 
 module Rhales
@@ -10,7 +11,7 @@ module Rhales
         def parse(xml_content)
           # Wrap content in a root to handle multiple top-level sections
           doc = Nokogiri::XML("<root>#{xml_content}</root>") do |config|
-            config.strict.noblanks
+            config.strict.noblanks.noent.nonet
           end
 
           doc.root.children.map do |node|

@@ -29,4 +29,5 @@ group :development do
   # Optional XML parsers
   gem 'nokogiri', '~> 1.18', require: false
   gem 'oga', '~> 2.4', require: false
+  gem 'rexml', require: false # Required for Ruby 3.5+ compatibility
 end

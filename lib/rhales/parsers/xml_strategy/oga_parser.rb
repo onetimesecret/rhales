@@ -1,5 +1,6 @@
 # lib/rhales/parsers/xml_strategy/oga_parser.rb
 
+require 'oga'
 require_relative 'base_parser'
 
 module Rhales
@@ -12,14 +13,18 @@ module Rhales
           # We add a basic check for mismatched tags to enforce structure.
           validate_structure!(xml_content)
 
-          doc = Oga.parse_xml(xml_content)
-          doc.children.map do |node|
+          # Wrap content in a root to handle multiple top-level sections like other parsers
+          doc = Oga.parse_xml("<root>#{xml_content}</root>")
+          root_element = doc.children.find { |n| n.is_a?(Oga::XML::Element) && n.name == 'root' }
+          elements = root_element ? root_element.children : []
+
+          elements.map do |node|
             next unless node.is_a?(Oga::XML::Element)
 
             {
               tag: node.name,
               attributes: node.attributes.each_with_object({}) { |attr, h| h[attr.name] = attr.value },
-              content: node.children.map(&:to_xml).join
+              content: node.children.map(&:to_xml).join.strip
             }
           end.compact
         rescue LL::ParserError => e
