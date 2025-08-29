@@ -159,6 +159,7 @@ module Rhales
       @site_ssl_enabled       = false
       @cache_parsed_templates = true
       @cache_ttl              = 3600 # 1 hour
+      @xml_parser             = nil
       @hydration              = HydrationConfiguration.new
     end
 

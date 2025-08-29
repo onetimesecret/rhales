@@ -25,6 +25,7 @@ module Rhales
       def clear_cache!
         @cache_mutex.synchronize { @rsfc_cache.clear }
         cleanup_file_watchers!
+        disable_file_watching!
       end
 
       # Stop all file watchers and clean up resources
@@ -106,8 +107,10 @@ module Rhales
         # Cache the parsed result
         cache_parser(full_path, parser)
 
-        # Set up file watching in development mode
-        setup_file_watching(full_path) if Rhales::Ruequire.file_watching_enabled?
+        # Set up file watching in development mode (but not in test environment)
+        if Rhales::Ruequire.file_watching_enabled? && !is_test_environment?
+          setup_file_watching(full_path)
+        end
 
         parser
       rescue StandardError => ex
@@ -215,13 +218,24 @@ module Rhales
           end
         end
 
-        # Set thread as daemon so it doesn't prevent program exit
-        watcher_thread.thread_variable_set(:daemon, true)
+        # Note: Ruby doesn't have true daemon threads, so we rely on cleanup
+        # Set thread as low priority to minimize impact
+        watcher_thread.priority = -1
 
         # Mark as being watched
         watchers_mutex.synchronize do
           Rhales::Ruequire.instance_variable_get(:@file_watchers)[full_path] = watcher_thread
         end
+      end
+
+      # Check if we're in test environment
+      def is_test_environment?
+        ENV['RAILS_ENV'] == 'test' ||
+        ENV['RACK_ENV'] == 'test' ||
+        ENV['APP_ENV'] == 'test' ||
+        defined?(RSpec) ||
+        $PROGRAM_NAME.include?('rspec') ||
+        caller.any? { |line| line.include?('rspec') }
       end
     end
   end

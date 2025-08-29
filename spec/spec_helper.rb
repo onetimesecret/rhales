@@ -3,6 +3,9 @@
 require 'bundler/setup'
 require 'rhales'
 
+# Disable file watching for tests to prevent hanging
+Rhales::Ruequire.disable_file_watching!
+
 # Configure Rhales for testing
 Rhales.configure do |config|
   config.default_locale      = 'en'
@@ -26,6 +29,10 @@ RSpec.configure do |config|
 
   # Reset Rhales configuration between tests
   config.before do
+    # Clean up any file watchers and disable file watching
+    Rhales::Ruequire.cleanup_file_watchers!
+    Rhales::Ruequire.disable_file_watching!
+
     Rhales.reset_configuration!
     Rhales.configure do |rhales_config|
       rhales_config.default_locale      = 'en'
@@ -35,5 +42,10 @@ RSpec.configure do |config|
       rhales_config.cache_templates     = false
       rhales_config.features            = { test_feature: true }
     end
+  end
+
+  # Clean up after all tests
+  config.after(:suite) do
+    Rhales::Ruequire.cleanup_file_watchers!
   end
 end

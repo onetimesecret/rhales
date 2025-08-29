@@ -1,0 +1,6 @@
+<template>
+<div class="main">
+  <h1>Main Template</h1>
+  {{> partial_should_work}}
+</div>
+</template>

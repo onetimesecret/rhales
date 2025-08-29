@@ -1,0 +1,13 @@
+<data window="partialExpanded">
+{
+  "partialData": "Data from partial"
+}
+</data>
+
+<template>
+<div class="expansion-partial">
+  <p>Partial should access: {{key1_from_hash_object}}</p>
+  <p>Partial should access: {{key2_from_hash_object}}</p>
+  <p>Partial data: {{partialData}}</p>
+</div>
+</template>

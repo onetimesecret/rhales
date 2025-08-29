@@ -1,0 +1,14 @@
+<data window="partialData">
+{
+  "partialMessage": "Hello from partial: {{greeting}}",
+  "partialUser": "Partial user: {{user.name}}"
+}
+</data>
+
+<template>
+<div class="partial">
+  <p>Direct: {{partialMessage}}</p>
+  <p>Namespaced: {{partialData.partialMessage}}</p>
+  <span>User: {{partialUser}}</span>
+</div>
+</template>
