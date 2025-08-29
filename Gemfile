@@ -25,4 +25,8 @@ group :development do
   gem 'stackprof', require: false
   gem 'syntax_tree', require: false
   gem 'yard', '~> 0.9'
+
+  # Optional XML parsers
+  gem 'nokogiri', '~> 1.16', require: false
+  gem 'oga', '~> 2.4', require: false
 end

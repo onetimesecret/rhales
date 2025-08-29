@@ -138,7 +138,7 @@ module Rhales
     attr_accessor :site_host, :site_ssl_enabled, :api_base_url
 
     # Performance settings
-    attr_accessor :cache_parsed_templates, :cache_ttl
+    attr_accessor :cache_parsed_templates, :cache_ttl, :xml_parser
 
     # Hydration settings
     attr_accessor :hydration
