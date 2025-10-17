@@ -78,7 +78,7 @@ class RhalesDemo < Roda
   plugin :render,
     engine: 'rue',
     views: File.join(opts[:root], 'templates'),
-    layout: false
+    layout: true
 
   plugin :flash
   plugin :sessions, secret: secret_value, key: 'rhales-demo.session'

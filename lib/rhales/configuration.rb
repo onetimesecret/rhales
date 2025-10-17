@@ -146,6 +146,9 @@ module Rhales
     # Schema validation settings
     attr_accessor :enable_schema_validation, :fail_on_validation_error, :schemas_dir
 
+    # JSON response settings
+    attr_accessor :enable_json_responder, :json_responder_include_metadata
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -168,6 +171,10 @@ module Rhales
       @enable_schema_validation = true
       @fail_on_validation_error = false # Set by environment in middleware
       @schemas_dir              = './public/schemas' # Default to implementing project's public directory
+
+      # JSON responder defaults
+      @enable_json_responder            = true
+      @json_responder_include_metadata  = false
 
       # Yield to block for configuration if provided
       yield(self) if block_given?
