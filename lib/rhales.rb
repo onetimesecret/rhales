@@ -46,12 +46,12 @@ require_relative 'rhales/view'
 #     config.hydration.fallback_to_late = true
 #   end
 #
-#   view = Rhales::View.new(request, session, user)
+#   view = Rhales::View.new(request)
 #   html = view.render('my_component')
 module Rhales
   # Convenience method to create a view with props
-  def self.render(template_name, request: nil, session: nil, user: nil, locale: nil, **props)
-    view = View.new(request, session, user, locale, props: props)
+  def self.render(template_name, request: nil, locale: nil, **props)
+    view = View.new(request, locale, props: props)
     view.render(template_name)
   end
 
@@ -62,7 +62,7 @@ module Rhales
   end
 
   # Create context with props (for advanced usage)
-  def self.create_context(request: nil, session: nil, user: nil, locale: nil, **props)
-    Context.for_view(request, session, user, locale, **props)
+  def self.create_context(request: nil, locale: nil, **props)
+    Context.for_view(request, locale, **props)
   end
 end

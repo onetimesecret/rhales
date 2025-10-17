@@ -45,8 +45,7 @@ RSpec.describe 'JSON Response Integration' do
 
   describe 'end-to-end JSON response flow' do
     it 'renders HTML with extractable hydration data' do
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           title: 'Dashboard',
           user: { id: 1, name: 'Alice', email: 'alice@example.com' },
@@ -70,8 +69,7 @@ RSpec.describe 'JSON Response Integration' do
     it 'middleware can extract and return JSON from rendered HTML' do
       # Simulate a Rack app that renders with Rhales
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             title: 'Dashboard',
             user: { id: 1, name: 'Alice', email: 'alice@example.com' },
@@ -106,8 +104,7 @@ RSpec.describe 'JSON Response Integration' do
 
     it 'returns HTML when Accept header is text/html' do
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             title: 'Dashboard',
             user: { id: 1, name: 'Alice' },
@@ -160,8 +157,7 @@ RSpec.describe 'JSON Response Integration' do
 
     it 'returns flattened data for single window' do
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             user: { id: 1, name: 'Bob' },
             theme: 'dark',
@@ -190,8 +186,7 @@ RSpec.describe 'JSON Response Integration' do
   describe 'metadata mode' do
     it 'includes template name when metadata is enabled' do
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             title: 'Test',
             user: { name: 'Charlie' },
@@ -243,8 +238,7 @@ RSpec.describe 'JSON Response Integration' do
       TEMPLATE
 
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             is_active: true,
             is_deleted: false,
@@ -289,8 +283,7 @@ RSpec.describe 'JSON Response Integration' do
       TEMPLATE
 
       app = lambda do |env|
-        view = Rhales::View.new(
-          nil, nil, nil, 'en',
+        view = Rhales::View.new(nil, 'en',
           props: {
             posts: [
               { id: 1, title: 'First', tags: ['ruby', 'rails'] },

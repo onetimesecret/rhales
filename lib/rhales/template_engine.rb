@@ -306,8 +306,6 @@ module Rhales
       # Create new context with merged props, preserving other context attributes
       Context.for_view(
         parent_context.req,
-        parent_context.sess,
-        parent_context.cust,
         parent_context.locale,
         config: parent_context.config,
         **merged_props,

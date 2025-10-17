@@ -335,7 +335,7 @@ RSpec.describe 'Namespace Inconsistency Problem' do
       File.write(template_path, template_content)
 
       # Test with View class (full integration)
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('ux_inconsistency')
@@ -386,7 +386,7 @@ RSpec.describe 'Namespace Inconsistency Problem' do
       template_path = File.join('spec', 'fixtures', 'templates', 'expected_behavior.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('expected_behavior')
@@ -427,7 +427,7 @@ RSpec.describe 'Namespace Inconsistency Problem' do
       template_path = File.join('spec', 'fixtures', 'templates', 'core_issue.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('core_issue')

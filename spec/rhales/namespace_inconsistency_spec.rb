@@ -64,7 +64,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('main_template_works')
@@ -115,7 +115,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       File.write(main_template_path, main_content)
       File.write(partial_path, partial_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).with('main_includes_broken_partial').and_return(main_template_path)
       allow(view).to receive(:resolve_template_path).with('broken_partial_demo').and_return(partial_path)
 
@@ -156,7 +156,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('main_with_window_works')
@@ -217,7 +217,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       File.write(main_template_path, main_content)
       File.write(partial_path, partial_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).with('main_should_work').and_return(main_template_path)
       allow(view).to receive(:resolve_template_path).with('partial_should_work').and_return(partial_path)
 
@@ -446,7 +446,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       File.write(template_path, template_content)
 
       # Test with View class (full integration)
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('ux_inconsistency')
@@ -497,7 +497,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       template_path = File.join('spec', 'fixtures', 'templates', 'expected_behavior.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('expected_behavior')
@@ -538,7 +538,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       template_path = File.join('spec', 'fixtures', 'templates', 'core_issue.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('core_issue')
@@ -597,7 +597,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       template_path = File.join('spec', 'fixtures', 'templates', 'window_namespace_demo.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('window_namespace_demo')
@@ -669,7 +669,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       template_path = File.join('spec', 'fixtures', 'templates', 'namespaced_access.rue')
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('namespaced_access')
@@ -769,7 +769,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
 
       File.write(main_template_path, main_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: object_expansion_props)
+      view = Rhales::View.new(nil, 'en', props: object_expansion_props)
       allow(view).to receive(:resolve_template_path).and_return(main_template_path)
 
       result = view.render('main_object_expansion')
@@ -841,7 +841,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       File.write(main_template_path, main_content)
       File.write(partial_path, partial_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: object_expansion_props)
+      view = Rhales::View.new(nil, 'en', props: object_expansion_props)
       allow(view).to receive(:resolve_template_path).with('main_with_expansion_partial').and_return(main_template_path)
       allow(view).to receive(:resolve_template_path).with('expansion_partial').and_return(partial_path)
 

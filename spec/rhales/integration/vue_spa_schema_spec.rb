@@ -12,8 +12,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Simulate Onetime Secret's serialized data structure
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           ui: { theme: 'dark', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_12345' },
@@ -66,8 +65,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Test with nil user (not authenticated)
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           ui: { theme: 'light', locale: 'en' },
           authentication: { authenticated: false, custid: nil },
@@ -102,8 +100,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Test with string that looks like a template variable
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           ui: { theme: '{{should.not.interpolate}}', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_{{test}}' },
@@ -131,8 +128,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Add arrays to the props (extending the schema conceptually)
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           ui: { theme: 'dark', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_12345' },

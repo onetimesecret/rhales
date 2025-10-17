@@ -16,7 +16,7 @@ RSpec.describe 'Rhales Inline Data Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Jane Smith', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'inline_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       html = view.render('test_inline_data')
 
       # Verify inline data variables are accessible in template
@@ -37,7 +37,7 @@ RSpec.describe 'Rhales Inline Data Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Jane Smith', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'dot_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       html = view.render_template_only('test_inline_data')
 
       # Verify dot notation works for inline data (template is already rendered)
@@ -50,7 +50,7 @@ RSpec.describe 'Rhales Inline Data Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Test User', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'auth_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: { greeting: 'Hello', user: { name: 'Test User' } })
+      view = Rhales::View.new(nil, 'en', props: { greeting: 'Hello', user: { name: 'Test User' } })
       html = view.render_template_only('test_inline_data')
 
       expect(html).to include('Welcome back,')
@@ -58,7 +58,7 @@ RSpec.describe 'Rhales Inline Data Integration' do
       expect(html).not_to include('Please log in.')
 
       # Test with anonymous user
-      anon_view = Rhales::View.new(nil, nil, nil, 'en', props: { greeting: 'Hello', user: { name: 'Guest' } })
+      anon_view = Rhales::View.new(nil, 'en', props: { greeting: 'Hello', user: { name: 'Guest' } })
       anon_html = anon_view.render_template_only('test_inline_data')
 
       expect(anon_html).to include('Please log in.')
@@ -69,7 +69,7 @@ RSpec.describe 'Rhales Inline Data Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Data Test', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'data_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       data = view.data_hash('test_inline_data')
 
       expect(data['data']['message']).to eq('Welcome to Rhales')

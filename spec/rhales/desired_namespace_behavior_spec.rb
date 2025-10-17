@@ -65,7 +65,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_basic_dual_access')
@@ -113,7 +113,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_nested_object_access')
@@ -154,7 +154,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_array_access')
@@ -192,7 +192,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_backward_compatibility')
@@ -240,7 +240,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_mixed_access')
@@ -281,7 +281,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_missing_variables')
@@ -325,7 +325,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_deep_nesting')
@@ -371,7 +371,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_conditional_access')
@@ -420,7 +420,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_server_client_consistency')
@@ -474,7 +474,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_single_namespace_isolation')
@@ -544,7 +544,7 @@ RSpec.describe 'Desired Namespace Behavior After Fix' do
 
       File.write(template_path, template_content)
 
-      view = Rhales::View.new(nil, nil, nil, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       allow(view).to receive(:resolve_template_path).and_return(template_path)
 
       result = view.render('desired_comprehensive_scenario')

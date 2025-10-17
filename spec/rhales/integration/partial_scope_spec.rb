@@ -16,7 +16,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Partial Test User', theme: 'dark')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'partial_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       html = view.render_template_only('test_partials_main')
 
       # Verify main template content
@@ -37,7 +37,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Scope Test User', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'scope_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
       html = view.render_template_only('test_partials_main')
 
       # Verify parent template shows parent value
@@ -60,7 +60,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Hydration Test', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'hydration_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: props)
+      view = Rhales::View.new(nil, 'en', props: props)
 
       # Since all templates are using default window="data", we expect a wrapped collision error
       expect { view.render('test_partials_main') }.to raise_error(Rhales::View::RenderError, /Window attribute collision detected/)
@@ -71,7 +71,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Nested Test', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'nested_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: {
+      view = Rhales::View.new(nil, 'en', props: {
         greeting: 'Hello from parent',
         user: { name: 'Parent User' }
       })
@@ -86,7 +86,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Window Test', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'window_test', created_at: Time.now)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: { main_message: 'Shared from parent' })
+      view = Rhales::View.new(nil, 'en', props: { main_message: 'Shared from parent' })
       html = view.render('test_partials_with_windows')
 
       # Verify main template renders
@@ -116,7 +116,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
 
       # Props that provide the expanded object data
       # The template uses {{{directly_embedded_hash_object}}} to expand this into the JSON directly
-      view = Rhales::View.new(nil, session, user, 'en', props: {
+      view = Rhales::View.new(nil, 'en', props: {
         directly_embedded_hash_object: {
           key1_from_hash_object: 'Value 1 from expansion',
           key2_from_hash_object: 'Value 2 from expansion',
@@ -195,7 +195,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       File.write(main_template_path, main_content)
       File.write(partial_path, partial_content)
 
-      view = Rhales::View.new(nil, session, user, 'en', props: {})
+      view = Rhales::View.new(nil, 'en', props: {})
       allow(view).to receive(:resolve_template_path).with('simple_partial_test').and_return(main_template_path)
       allow(view).to receive(:resolve_template_path).with('simple_partial').and_return(partial_path)
 

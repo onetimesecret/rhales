@@ -12,8 +12,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { title: 'Test Page', count: 42, active: true },
         config: config
       )
@@ -44,8 +43,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: {
           user: { id: 1, name: 'Alice', email: 'alice@example.com' },
           settings: { theme: 'dark', notifications: true }
@@ -70,8 +68,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { message: 'Hello from custom window' },
         config: config
       )
@@ -89,8 +86,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       # Props contain strings that look like template variables
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { title: '{{should.not.interpolate}}', count: 99 },
         config: config
       )
@@ -108,8 +104,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { title: 'Data Hash Test', count: 123, active: false },
         config: config
       )
@@ -132,8 +127,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { title: 'Legacy Test', name: 'World' },
         config: config
       )
@@ -147,8 +141,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { title: 'Interpolated Title', name: 'Bob' },
         config: config
       )
@@ -170,8 +163,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
         c.template_paths = [templates_dir]
       end
 
-      view = Rhales::View.new(
-        nil, nil, nil, 'en',
+      view = Rhales::View.new(nil, 'en',
         props: { value: 'test' },
         config: config
       )

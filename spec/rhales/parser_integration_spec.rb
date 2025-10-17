@@ -353,7 +353,7 @@ RSpec.describe 'Parser Integration' do
       # Create authenticated context
       user    = Rhales::Adapters::AuthenticatedAuth.new(name: 'Grammar User', theme: 'dark')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'test_session')
-      context = Rhales::Context.for_view(nil, session, user, 'en', **props)
+      context = Rhales::Context.for_view(nil, 'en', **props)
 
       # Parse through document
       document = Rhales::RueDocument.new(rue_content)

@@ -57,14 +57,32 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :client, :server, :config
+    attr_reader :req, :locale, :rsfc_context
 
-    def initialize(req, sess = nil, cust = nil, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
+    # Delegate context accessors to rsfc_context
+    def sess
+      @rsfc_context.sess
+    end
+
+    def cust
+      @rsfc_context.cust
+    end
+
+    def client
+      @rsfc_context.client
+    end
+
+    def server
+      @rsfc_context.server
+    end
+
+    def config
+      @rsfc_context.config
+    end
+
+    def initialize(req, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
       @req           = req
-      @sess          = sess
-      @cust          = cust
       @locale        = locale_override
-      @config        = config || Rhales.configuration
 
       # Handle backward compatibility with deprecation warnings
       if props || app_data
@@ -73,8 +91,10 @@ module Rhales
         server = app_data if app_data
       end
 
-      @client        = client
-      @server        = server
+      # Store parameters for context creation
+      @client_param = client
+      @server_param = server
+      @config_param = config || Rhales.configuration
 
       # Create context using the specified context class
       @rsfc_context = create_context
@@ -82,11 +102,11 @@ module Rhales
 
     # Backward compatibility accessors
     def props
-      @client
+      @rsfc_context.client
     end
 
     def app_data
-      @server
+      @rsfc_context.server
     end
 
     # Render RSFC template with hydration using two-pass architecture
@@ -199,7 +219,7 @@ module Rhales
     # Create the appropriate context for this view
     # Subclasses can override this to use different context types
     def create_context
-      context_class.for_view(@req, @sess, @cust, @locale, client: @client, server: @server, config: @config)
+      context_class.for_view(@req, @locale, client: @client_param, server: @server_param, config: @config_param)
     end
 
     # Return the context class to use
@@ -302,11 +322,8 @@ module Rhales
       # Get data from .rue file's data section
       rue_data = extract_rue_data(parser)
 
-      # Merge rue data with existing client data (rue data takes precedence)
-      merged_client = @client.merge(rue_data)
-
-      # Create new context with merged data
-      context_class.for_view(@req, @sess, @cust, @locale, client: merged_client, server: @server, config: @config)
+      # Use builder pattern to merge rue data with existing client data
+      @rsfc_context.merge_client(rue_data)
     end
 
     # Extract and process data from .rue file's data section
@@ -402,17 +419,8 @@ module Rhales
         layout_content = layout_parser.section('template')
         return '' unless layout_content
 
-        # Create new context with content for layout rendering
-        layout_client   = context_with_rue_data.client.merge('content' => content_html)
-        layout_context = Context.new(
-          context_with_rue_data.req,
-          context_with_rue_data.sess,
-          context_with_rue_data.cust,
-          context_with_rue_data.locale,
-          client: layout_client,
-          server: context_with_rue_data.server,
-          config: context_with_rue_data.config,
-        )
+        # Use builder pattern to create new context with content for layout rendering
+        layout_context = context_with_rue_data.merge_client('content' => content_html)
 
         TemplateEngine.render(layout_content, layout_context, partial_resolver: partial_resolver)
       else
@@ -566,14 +574,14 @@ module Rhales
       end
 
       # Render template with client data
-      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **client_data)
-        view = new(req, sess, cust, locale, client: client_data, config: config)
+      def render_with_data(req, locale, template_name: nil, config: nil, **client_data)
+        view = new(req, locale, client: client_data, config: config)
         view.render(template_name)
       end
 
       # Create view instance with client data
-      def with_data(req, sess, cust, locale, config: nil, **client_data)
-        new(req, sess, cust, locale, client: client_data, config: config)
+      def with_data(req, locale, config: nil, **client_data)
+        new(req, locale, client: client_data, config: config)
       end
     end
   end

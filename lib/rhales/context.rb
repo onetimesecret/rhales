@@ -23,12 +23,10 @@ module Rhales
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :sess, :cust, :locale, :client, :server, :config
+      attr_reader :req, :locale, :client, :server, :config
 
-      def initialize(req, sess = nil, cust = nil, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
+      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
         @req           = req
-        @sess          = sess || default_session
-        @cust          = cust || default_customer
         @config        = config || Rhales.configuration
         @locale        = locale_override || @config.default_locale
 
@@ -119,6 +117,54 @@ module Rhales
 
       def app_data
         @server_data
+      end
+
+      # Extract session from request object
+      def sess
+        return default_session unless req
+        req.respond_to?(:session) ? req.session : default_session
+      end
+
+      # Extract customer/user from request object
+      def cust
+        return default_customer unless req
+        if req.respond_to?(:user)
+          req.user
+        elsif req.respond_to?(:customer)
+          req.customer
+        else
+          default_customer
+        end
+      end
+
+      # Create a new context with updated client data
+      def with_client(new_client_data)
+        self.class.new(
+          @req, @locale,
+          client: normalize_keys(new_client_data),
+          server: @server_data,
+          config: @config
+        )
+      end
+
+      # Create a new context with updated server data
+      def with_server(new_server_data)
+        self.class.new(
+          @req, @locale,
+          client: @client_data,
+          server: normalize_keys(new_server_data),
+          config: @config
+        )
+      end
+
+      # Create a new context with merged client data
+      def merge_client(additional_client_data)
+        self.class.new(
+          @req, @locale,
+          client: @client_data.merge(normalize_keys(additional_client_data)),
+          server: @server_data,
+          config: @config
+        )
       end
 
     private
@@ -252,7 +298,7 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, sess, cust, locale, client: {}, server: {}, config: nil, props: nil, app_data: nil, **additional_client)
+        def for_view(req, locale, client: {}, server: {}, config: nil, props: nil, app_data: nil, **additional_client)
           # Handle backward compatibility
           if props || app_data
             warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
@@ -261,7 +307,7 @@ module Rhales
           end
 
           all_client = client.merge(additional_client)
-          new(req, sess, cust, locale, client: all_client, server: server, config: config)
+          new(req, locale, client: all_client, server: server, config: config)
         end
 
         # Create minimal context for testing
@@ -273,7 +319,7 @@ module Rhales
             server = app_data if app_data
           end
 
-          new(nil, nil, nil, locale, client: client, server: server, config: config)
+          new(nil, locale, client: client, server: server, config: config)
         end
       end
   end
