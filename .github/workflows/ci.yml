@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - main
-      - feature/*
 
   pull_request:
 
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -21,7 +26,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        ruby: ["3.4", "3.5"]
+        ruby: ['3.4', '3.5']
 
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +50,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        ruby: ["3.4", "3.5"]
+        ruby: ['3.4', '3.5']
 
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ["3.4", "3.5"]
+        ruby: ['3.4', '3.5']
 
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ["3.4", "3.5"]
+        ruby: ['3.4', '3.5']
 
     steps:
       - uses: actions/checkout@v4
