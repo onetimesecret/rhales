@@ -99,8 +99,8 @@ RSpec.describe Rhales::HydrationDataAggregator do
       end
     end
 
-    context 'with data sections (deprecated)' do
-      it 'shows deprecation warning' do
+    context 'with data sections' do
+      it 'processes data sections correctly' do
         data_node = double('data_node', location: double(start_line: 1))
 
         template1 = double('template1')
@@ -115,8 +115,10 @@ RSpec.describe Rhales::HydrationDataAggregator do
         allow(composition).to receive(:each_document_in_render_order).and_yield('old', template1)
 
         aggregator = described_class.new(context)
+        result = aggregator.aggregate(composition)
 
-        expect { aggregator.aggregate(composition) }.to output(/DEPRECATION WARNING/).to_stderr
+        expect(result).to have_key('data')
+        expect(result['data']).to eq({ 'user' => 'John' })
       end
     end
 

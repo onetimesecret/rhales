@@ -77,14 +77,7 @@ module Rhales
         @window_attribute = parser.window_attribute || 'data'
       end
 
-      # This method is now deprecated in favor of the two-pass architecture
-      # It's kept for backward compatibility but will be removed in future versions
-      def generate_hydration_html
-        warn '[DEPRECATION] Hydrator#generate_hydration_html is deprecated. Use the two-pass rendering architecture instead.'
-        ''
-      end
-
-      # Process <data> or <schema> section and return JSON string
+# Process <data> or <schema> section and return JSON string
       def process_data_section
         # Check for schema section first (preferred)
         if @parser.schema_lang
@@ -187,14 +180,7 @@ module Rhales
       end
 
       class << self
-        # Convenience method to generate hydration HTML
-        # DEPRECATED: Use the two-pass rendering architecture instead
-        def generate(parser, context)
-          warn '[DEPRECATION] Hydrator.generate is deprecated. Use the two-pass rendering architecture instead.'
-          new(parser, context).generate_hydration_html
-        end
-
-        # Generate only JSON data (for testing or API endpoints)
+# Generate only JSON data (for testing or API endpoints)
         def generate_json(parser, context)
           new(parser, context).process_data_section
         end

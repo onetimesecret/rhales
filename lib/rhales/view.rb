@@ -298,12 +298,7 @@ module Rhales
       end
     end
 
-    # Generate data hydration HTML
-    def generate_hydration(parser)
-      Hydrator.generate(parser, @rsfc_context)
-    end
-
-    # Create context that includes data from .rue file's data section
+# Create context that includes data from .rue file's data section
     def create_context_with_rue_data(parser)
       # Get data from .rue file's data section
       rue_data = extract_rue_data(parser)

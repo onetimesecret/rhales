@@ -122,7 +122,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
   end
 
   describe 'legacy data section behavior' do
-    it 'still works with data sections and shows deprecation warning' do
+    it 'still works with data sections' do
       config = Rhales::Configuration.new do |c|
         c.template_paths = [templates_dir]
       end
@@ -132,8 +132,10 @@ RSpec.describe 'Schema-based Hydration Integration' do
         config: config
       )
 
-      # Should show deprecation warning
-      expect { view.render('legacy_data') }.to output(/DEPRECATION WARNING/).to_stderr
+      # Data sections should still work
+      html = view.render('legacy_data')
+      expect(html).to include('window[targetName]')
+      expect(html).to include('legacyData')
     end
 
     it 'performs template interpolation for data sections' do

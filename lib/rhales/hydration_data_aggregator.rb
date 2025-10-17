@@ -95,10 +95,7 @@ module Rhales
       data_content = parser.section('data')
       return unless data_content
 
-      # Emit deprecation warning
-      warn_data_section_deprecation(parser)
-
-      window_attr = parser.window_attribute || 'data'
+window_attr = parser.window_attribute || 'data'
       merge_strategy = parser.merge_strategy
 
       # Build template path for error reporting
@@ -239,47 +236,7 @@ module Rhales
       end
     end
 
-    def warn_data_section_deprecation(parser)
-      template_path = parser.file_path || '<inline template>'
 
-      warn <<~WARNING
-
-        ================================================================================
-        DEPRECATION WARNING: Template uses deprecated <data> section
-        ================================================================================
-
-        Template: #{template_path}
-
-        The <data> section is deprecated and will be removed in Rhales v3.0.
-        Please migrate to <schema> sections for type safety and runtime validation.
-
-        Migration steps:
-        1. Replace <data> with <schema lang="js-zod" window="...">
-        2. Define your data structure using Zod schema syntax
-        3. Pass fully-resolved values as props (no {{variable}} interpolation needed)
-
-        Example:
-          Before (<data>):
-            <data window="appData">
-            {
-              "user": "{{user.name}}",
-              "count": {{items.count}}
-            }
-            </data>
-
-          After (<schema>):
-            <schema lang="js-zod" window="appData">
-            const schema = z.object({
-              user: z.string(),
-              count: z.number()
-            });
-            </schema>
-
-        For more information, visit: https://rhales.dev/docs/migration/data-to-schema
-        ================================================================================
-
-      WARNING
-    end
 
     # Check if data is considered empty for collision detection
     def empty_data?(data)
