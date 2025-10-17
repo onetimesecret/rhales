@@ -9,7 +9,7 @@ module Rhales
   # This parser implements .rue file parsing rules in Ruby code and produces
   # an Abstract Syntax Tree (AST) for .rue file processing. It handles:
   #
-  # - Section-based parsing: <data>, <template>, <logic>
+  # - Section-based parsing: <schema>, <template>, <logic>
   # - Attribute extraction from section tags
   # - Delegation to HandlebarsParser for template content
   # - Validation of required sections
@@ -21,7 +21,7 @@ module Rhales
   # File format structure:
   # rue_file := section+
   # section := '<' tag_name attributes? '>' content '</' tag_name '>'
-  # tag_name := 'data' | 'template' | 'logic'
+  # tag_name := 'schema' | 'template' | 'logic'
   # attributes := attribute+
   # attribute := key '=' quoted_value
   # content := (text | handlebars_expression)*
@@ -29,9 +29,9 @@ module Rhales
   class RueFormatParser
     # At least one of these sections must be present
     unless defined?(REQUIRES_ONE_OF_SECTIONS)
-      REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
+      REQUIRES_ONE_OF_SECTIONS = %w[schema template].freeze
 
-      KNOWN_SECTIONS = %w[data template logic].freeze
+      KNOWN_SECTIONS = %w[schema template logic].freeze
       ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
       # Regular expression to match HTML/XML comments outside of sections
@@ -204,7 +204,7 @@ module Rhales
           handlebars_parser.parse!
           handlebars_parser.ast.children
         else
-          # For data and logic sections, keep as simple text
+          # For schema and logic sections, keep as simple text
           raw_content.empty? ? [] : [Node.new(:text, current_location, value: raw_content)]
         end
       else
@@ -380,10 +380,10 @@ module Rhales
         when scanner.scan(/<!--.*?-->/m)
           # Comment token - non-greedy match for complete comments
           { type: :comment, content: scanner.matched }
-        when scanner.scan(/<(data|template|logic)(\s[^>]*)?>/m)
+        when scanner.scan(/<(schema|template|logic)(\s[^>]*)?>/m)
           # Section start token - matches opening tags with optional attributes
           { type: :section_start, content: scanner.matched }
-        when scanner.scan(%r{</(data|template|logic)>}m)
+        when scanner.scan(%r{</(schema|template|logic)>}m)
           # Section end token - matches closing tags
           { type: :section_end, content: scanner.matched }
         when scanner.scan(/[^<]+/)

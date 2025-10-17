@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **Early Development Release** - Rhales is in active development (v0.1.0). The API may change between versions. While functional and tested, it's recommended for experimental use and contributions rather than production applications. Please report issues and provide feedback through GitHub.
 
-Rhales is a framework for building server-rendered components with client-side data hydration using `.rue` files called RSFCs (Ruby Single File Components). Similar to Vue.js single file components but designed for Ruby applications.
+Rhales is a framework for enforcing data contract between server-rendered pages and client-side data hydration. The key integration point is in `.rue` files called RSFCs (Ruby Single File Components). Similar to Vue.js single file components but designed for server-side rendering with rich data hydration for frontend frameworks like React, Vue, or Svelte.
 
 About the name:
 It all started with a simple mustache template many years ago. The successor to mustache, "Handlebars" is a visual analog for a mustache and successor to the format. "Two Whales Kissing" is another visual analog for a mustache and since we're working with Ruby we could call that, "Two Whales Kissing for Ruby", which is very long. Rhales combines Ruby and Whales into a one-word name for our library. It's a perfect name with absolutely no ambiguity or risk of confusion with other gems.

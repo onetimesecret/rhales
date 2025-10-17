@@ -5,7 +5,7 @@
 
   This demonstrates Rhales' core strength: seamless server-to-SPA handoff.
 
-  The <data> section defines exactly what your Vue app receives via window.onetime,
+  The <schema> section defines a zod v3 schema in plain Javascript  exactly what your Vue app receives via window.onetime,
   while the <template> provides SEO-friendly server-rendered HTML that Vue can
   mount onto for client-side functionality.
 
@@ -16,9 +16,9 @@
   - CSP-compliant nonce handling
 -->
 
-<data window="onetime" schema="@/src/types/declarations/window.d.ts">
+<schema>
 {{onetime_window}}
-</data>
+</schema>
 
 <template>
   <!doctype html>

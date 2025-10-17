@@ -1,9 +1,10 @@
-<data layout="layouts/main">
-{
-  "page_title": "Verify Account",
-  "submit_text": "Verify Account"
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" layout="layouts/main">
+const schema = z.object({
+  page_title: z.string(),
+  submit_text: z.string(),
+  zodauth: z.any()
+});
+</schema>
 
 <template>
 <div class="auth-form">

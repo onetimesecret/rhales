@@ -4,7 +4,8 @@ This demo application showcases the power of Rhales RSFC (Ruby Single File Compo
 
 ## Features Demonstrated
 
-- **RSFC Templates**: Single file components with `<data>`, `<template>`, and `<logic>` sections
+- **RSFC Templates**: Single file components with `<data>`, `<template>`, `<schema>`, and `<logic>` sections
+- **Schema Validation**: Runtime validation of hydration data against Zod schemas
 - **Client-Side Hydration**: Secure data injection with CSP nonce support
 - **Authentication Integration**: Rodauth with custom Rhales adapters
 - **Dynamic Content**: Posts management with CRUD operations
@@ -17,6 +18,7 @@ Before starting, ensure you have:
 - Ruby 3.0 or higher
 - Bundler gem installed (`gem install bundler`)
 - SQLite3 installed on your system
+- Node.js and pnpm (for schema generation)
 
 ## Step-by-Step Setup Instructions
 
@@ -42,7 +44,58 @@ gem install bundler
 bundle install
 ```
 
-### Step 4: Start the web server
+### Step 3: Install Node.js dependencies (for schema generation)
+
+```bash
+pnpm install
+```
+
+If you don't have pnpm installed:
+```bash
+npm install -g pnpm
+pnpm install
+```
+
+### Step 4: Generate JSON Schemas from templates
+
+```bash
+bundle exec rake rhales:schema:generate
+```
+
+This will:
+- Parse all `.rue` templates with `<schema>` sections
+- Execute Zod schema code to generate JSON Schemas
+- Save generated schemas to `public/schemas/`
+
+Expected output:
+```
+Schema Generation
+============================================================
+Templates: ./templates
+Output: ./public/schemas
+Zod: (using pnpm exec tsx)
+
+Found 2 schema section(s):
+  - login (js-zod)
+  - dashboard (js-zod)
+
+Generating JSON Schemas...
+✓ Generated schema for: login
+✓ Generated schema for: dashboard
+
+Results:
+------------------------------------------------------------
+✓ Successfully generated 2 schema(s)
+✓ Output directory: /path/to/demo/rhales-roda-demo/public/schemas
+```
+
+You can verify the generated schemas:
+```bash
+ls -la public/schemas/
+cat public/schemas/login.json | jq .
+```
+
+### Step 5: Start the web server
 
 ```bash
 bundle exec rackup
@@ -61,7 +114,7 @@ Puma starting in single mode...
 Use Ctrl-C to stop
 ```
 
-### Step 5: Open your browser
+### Step 6: Open your browser
 
 Visit: http://localhost:9292
 
@@ -133,6 +186,69 @@ bundle exec rerun rackup
 ```
 
 Now when you edit any `.rb` or `.rue` file, the server will restart automatically.
+
+## Schema Generation and Validation
+
+### Generating Schemas
+
+Rhales uses Zod schemas defined in `.rue` templates to generate JSON Schemas for runtime validation:
+
+```bash
+# Generate all schemas
+bundle exec rake rhales:schema:generate
+
+# Custom paths
+bundle exec rake rhales:schema:generate \
+  TEMPLATES_DIR=./templates \
+  OUTPUT_DIR=./public/schemas
+
+# View statistics
+bundle exec rake rhales:schema:stats
+
+# Validate existing schemas
+bundle exec rake rhales:schema:validate
+```
+
+### Schema Sections in Templates
+
+Templates with `<schema>` sections define the shape of data they expect:
+
+```html
+<schema lang="js-zod" window="appData">
+const schema = z.object({
+  user: z.object({
+    name: z.string(),
+    email: z.string().email(),
+  }),
+  posts: z.array(z.object({
+    id: z.number(),
+    title: z.string(),
+  })),
+});
+</schema>
+```
+
+### Runtime Validation
+
+When schema validation is enabled (see `app.rb`), the middleware will:
+- Extract hydration data from HTML responses
+- Validate against the generated JSON Schema
+- In development: Fail loudly with detailed error messages
+- In production: Log warnings but continue serving
+
+### Directory Structure
+
+```
+demo/rhales-roda-demo/
+├── templates/           # Source .rue files
+│   ├── login.rue       # With <schema> section
+│   └── dashboard.rue   # With <schema> section
+├── public/
+│   └── schemas/        # Generated JSON Schemas (gitignored)
+│       ├── login.json
+│       └── dashboard.json
+└── app.rb              # Schema validation middleware config
+```
 
 ## Understanding the Code
 

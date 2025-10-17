@@ -78,7 +78,7 @@ class RhalesDemo < Roda
   plugin :render,
     engine: 'rue',
     views: File.join(opts[:root], 'templates'),
-    layout: false
+    layout: true
 
   plugin :flash
   plugin :sessions, secret: secret_value, key: 'rhales-demo.session'
@@ -193,13 +193,61 @@ class RhalesDemo < Roda
         locals = {
           'welcome_message' => "Welcome back, #{current_user[:email]}!",
           'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+          # Dashboard specific props
+          'features' => [
+            {
+              'title' => 'Authenticated Access',
+              'description' => 'Only visible when logged in',
+              'icon' => '🔐',
+            },
+            {
+              'title' => 'Session Management',
+              'description' => 'Powered by Rodauth',
+              'icon' => '👤',
+            },
+            {
+              'title' => 'API Integration',
+              'description' => 'Fetch data with hydrated endpoints',
+              'icon' => '⚡',
+            },
+          ],
+          'api_endpoints' => {
+            'user' => '/api/user',
+            'demo_data' => '/api/demo-data',
+          },
         }
         view('dashboard',
           locals: template_locals(locals),
           layout: false,
         )
       else
-        view('home', locals: template_locals, layout: false)
+        # Home page props
+        locals = {
+          'page_type' => 'home',
+          'features' => [
+            {
+              'title' => 'Single File Components',
+              'description' => 'Combine templates, data, and logic in one file',
+              'icon' => '📦',
+            },
+            {
+              'title' => 'Type-Safe Hydration',
+              'description' => 'Zod schemas ensure contract safety',
+              'icon' => '🛡️',
+            },
+            {
+              'title' => 'Security First',
+              'description' => 'CSP nonces and HTML escaping by default',
+              'icon' => '🔒',
+            },
+            {
+              'title' => 'Framework Agnostic',
+              'description' => 'Works with Roda, Sinatra, Rails, and more',
+              'icon' => '🔧',
+            },
+          ],
+        }
+        view('home', locals: template_locals(locals), layout: false)
       end
 
       # Set CSP header after view rendering
@@ -234,10 +282,40 @@ class RhalesDemo < Roda
   end
 
   # Helper method to provide common template data
+  # Returns hash with :client_data and :server_data keys for Rhales v2.0+
   def template_locals(additional_locals = {})
-    {
-      'demo_accounts' => DEMO_ACCOUNTS,
+    # Separate client (serialized to browser) from server (template-only) data
+    client_defaults = {
+      # Authentication state
       'authenticated' => respond_to?(:logged_in?) ? logged_in? : false,
-    }.merge(additional_locals)
+
+      # Demo accounts for login page
+      'demo_accounts' => DEMO_ACCOUNTS,
+    }
+
+    server_defaults = {
+      # Layout props (required by layouts/main.rue)
+      'app_name' => 'Rhales Demo',
+      'year' => Time.now.year,
+
+      # Flash messages (already handled by Tilt, but keeping for consistency)
+      'flash_notice' => respond_to?(:flash) ? flash['notice'] : nil,
+      'flash_error' => respond_to?(:flash) ? flash['error'] : nil,
+    }
+
+    # Merge additional locals
+    client_data = client_defaults.merge(additional_locals.fetch('client_data', {}))
+    server_data = server_defaults.merge(additional_locals.fetch('server_data', {}))
+
+    # Also merge any top-level keys into client for backward compatibility
+    additional_locals.each do |key, value|
+      next if key == 'client_data' || key == 'server_data'
+      client_data[key] = value
+    end
+
+    {
+      client_data: client_data,
+      server_data: server_data,
+    }
   end
 end

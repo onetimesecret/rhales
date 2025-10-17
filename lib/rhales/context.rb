@@ -11,34 +11,37 @@ module Rhales
     # server-side data. Follows the established pattern from InitScriptContext
     # and EnvironmentContext for focused, single-responsibility context objects.
     #
-    # The context provides two layers of data:
-    # 1. App: Framework-provided data (CSRF tokens, authentication, config)
-    # 2. Props: Application data passed to the view (user, content, features)
+    # The context provides three layers of data:
+    # 1. Request: Framework-provided data (CSRF tokens, authentication, config)
+    # 2. Server: Template-only variables (page titles, HTML content, etc.)
+    # 3. Client: Application data that gets serialized to window state
     #
-    # App data is accessible as both direct variables and through the app.* namespace.
-    # Props take precedence over app data for variable resolution.
+    # Request data and server data are accessible in templates.
+    # Client data takes precedence over server data for variable resolution.
+    # Only client data is serialized to the browser via <schema> sections.
     #
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :sess, :cust, :locale, :props, :config, :app_data
+      attr_reader :req, :locale, :client, :server, :config
 
-      def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
+      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
         @req           = req
-        @sess          = sess || default_session
-        @cust          = cust || default_customer
         @config        = config || Rhales.configuration
         @locale        = locale_override || @config.default_locale
 
-        # Normalize props keys to strings for consistent access
-        @props = normalize_keys(props).freeze
+        # Normalize keys to strings for consistent access and expose with clean names
+        @client_data = normalize_keys(client).freeze
+        @client = @client_data  # Public accessor
 
-        # Build context layers (two-layer model: app + props)
-        @app_data = build_app_data.freeze
+        # Build context layers (three-layer model: request + server + client)
+        # Server data is merged with built-in request/app data
+        @server_data = build_app_data.merge(normalize_keys(server)).freeze
+        @server = @server_data  # Public accessor
 
         # Pre-compute all_data before freezing
-        # Props take precedence over app data, and add app namespace
-        @all_data = @app_data.merge(@props).merge({ 'app' => @app_data }).freeze
+        # Client takes precedence over server, and add app namespace for backward compatibility
+        @all_data = @server_data.merge(@client_data).merge({ 'app' => @server_data }).freeze
 
         # Make context immutable after creation
         freeze
@@ -95,6 +98,68 @@ module Rhales
         get(variable_path)
       end
 
+      # Add accessor for request data (maps to @server_data for 'app' namespace compatibility)
+      def request
+        @server_data
+      end
+
+
+
+      # Extract session from request object
+      def sess
+        return default_session unless req
+        if req.respond_to?(:session)
+          session = req.session
+          # Check if session has the adapter interface (respond to authenticated?)
+          # If it's a plain Hash (like Rack::Request.session), use default session
+          session.respond_to?(:authenticated?) ? session : default_session
+        else
+          default_session
+        end
+      end
+
+      # Extract customer/user from request object
+      def cust
+        return default_customer unless req
+        if req.respond_to?(:user)
+          req.user
+        elsif req.respond_to?(:customer)
+          req.customer
+        else
+          default_customer
+        end
+      end
+
+      # Create a new context with updated client data
+      def with_client(new_client_data)
+        self.class.new(
+          @req, @locale,
+          client: normalize_keys(new_client_data),
+          server: @server_data,
+          config: @config
+        )
+      end
+
+      # Create a new context with updated server data
+      def with_server(new_server_data)
+        self.class.new(
+          @req, @locale,
+          client: @client_data,
+          server: normalize_keys(new_server_data),
+          config: @config
+        )
+      end
+
+      # Create a new context with merged client data
+      def merge_client(additional_client_data)
+        self.class.new(
+          @req, @locale,
+          client: @client_data.merge(normalize_keys(additional_client_data)),
+          server: @server_data,
+          config: @config
+        )
+      end
+
     private
 
       # Build consolidated app data (replaces runtime_data + computed_data)
@@ -134,8 +199,8 @@ module Rhales
       # Determine theme class for CSS
       def determine_theme_class
         # Default theme logic - can be overridden by business data
-        if props['theme']
-          "theme-#{props['theme']}"
+        if @client_data['theme']
+          "theme-#{@client_data['theme']}"
         elsif cust && cust.respond_to?(:theme_preference)
           "theme-#{cust.theme_preference}"
         else
@@ -226,13 +291,14 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, sess, cust, locale, config: nil, **props)
-          new(req, sess, cust, locale, props: props, config: config)
+        def for_view(req, locale, client: {}, server: {}, config: nil, **additional_client)
+          all_client = client.merge(additional_client)
+          new(req, locale, client: all_client, server: server, config: config)
         end
 
         # Create minimal context for testing
-        def minimal(props: {}, config: nil)
-          new(nil, nil, nil, 'en', props: props, config: config)
+        def minimal(locale = 'en', client: {}, server: {}, config: nil)
+          new(nil, locale, client: client, server: server, config: config)
         end
       end
   end

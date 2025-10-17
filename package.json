@@ -1,0 +1,10 @@
+{
+  "type": "module",
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@prettier/plugin-ruby": "^4.0.4",
+    "tsx": "^4.20.6"
+  }
+}

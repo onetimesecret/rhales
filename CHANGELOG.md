@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JavaScript merge functions for client-side data composition
 - Comprehensive test coverage for collision detection and merge strategies
 
+### Changed
+- Replaced `json-schema` gem with `json_schemer` for better JSON Schema Draft 2020-12 support
+- Improved validation error messages with more structured output from json_schemer
+- Validation performance improved to <0.05ms average (was ~2ms with json-schema)
+
 ### Security
 - Window collision detection prevents accidental data exposure by making overwrites explicit
 - All merge operations happen client-side after server-side interpolation and JSON serialization

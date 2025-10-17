@@ -17,26 +17,27 @@ module Rhales
     # - Can process sensitive business logic
     #
     # ### Client Side (Data Hydration)
-    # - Only data declared in <data> section reaches the browser
+    # - Only data declared in <schema> sections reaches the browser
     # - Creates explicit allowlist like designing a REST API
-    # - Server-side variable interpolation processes secrets safely
+    # - For <schema>: Direct props serialization (no interpolation)
     # - JSON serialization validates data structure
     #
-    # ### Process Flow
-    # 1. Server processes <data> section with full context access
-    # 2. Variables like {{user.name}} are interpolated server-side
-    # 3. Result is serialized as JSON and sent to client
-    # 4. Client receives only the processed, safe data
+    # ### Process Flow (Schema-based, preferred)
+    # 1. Backend provides fully-resolved props to render call
+    # 2. Props are directly serialized as JSON
+    # 3. Client receives only the declared props
     #
-    # ### Example
+    # ### Example (Schema-based)
     # ```rue
-    # <data>
-    # {
-    #   "user_name": "{{user.name}}",           // Safe: just the name
-    #   "theme": "{{user.theme_preference}}"    // Safe: just the theme
-    # }
-    # </data>
+    # <schema lang="js-zod" window="appData">
+    # const schema = z.object({
+    #   user_name: z.string(),
+    #   theme: z.string()
+    # });
+    # </schema>
     # ```
+    # Backend: render('template', user_name: user.name, theme: user.theme_preference)
+    #
     #
     # Server template can access {{user.admin?}} and {{internal_config}},
     # but client only gets the declared user_name and theme values.
@@ -60,26 +61,18 @@ module Rhales
         @window_attribute = parser.window_attribute || 'data'
       end
 
-      # This method is now deprecated in favor of the two-pass architecture
-      # It's kept for backward compatibility but will be removed in future versions
-      def generate_hydration_html
-        warn '[DEPRECATION] Hydrator#generate_hydration_html is deprecated. Use the two-pass rendering architecture instead.'
-        ''
-      end
-
-      # Process <data> section and return JSON string
+# Process <schema> section and return JSON string
       def process_data_section
-        data_content = @parser.section('data')
-        return '{}' unless data_content
-
-        # Process variable interpolations in the data section
-        processed_content = process_data_variables(data_content)
-
-        # Validate and return JSON
-        validate_json(processed_content)
-        processed_content
+        # Check for schema section
+        if @parser.schema_lang
+          # Schema section: Direct props serialization
+          JSON.generate(@context.client)
+        else
+          # No hydration section
+          '{}'
+        end
       rescue JSON::ParserError => ex
-        raise JSONSerializationError, "Invalid JSON in data section: #{ex.message}"
+        raise JSONSerializationError, "Invalid JSON in schema section: #{ex.message}"
       end
 
       # Get processed data as Ruby hash (for internal use)
@@ -92,42 +85,8 @@ module Rhales
 
       private
 
-      # Process variable interpolations in data section
-      # Uses Rhales consistently for all template processing
-      def process_data_variables(data_content)
-        rhales = TemplateEngine.new(data_content, @context)
-        rhales.render
-      end
-
-      # Validate that processed content is valid JSON
-      def validate_json(json_string)
-        JSON.parse(json_string)
-      rescue JSON::ParserError => ex
-        raise JSONSerializationError, "Processed data section is not valid JSON: #{ex.message}"
-      end
-
-      # Build template path with line number for error reporting
-      # (Used by HydrationDataAggregator)
-      def build_template_path
-        data_node   = @parser.section_node('data')
-        line_number = data_node ? data_node.location.start_line : 1
-
-        if @parser.file_path
-          "#{@parser.file_path}:#{line_number}"
-        else
-          "<inline>:#{line_number}"
-        end
-      end
-
-      class << self
-        # Convenience method to generate hydration HTML
-        # DEPRECATED: Use the two-pass rendering architecture instead
-        def generate(parser, context)
-          warn '[DEPRECATION] Hydrator.generate is deprecated. Use the two-pass rendering architecture instead.'
-          new(parser, context).generate_hydration_html
-        end
-
-        # Generate only JSON data (for testing or API endpoints)
+class << self
+# Generate only JSON data (for testing or API endpoints)
         def generate_json(parser, context)
           new(parser, context).process_data_section
         end

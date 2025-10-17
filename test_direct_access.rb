@@ -11,7 +11,7 @@ end
 # Create a view with test props
 view = Rhales::View.new(
   nil, nil, nil, 'en',
-  props: { 'greeting' => 'Hello World', 'user' => { 'name' => 'John Doe' } },
+  client: { 'greeting' => 'Hello World', 'user' => { 'name' => 'John Doe' } },
   config: config
 )
 

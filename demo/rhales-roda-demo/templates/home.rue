@@ -1,31 +1,13 @@
-<data window="data" layout="layouts/main">
-{
-  "page_type": "public",
-  "features": [
-    {
-      "title": "RSFC Templates",
-      "description": "Ruby Single File Components with data, template, and logic sections",
-      "icon": "📄"
-    },
-    {
-      "title": "Client-Side Hydration",
-      "description": "Secure data injection with CSP nonce support",
-      "icon": "💧"
-    },
-    {
-      "title": "Handlebars Syntax",
-      "description": "Familiar template syntax with conditionals and iteration",
-      "icon": "🔧"
-    },
-    {
-      "title": "Authentication Ready",
-      "description": "Pluggable auth adapters for any framework",
-      "icon": "🔐"
-    }
-  ]
-
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" window="data" layout="layouts/main">
+const schema = z.object({
+  page_type: z.string(),
+  features: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    icon: z.string()
+  }))
+});
+</schema>
 
 <template>
 <div class="hero-section">

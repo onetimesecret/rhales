@@ -1,10 +1,10 @@
-<data>
-{
-  "page_title": "Partials Test Page",
-  "parent_message": "Message from parent template",
-  "override_test": "Parent value"
-}
-</data>
+<schema lang="js-zod">
+const schema = z.object({
+  page_title: z.string(),
+  parent_message: z.string(),
+  override_test: z.string()
+});
+</schema>
 
 <template>
   <div class="main-template">

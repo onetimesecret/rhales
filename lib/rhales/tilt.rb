@@ -146,7 +146,7 @@ module Rhales
         )
       end
 
-      # Use proper session adapter
+      # Build session and auth adapters
       session_data = if scope.respond_to?(:logged_in?) && scope.logged_in?
         Rhales::Adapters::AuthenticatedSession.new(
           {
@@ -158,25 +158,32 @@ module Rhales
         Rhales::Adapters::AnonymousSession.new
       end
 
-      # Use proper auth adapter
-      if scope.respond_to?(:logged_in?) && scope.logged_in? && scope.respond_to?(:current_user)
-        user      = scope.current_user
-        auth_data = Rhales::Adapters::AuthenticatedAuth.new({
+      auth_data = if scope.respond_to?(:logged_in?) && scope.logged_in? && scope.respond_to?(:current_user)
+        user = scope.current_user
+        Rhales::Adapters::AuthenticatedAuth.new({
           id: user[:id],
           email: user[:email],
           authenticated: true,
-        },
-                                                           )
+        })
       else
-        auth_data = Rhales::Adapters::AnonymousAuth.new
+        Rhales::Adapters::AnonymousAuth.new
       end
+
+      # Extend request_data to expose session and user
+      request_data.define_singleton_method(:session) { session_data }
+      request_data.define_singleton_method(:user) { auth_data }
+
+      # Split props into client (serialized) and server (template-only) data
+      # By default, all Tilt locals go to client for backward compatibility
+      # Frameworks can use :server_data and :client_data keys to override
+      client_data = props.delete(:client_data) || props.dup
+      server_data = props.delete(:server_data) || {}
 
       ::Rhales::View.new(
         request_data,
-        session_data,
-        auth_data,
         nil, # locale_override
-        props: props,
+        client: client_data,
+        server: server_data,
       )
     end
 

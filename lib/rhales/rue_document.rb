@@ -32,12 +32,12 @@ module Rhales
     class InvalidSyntaxError < ParseError; end
 
     # At least one of these sections must be present
-    REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
-    KNOWN_SECTIONS = %w[data template logic].freeze
+    REQUIRES_ONE_OF_SECTIONS = %w[schema template].freeze
+    KNOWN_SECTIONS = %w[schema template logic].freeze
     ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
-    # Known data section attributes
-    KNOWN_DATA_ATTRIBUTES = %w[window merge layout].freeze
+    # Known schema section attributes
+    KNOWN_SCHEMA_ATTRIBUTES = %w[lang version envelope window merge layout extends].freeze
 
     attr_reader :content, :file_path, :grammar, :ast
 
@@ -97,7 +97,7 @@ module Rhales
         content = convert_nodes_to_string(node.value[:content])
         "{{#each #{items}}}#{content}{{/each}}"
       when :handlebars_expression
-        # Handle legacy format for data sections
+        # Handle raw handlebars expressions
         if node.value[:raw]
           "{{{#{node.value[:content]}}}"
         else
@@ -112,24 +112,42 @@ module Rhales
       sections[name]
     end
 
-    def data_attributes
-      @data_attributes ||= {}
-    end
-
-    def window_attribute
-      data_attributes['window'] || 'data'
-    end
-
-    def schema_path
-      data_attributes['schema']
-    end
-
-    def merge_strategy
-      data_attributes['merge']
-    end
-
     def layout
-      data_attributes['layout']
+      schema_attributes['layout']
+    end
+
+
+    # Schema section accessors
+    def schema_attributes
+      @schema_attributes ||= {}
+    end
+
+    def schema_lang
+      schema_attributes['lang']
+    end
+
+    def schema_version
+      schema_attributes['version']
+    end
+
+    def schema_envelope
+      schema_attributes['envelope']
+    end
+
+    def schema_window
+      schema_attributes['window'] || 'data'
+    end
+
+    def schema_merge_strategy
+      schema_attributes['merge']
+    end
+
+    def schema_layout
+      schema_attributes['layout']
+    end
+
+    def schema_extends
+      schema_attributes['extends']
     end
 
     def section?(name)
@@ -153,12 +171,8 @@ module Rhales
       extract_variables_from_section('template', exclude_partials: true)
     end
 
-    def data_variables
-      extract_variables_from_section('data')
-    end
-
     def all_variables
-      (template_variables + data_variables).uniq
+      template_variables.uniq
     end
 
     private
@@ -186,7 +200,7 @@ module Rhales
         when :unless_block, :each_block
           extract_partials_from_content_nodes(content_node.value[:content], partials)
         when :handlebars_expression
-          # Handle old format for data sections
+          # Handle handlebars expressions
           content = content_node.value[:content]
           if content.start_with?('>')
             partials << content[1..].strip
@@ -226,10 +240,10 @@ module Rhales
           # Skip partials if requested
           next if exclude_partials
         when :text
-          # Extract handlebars expressions from text content (for data sections)
+          # Extract handlebars expressions from text content
           extract_variables_from_text(node.value, variables, exclude_partials: exclude_partials)
         when :handlebars_expression
-          # Handle old format for data sections
+          # Handle handlebars expressions
           content = node.value[:content]
 
           # Skip partials if requested
@@ -259,31 +273,34 @@ module Rhales
     end
 
     def parse_data_attributes!
-      data_section     = @grammar.sections['data']
-      @data_attributes = {}
+      schema_section = @grammar.sections['schema']
+      @schema_attributes = {}
 
-      if data_section
-        @data_attributes = data_section.value[:attributes].dup
-
+      if schema_section
+        @schema_attributes = schema_section.value[:attributes].dup
         # Validate attributes and warn about unknown ones
-        validate_data_attributes!
-      end
+        validate_schema_attributes!
+        # Set default window attribute for schema section
+        @schema_attributes['window'] ||= 'data'
 
-      # Set default window attribute
-      @data_attributes['window'] ||= 'data'
+        # Schema sections require lang attribute
+        unless @schema_attributes['lang']
+          raise ParseError, "Schema section requires 'lang' attribute (e.g., lang=\"ts-zod\")"
+        end
+      end
     end
 
-    def validate_data_attributes!
-      unknown_attributes = @data_attributes.keys - KNOWN_DATA_ATTRIBUTES
+    def validate_schema_attributes!
+      unknown_attributes = @schema_attributes.keys - KNOWN_SCHEMA_ATTRIBUTES
 
       unknown_attributes.each do |attr|
-        warn_unknown_attribute(attr)
+        warn_unknown_schema_attribute(attr)
       end
     end
 
-    def warn_unknown_attribute(attribute)
+    def warn_unknown_schema_attribute(attribute)
       file_info = @file_path ? " in #{@file_path}" : ''
-      warn "Warning: data section encountered '#{attribute}' attribute - not yet supported, ignoring#{file_info}"
+      warn "Warning: schema section encountered '#{attribute}' attribute - not yet supported, ignoring#{file_info}"
     end
 
     class << self

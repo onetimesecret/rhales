@@ -5,6 +5,9 @@ $:.unshift(File.expand_path('lib', __dir__))
 require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 
+# Load task files
+Dir.glob('lib/tasks/**/*.rake').each { |r| load r }
+
 RSpec::Core::RakeTask.new(:spec)
 
 task default: :spec

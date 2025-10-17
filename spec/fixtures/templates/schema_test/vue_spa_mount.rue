@@ -1,0 +1,46 @@
+<schema lang="js-zod" window="__ONETIME_STATE__">
+const schema = z.object({
+  ui: z.object({
+    theme: z.string(),
+    locale: z.string()
+  }),
+  authentication: z.object({
+    authenticated: z.boolean(),
+    custid: z.string().nullable()
+  }),
+  user: z.object({
+    email: z.string(),
+    customer_since: z.number().nullable()
+  }).nullable(),
+  secret_options: z.object({
+    ttl: z.number(),
+    passphrase: z.boolean()
+  }),
+  site_host: z.string(),
+  regions_enabled: z.boolean(),
+  domains_enabled: z.boolean(),
+  billing_enabled: z.boolean(),
+  frontend_development: z.boolean()
+});
+</schema>
+
+<template>
+<!DOCTYPE html>
+<html lang="{{locale}}" class="light">
+<head>
+  <meta charset="utf-8">
+  <title>Onetime Secret</title>
+  <script nonce="{{app.nonce}}" language="javascript" type="text/javascript">
+    // Dark mode detection (runs before page render to prevent FOUC)
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  </script>
+</head>
+<body class="font-serif bg-white dark:bg-gray-900">
+  <div id="app"><router-view></router-view></div>
+</body>
+</html>
+</template>

@@ -9,24 +9,24 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
 
   describe 'Baseline tokenize_content behavior' do
     it 'tokenizes simple content correctly' do
-      content = '<data>{"test": "value"}</data>'
+      content = '<schema lang="ts-zod">{"test": "value"}</schema>'
       tokens = tokenize_content_baseline(content)
 
       expect(tokens.length).to be > 5
-      expect(tokens[0]).to eq({ type: :section_start, content: '<data>' })
-      expect(tokens[-1]).to eq({ type: :section_end, content: '</data>' })
+      expect(tokens[0]).to eq({ type: :section_start, content: '<schema lang="ts-zod">' })
+      expect(tokens[-1]).to eq({ type: :section_end, content: '</schema>' })
     end
 
     it 'handles comments correctly' do
-      content = '<!-- comment --><data>test</data>'
+      content = '<!-- comment --><schema lang="ts-zod">test</schema>'
       tokens = tokenize_content_baseline(content)
 
       expect(tokens[0]).to eq({ type: :comment, content: '<!-- comment -->' })
-      expect(tokens.find { |t| t[:type] == :section_start }).to eq({ type: :section_start, content: '<data>' })
+      expect(tokens.find { |t| t[:type] == :section_start }).to eq({ type: :section_start, content: '<schema lang="ts-zod">' })
     end
 
     it 'handles unclosed comments as text' do
-      content = '<!-- unclosed<data>test</data>'
+      content = '<!-- unclosed<schema lang="ts-zod">test</schema>'
       tokens = tokenize_content_baseline(content)
 
       # Should have many text tokens for the unclosed comment
@@ -37,9 +37,9 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
     it 'tokenizes complex content with multiple sections' do
       content = <<~RUE
         <!-- Header comment -->
-        <data window="test">
+        <schema lang="ts-zod" window="test">
         {"key": "value"}
-        </data>
+        </schema>
         <!-- Between sections -->
         <template>
         <h1>{{title}}</h1>
@@ -62,7 +62,7 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
 
   describe 'Performance benchmarking' do
     let(:parser) { Rhales::RueFormatParser.new('') }
-    let(:simple_content) { '<data>{"test": "value"}</data>' }
+    let(:simple_content) { '<schema lang="ts-zod">{"test": "value"}</schema>' }
     let(:complex_content) do
       <<~RUE
         <!-- Header comment -->
@@ -80,7 +80,7 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
             "analytics": false
           }
         }
-        </data>
+        </schema>
         <!-- Between sections comment -->
         <template>
         <div class="{{theme_class}}">
@@ -226,7 +226,7 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
       when content[i] == '<' && content[i + 1] != '!' && content[i + 1] != '/'
         # Potential section start
         tag_end = content.index('>', i)
-        if tag_end && (match = content[i..tag_end].match(/^<(data|template|logic)(\s[^>]*)?>/))
+        if tag_end && (match = content[i..tag_end].match(/^<(schema|template|logic)(\s[^>]*)?>/))
           tokens << { type: :section_start, content: content[i..tag_end] }
           i = tag_end + 1
         else
@@ -236,7 +236,7 @@ RSpec.describe 'Tokenize Performance Baseline', type: :feature do
       when content[i, 2] == '</'
         # Potential section end
         tag_end = content.index('>', i)
-        if tag_end && (match = content[i..tag_end].match(/^<\/(data|template|logic)>/))
+        if tag_end && (match = content[i..tag_end].match(/^<\/(schema|template|logic)>/))
           tokens << { type: :section_end, content: content[i..tag_end] }
           i = tag_end + 1
         else

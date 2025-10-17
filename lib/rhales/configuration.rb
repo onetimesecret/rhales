@@ -143,6 +143,12 @@ module Rhales
     # Hydration settings
     attr_accessor :hydration
 
+    # Schema validation settings
+    attr_accessor :enable_schema_validation, :fail_on_validation_error, :schemas_dir
+
+    # JSON response settings
+    attr_accessor :enable_json_responder, :json_responder_include_metadata
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -160,6 +166,18 @@ module Rhales
       @cache_parsed_templates = true
       @cache_ttl              = 3600 # 1 hour
       @hydration              = HydrationConfiguration.new
+
+      # Schema validation defaults
+      @enable_schema_validation = true
+      @fail_on_validation_error = false # Set by environment in middleware
+      @schemas_dir              = './public/schemas' # Default to implementing project's public directory
+
+      # JSON responder defaults
+      @enable_json_responder            = true
+      @json_responder_include_metadata  = false
+
+      # Yield to block for configuration if provided
+      yield(self) if block_given?
     end
 
     # Build API base URL from site configuration

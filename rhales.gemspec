@@ -23,7 +23,6 @@ Gem::Specification.new do |spec|
   spec.license               = 'MIT'
   spec.required_ruby_version = '>= 3.4.0'
 
-
   spec.metadata['source_code_uri']       = 'https://github.com/onetimesecret/rhales'
   spec.metadata['changelog_uri']         = 'https://github.com/onetimesecret/rhales/blob/main/CHANGELOG.md'
   spec.metadata['documentation_uri']     = 'https://github.com/onetimesecret/rhales/blob/main/README.md'
@@ -39,7 +38,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  # (none currently - all parsing is done with manual recursive descent parsers)
+  spec.add_dependency 'json_schemer', '~> 2.3'  # JSON Schema validation in middleware
 
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem

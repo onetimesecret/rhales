@@ -14,12 +14,10 @@ RSpec.describe Rhales::HydrationEndpoint do
     double('Context',
       to_h: { user: 'john', role: 'admin' },
       get: proc { |key| { user: 'john', role: 'admin' }[key] },
-      props: { user: 'john', role: 'admin' },
+      client: { user: 'john', role: 'admin' },
       req: nil,
-      sess: nil,
-      cust: nil,
       locale: 'en',
-      class: double('ContextClass', for_view: double('Context'))
+      class: double('ContextClass', for_view: double('Context')),
     )
   end
 
@@ -235,9 +233,9 @@ RSpec.describe Rhales::HydrationEndpoint do
       allow(circular_aggregator).to receive(:aggregate).with(anything).and_return(circular_data)
       allow(Rhales::HydrationDataAggregator).to receive(:new).and_return(circular_aggregator)
 
-      expect {
+      expect do
         endpoint.render_json(template_name)
-      }.not_to raise_error
+      end.not_to raise_error
     end
   end
 
@@ -246,8 +244,8 @@ RSpec.describe Rhales::HydrationEndpoint do
       it 'merges additional context with existing context' do
         additional_context = { extra_data: 'test' }
 
-        # Expect the context class to create a new context with merged props
-        expect(context.class).to receive(:for_view).with(context.req, context.sess, context.cust, context.locale, user: 'john', role: 'admin', extra_data: 'test').and_return(context)
+        # Expect the context class to create a new context with merged props (new signature)
+        expect(context.class).to receive(:for_view).with(context.req, context.locale, user: 'john', role: 'admin', extra_data: 'test').and_return(context)
 
         endpoint.render_json(template_name, additional_context)
       end
@@ -259,7 +257,7 @@ RSpec.describe Rhales::HydrationEndpoint do
       it 'creates minimal context with additional data' do
         additional_context = { extra_data: 'test' }
 
-        expect(Rhales::Context).to receive(:minimal).with(props: additional_context).and_return(context)
+        expect(Rhales::Context).to receive(:minimal).with(client: additional_context).and_return(context)
 
         endpoint_no_context.render_json(template_name, additional_context)
       end

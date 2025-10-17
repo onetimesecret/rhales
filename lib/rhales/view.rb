@@ -27,14 +27,15 @@ module Rhales
   #
   # ### Server Templates: Full Context Access
   # Templates have complete access to all server-side data:
-  # - All props passed to View.new
-  # - Data from .rue file's <data> section (processed server-side)
+  # - All client data passed to View.new
+  # - All server data passed to View.new
+
   # - Runtime data (CSRF tokens, nonces, request metadata)
   # - Computed data (authentication status, theme classes)
   # - User objects, configuration, internal APIs
   #
   # ### Client Data: Explicit Allowlist
-  # Only data declared in <data> sections reahas_role?ches the browser:
+  # Only client data declared in <schema> sections reaches the browser:
   # - Creates a REST API-like boundary
   # - Server-side variable interpolation processes secrets safely
   # - JSON serialization validates data structure
@@ -44,8 +45,10 @@ module Rhales
   #   # Server template has full access:
   #   {{user.admin?}} {{csrf_token}} {{internal_config}}
   #
-  #   # Client only gets declared data:
-  #   { "user_name": "{{user.name}}", "theme": "{{user.theme}}" }
+  #   # Client only gets declared data from schema:
+  #   <schema lang="js-zod" window="data">
+  #   const schema = z.object({ userName: z.string() });
+  #   </schema>
   #
   # See docs/CONTEXT_AND_DATA_BOUNDARIES.md for complete details.
   #
@@ -54,23 +57,50 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :props, :config
+    attr_reader :req, :locale, :rsfc_context
 
-    def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
+    # Delegate context accessors to rsfc_context
+    def sess
+      @rsfc_context.sess
+    end
+
+    def cust
+      @rsfc_context.cust
+    end
+
+    def client
+      @rsfc_context.client
+    end
+
+    def server
+      @rsfc_context.server
+    end
+
+    def config
+      @rsfc_context.config
+    end
+
+    def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
       @req           = req
-      @sess          = sess
-      @cust          = cust
       @locale        = locale_override
-      @props         = props
-      @config        = config || Rhales.configuration
+
+      # Store parameters for context creation
+      @client_param = client
+      @server_param = server
+      @config_param = config || Rhales.configuration
 
       # Create context using the specified context class
       @rsfc_context = create_context
     end
 
+
+
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
       template_name ||= self.class.default_template_name
+
+      # Store template name in request env for middleware validation
+      @req.env['rhales.template_name'] = template_name if @req && @req.respond_to?(:env)
 
       # Phase 1: Build view composition and aggregate data
       composition           = build_view_composition(template_name)
@@ -107,7 +137,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_json(template_name, additional_context)
     end
 
@@ -116,7 +146,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_module(template_name, additional_context)
     end
 
@@ -125,7 +155,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_jsonp(template_name, callback_name, additional_context)
     end
 
@@ -134,7 +164,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.data_changed?(template_name, etag, additional_context)
     end
 
@@ -143,7 +173,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.calculate_etag(template_name, additional_context)
     end
 
@@ -175,7 +205,7 @@ module Rhales
     # Create the appropriate context for this view
     # Subclasses can override this to use different context types
     def create_context
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **@props)
+      context_class.for_view(@req, @locale, client: @client_param, server: @server_param, config: @config_param)
     end
 
     # Return the context class to use
@@ -201,8 +231,8 @@ module Rhales
     # Resolve template path
     def resolve_template_path(template_name)
       # Check configured template paths first
-      if @config && @config.template_paths && !@config.template_paths.empty?
-        @config.template_paths.each do |path|
+      if config && config.template_paths && !config.template_paths.empty?
+        config.template_paths.each do |path|
           template_path = File.join(path, "#{template_name}.rue")
           return template_path if File.exist?(template_path)
         end
@@ -218,8 +248,8 @@ module Rhales
       return templates_path if File.exist?(templates_path)
 
       # Return first configured path or web path for error message
-      if @config && @config.template_paths && !@config.template_paths.empty?
-        File.join(@config.template_paths.first, "#{template_name}.rue")
+      if config && config.template_paths && !config.template_paths.empty?
+        File.join(config.template_paths.first, "#{template_name}.rue")
       else
         web_path
       end
@@ -235,10 +265,9 @@ module Rhales
     #
     # RSFC Security Model: Templates have full server context access
     # - Templates can access all business data, user objects, methods, etc.
-    # - Templates can access data from .rue file's <data> section (processed server-side)
     # - This is like any server-side template (ERB, HAML, etc.)
     # - Security boundary is at server-to-client handoff, not within server rendering
-    # - Only data declared in <data> section reaches the client (after processing)
+    # - Only data declared in <schema> section reaches the client (after validation)
     def render_template_section(parser)
       template_content = parser.section('template')
       return '' unless template_content
@@ -246,11 +275,8 @@ module Rhales
       # Create partial resolver
       partial_resolver = create_partial_resolver
 
-      # Merge .rue file data with existing context
-      context_with_rue_data = create_context_with_rue_data(parser)
-
-      # Render with full server context (props + computed context + rue data)
-      TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+      # Render with full server context
+      TemplateEngine.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
     end
 
     # Create partial resolver for {{> partial}} inclusions
@@ -268,44 +294,12 @@ module Rhales
       end
     end
 
-    # Generate data hydration HTML
-    def generate_hydration(parser)
-      Hydrator.generate(parser, @rsfc_context)
-    end
-
-    # Create context that includes data from .rue file's data section
-    def create_context_with_rue_data(parser)
-      # Get data from .rue file's data section
-      rue_data = extract_rue_data(parser)
-
-      # Merge rue data with existing props (rue data takes precedence)
-      merged_props = @props.merge(rue_data)
-
-      # Create new context with merged data
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **merged_props)
-    end
-
-    # Extract and process data from .rue file's data section
-    def extract_rue_data(parser)
-      data_content = parser.section('data')
-      return {} unless data_content
-
-      # Process the data section as JSON and parse it
-      hydrator = Hydrator.new(parser, @rsfc_context)
-      hydrator.processed_data_hash
-    rescue JSON::ParserError, Hydrator::JSONSerializationError => ex
-      puts "Error processing data section: #{ex.message}"
-      # If data section isn't valid JSON, return empty hash
-      # This allows templates to work even with malformed data sections
-      {}
-    end
-
     # Smart hydration injection with mount point detection on rendered HTML
     def inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-      injector = HydrationInjector.new(@config.hydration, template_name)
+      injector = HydrationInjector.new(config.hydration, template_name)
 
       # Check if using link-based strategy
-      if @config.hydration.link_based_strategy?
+      if config.hydration.link_based_strategy?
         # For link-based strategies, we need the merged data context
         aggregator = HydrationDataAggregator.new(@rsfc_context)
         merged_data = aggregator.aggregate(composition)
@@ -332,9 +326,9 @@ module Rhales
 
     # Detect mount points in fully rendered HTML
     def detect_mount_point_in_rendered_html(template_html)
-      return nil unless @config&.hydration
+      return nil unless config&.hydration
 
-      custom_selectors = @config.hydration.mount_point_selectors || []
+      custom_selectors = config.hydration.mount_point_selectors || []
       detector = MountPointDetector.new
       detector.detect(template_html, custom_selectors)
     end
@@ -342,7 +336,7 @@ module Rhales
     # Build view composition for the given template
     def build_view_composition(template_name)
       loader      = method(:load_template_for_composition)
-      composition = ViewComposition.new(template_name, loader: loader, config: @config)
+      composition = ViewComposition.new(template_name, loader: loader, config: config)
       composition.resolve!
     end
 
@@ -365,8 +359,8 @@ module Rhales
       # Create partial resolver that uses the composition
       partial_resolver = create_partial_resolver_from_composition(composition)
 
-      # Merge .rue file data with existing context
-      context_with_rue_data = create_context_with_rue_data(root_parser)
+      # Use existing context for rendering
+      context_with_rue_data = @rsfc_context
 
       # Check if template has a layout
       if root_parser.layout && composition.template(root_parser.layout)
@@ -378,16 +372,8 @@ module Rhales
         layout_content = layout_parser.section('template')
         return '' unless layout_content
 
-        # Create new context with content for layout rendering
-        layout_props   = context_with_rue_data.props.merge('content' => content_html)
-        layout_context = Context.new(
-          context_with_rue_data.req,
-          context_with_rue_data.sess,
-          context_with_rue_data.cust,
-          context_with_rue_data.locale,
-          props: layout_props,
-          config: context_with_rue_data.config,
-        )
+        # Use builder pattern to create new context with content for layout rendering
+        layout_context = context_with_rue_data.merge_client('content' => content_html)
 
         TemplateEngine.render(layout_content, layout_context, partial_resolver: partial_resolver)
       else
@@ -411,15 +397,15 @@ module Rhales
       merged_data.each do |window_attr, data|
         # Generate unique ID for this data block
         unique_id = "rsfc-data-#{SecureRandom.hex(8)}"
+        nonce_attr = nonce_attribute
 
         # Create JSON script tag with optional reflection attributes
         json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ""
         json_script = <<~HTML.strip
-          <script id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
+          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes
-        nonce_attr = nonce_attribute
         hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ""
         hydration_script = if reflection_enabled?
           <<~HTML.strip
@@ -446,12 +432,15 @@ module Rhales
         hydration_parts << generate_reflection_utilities
       end
 
-      hydration_parts.join("\n")
+      return '' if hydration_parts.empty?
+
+      hydration_content = hydration_parts.join("\n")
+      "\n\n<!-- Rhales Hydration Start -->\n#{hydration_content}\n<!-- Rhales Hydration End -->"
     end
 
     # Check if reflection system is enabled
     def reflection_enabled?
-      @config.hydration.reflection_enabled
+      config.hydration.reflection_enabled
     end
 
     # Generate JavaScript utilities for hydration reflection
@@ -512,14 +501,14 @@ module Rhales
 
     # Set CSP header if enabled
     def set_csp_header_if_enabled
-      return unless @config.csp_enabled
+      return unless config.csp_enabled
       return unless @req && @req.respond_to?(:env)
 
       # Get nonce from context
       nonce = @rsfc_context.get('nonce')
 
       # Create CSP instance and build header
-      csp = CSP.new(@config, nonce: nonce)
+      csp = CSP.new(config, nonce: nonce)
       header_value = csp.build_header
 
       # Set header in request environment for framework to use
@@ -537,15 +526,15 @@ module Rhales
           .sub(/_view$/, '')
       end
 
-      # Render template with props
-      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **props)
-        view = new(req, sess, cust, locale, props: props, config: config)
+      # Render template with client data
+      def render_with_data(req, locale, template_name: nil, config: nil, **client_data)
+        view = new(req, locale, client: client_data, config: config)
         view.render(template_name)
       end
 
-      # Create view instance with props
-      def with_data(req, sess, cust, locale, config: nil, **props)
-        new(req, sess, cust, locale, props: props, config: config)
+      # Create view instance with client data
+      def with_data(req, locale, config: nil, **client_data)
+        new(req, locale, client: client_data, config: config)
       end
     end
   end

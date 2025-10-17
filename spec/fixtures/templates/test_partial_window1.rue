@@ -1,8 +1,8 @@
-<data window="partial1Data">
-{
-  "partial1_message": "Data from partial 1"
-}
-</data>
+<schema lang="js-zod" window="partial1Data">
+const schema = z.object({
+  partial1_message: z.string()
+});
+</schema>
 
 <template>
   <div class="partial1">

@@ -2,3 +2,6 @@ db/*.db
 .DS_Store
 *.log
 tmp/
+
+# Generated JSON Schemas (regenerate with: rake rhales:schema:generate)
+public/schemas/

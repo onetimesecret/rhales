@@ -1,9 +1,9 @@
-<data>
-{
-  "override_test": "Child value",
-  "child_only": "Only in child"
-}
-</data>
+<schema lang="js-zod">
+const schema = z.object({
+  override_test: z.string(),
+  child_only: z.string()
+});
+</schema>
 
 <template>
   <div class="scope-override">

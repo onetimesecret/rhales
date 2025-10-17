@@ -1,5 +1,18 @@
 # Rakefile for rhales-roda-demo
 
+# Load Rhales rake tasks for schema generation
+# Note: In a real project, these would be loaded from the gem
+# For this demo, we load from the local gem directory
+begin
+  # Try loading from local gem development directory
+  rake_tasks = File.expand_path('../../lib/tasks/rhales_schema.rake', __dir__)
+  load rake_tasks if File.exist?(rake_tasks)
+rescue LoadError
+  # Fallback: load from installed gem
+  spec = Gem::Specification.find_by_name('rhales')
+  load "#{spec.gem_dir}/lib/tasks/rhales_schema.rake"
+end
+
 desc 'Run CI integration test (replicates GitHub Actions workflow)'
 task :ci_test do
   puts "Installing demo dependencies..."

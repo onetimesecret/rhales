@@ -1,10 +1,11 @@
-<data layout="layouts/main">
-{
-  "page_title": "Close Account",
-  "submit_text": "Close Account",
-  "warning_message": "This action cannot be undone."
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" layout="layouts/main">
+const schema = z.object({
+  page_title: z.string(),
+  submit_text: z.string(),
+  warning_message: z.string(),
+  zodauth: z.any()
+});
+</schema>
 
 <template>
 <div class="auth-form">

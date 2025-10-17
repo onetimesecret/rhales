@@ -1,0 +1,13 @@
+<schema lang="js-zod" window="testData">
+const schema = z.object({
+  title: z.string(),
+  count: z.number(),
+  active: z.boolean()
+});
+</schema>
+
+<template>
+<h1>{{title}}</h1>
+<p>Count: {{count}}</p>
+<p>Active: {{active}}</p>
+</template>
