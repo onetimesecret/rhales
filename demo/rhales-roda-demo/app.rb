@@ -282,14 +282,18 @@ class RhalesDemo < Roda
   end
 
   # Helper method to provide common template data
+  # Returns hash with :client_data and :server_data keys for Rhales v2.0+
   def template_locals(additional_locals = {})
-    {
+    # Separate client (serialized to browser) from server (template-only) data
+    client_defaults = {
       # Authentication state
       'authenticated' => respond_to?(:logged_in?) ? logged_in? : false,
 
       # Demo accounts for login page
       'demo_accounts' => DEMO_ACCOUNTS,
+    }
 
+    server_defaults = {
       # Layout props (required by layouts/main.rue)
       'app_name' => 'Rhales Demo',
       'year' => Time.now.year,
@@ -297,6 +301,21 @@ class RhalesDemo < Roda
       # Flash messages (already handled by Tilt, but keeping for consistency)
       'flash_notice' => respond_to?(:flash) ? flash['notice'] : nil,
       'flash_error' => respond_to?(:flash) ? flash['error'] : nil,
-    }.merge(additional_locals)
+    }
+
+    # Merge additional locals
+    client_data = client_defaults.merge(additional_locals.fetch('client_data', {}))
+    server_data = server_defaults.merge(additional_locals.fetch('server_data', {}))
+
+    # Also merge any top-level keys into client for backward compatibility
+    additional_locals.each do |key, value|
+      next if key == 'client_data' || key == 'server_data'
+      client_data[key] = value
+    end
+
+    {
+      client_data: client_data,
+      server_data: server_data,
+    }
   end
 end

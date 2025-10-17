@@ -77,7 +77,7 @@ For complex features requiring parallel work:
 
 ### Key Patterns
 - **Template Syntax**: Uses Handlebars-style syntax (e.g., `{{variable}}`, `{{#if condition}}...{{/if}}`, `{{> partial_name}}`)
-- **Data Hydration**: Uses a `<data>` block in `.rue` files to define a JSON object for client-side hydration, which supports variable interpolation
+- **Data Hydration**: Uses a `<schema>` block in `.rue` files to define a zod v4 schema in plain Javascript for client-side hydration
 - **Security**: Default HTML escaping, CSP nonce support for scripts, and CSRF token handling are built-in
 - **Configuration**: All configuration is handled via an injected `Configuration` object, avoiding global state
 

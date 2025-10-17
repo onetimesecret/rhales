@@ -17,9 +17,8 @@ module Rhales
     # - Can process sensitive business logic
     #
     # ### Client Side (Data Hydration)
-    # - Only data declared in <data> or <schema> sections reaches the browser
+    # - Only data declared in <schema> sections reaches the browser
     # - Creates explicit allowlist like designing a REST API
-    # - For <data>: Server-side variable interpolation processes secrets safely
     # - For <schema>: Direct props serialization (no interpolation)
     # - JSON serialization validates data structure
     #
@@ -27,12 +26,6 @@ module Rhales
     # 1. Backend provides fully-resolved props to render call
     # 2. Props are directly serialized as JSON
     # 3. Client receives only the declared props
-    #
-    # ### Process Flow (Data-based, deprecated)
-    # 1. Server processes <data> section with full context access
-    # 2. Variables like {{user.name}} are interpolated server-side
-    # 3. Result is serialized as JSON and sent to client
-    # 4. Client receives only the processed, safe data
     #
     # ### Example (Schema-based)
     # ```rue
@@ -45,15 +38,6 @@ module Rhales
     # ```
     # Backend: render('template', user_name: user.name, theme: user.theme_preference)
     #
-    # ### Example (Data-based, deprecated)
-    # ```rue
-    # <data window="appData">
-    # {
-    #   "user_name": "{{user.name}}",           // Safe: just the name
-    #   "theme": "{{user.theme_preference}}"    // Safe: just the theme
-    # }
-    # </data>
-    # ```
     #
     # Server template can access {{user.admin?}} and {{internal_config}},
     # but client only gets the declared user_name and theme values.

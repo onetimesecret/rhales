@@ -6,13 +6,12 @@ require_relative 'errors'
 
 module Rhales
   # HydrationDataAggregator traverses the ViewComposition and executes
-  # all <data> and <schema> sections to produce a single, merged JSON structure.
+  # all <schema> sections to produce a single, merged JSON structure.
   #
   # This class implements the server-side data aggregation phase of the
   # two-pass rendering model, handling:
   # - Traversal of the template dependency tree
-  # - Execution of <data> sections with template interpolation (deprecated)
-  # - Direct serialization of props for <schema> sections (preferred)
+  # - Direct serialization of props for <schema> sections
   # - Merge strategies (deep, shallow, strict)
   # - Collision detection and error reporting
   #

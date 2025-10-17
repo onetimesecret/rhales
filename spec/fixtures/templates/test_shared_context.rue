@@ -9,7 +9,6 @@ const schema = z.object({
 </schema>
 
 <template>
-  <!-- Variables from the context shared with <data> -->
   <div class="{{theme_class}}">
     <h1>{{greeting}}</h1>
     {{#if authenticated}}

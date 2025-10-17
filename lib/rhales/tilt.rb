@@ -173,10 +173,17 @@ module Rhales
       request_data.define_singleton_method(:session) { session_data }
       request_data.define_singleton_method(:user) { auth_data }
 
+      # Split props into client (serialized) and server (template-only) data
+      # By default, all Tilt locals go to client for backward compatibility
+      # Frameworks can use :server_data and :client_data keys to override
+      client_data = props.delete(:client_data) || props.dup
+      server_data = props.delete(:server_data) || {}
+
       ::Rhales::View.new(
         request_data,
         nil, # locale_override
-        props: props,
+        client: client_data,
+        server: server_data,
       )
     end
 
