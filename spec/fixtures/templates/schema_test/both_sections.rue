@@ -4,12 +4,6 @@ const schema = z.object({
 });
 </schema>
 
-<data window="dataData">
-{
-  "value": "{{value}}"
-}
-</data>
-
 <template>
 <p>{{value}}</p>
 </template>

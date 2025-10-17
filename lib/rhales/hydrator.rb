@@ -77,28 +77,18 @@ module Rhales
         @window_attribute = parser.window_attribute || 'data'
       end
 
-# Process <data> or <schema> section and return JSON string
+# Process <schema> section and return JSON string
       def process_data_section
-        # Check for schema section first (preferred)
+        # Check for schema section
         if @parser.schema_lang
           # Schema section: Direct props serialization
           JSON.generate(@context.client)
-        elsif @parser.section('data')
-          # Data section: Template interpolation (deprecated)
-          data_content = @parser.section('data')
-
-          # Process variable interpolations in the data section
-          processed_content = process_data_variables(data_content)
-
-          # Validate and return JSON
-          validate_json(processed_content)
-          processed_content
         else
           # No hydration section
           '{}'
         end
       rescue JSON::ParserError => ex
-        raise JSONSerializationError, "Invalid JSON in data/schema section: #{ex.message}"
+        raise JSONSerializationError, "Invalid JSON in schema section: #{ex.message}"
       end
 
       # Get processed data as Ruby hash (for internal use)
@@ -111,75 +101,7 @@ module Rhales
 
       private
 
-      # Process variable interpolations in data section
-      # Uses Rhales consistently for all template processing
-      # Wraps context in JsonAwareContext to auto-convert Ruby objects to JSON
-      def process_data_variables(data_content)
-        json_context = JsonAwareContext.new(@context)
-        rhales = TemplateEngine.new(data_content, json_context)
-        rhales.render
-      end
-
-      # Context wrapper that automatically converts Ruby objects to JSON in data sections
-      class JsonAwareContext
-        def initialize(context)
-          @context = context
-        end
-
-        # Delegate all methods to the wrapped context
-        def method_missing(method, *, &)
-          @context.send(method, *, &)
-        end
-
-        def respond_to_missing?(method, include_private = false)
-          @context.respond_to?(method, include_private)
-        end
-
-        # Override get method to return JSON-serialized objects
-        def get(variable_path)
-          value = @context.get(variable_path)
-
-          # Convert Ruby objects to JSON for data sections
-          case value
-          when Hash, Array
-            begin
-              value.to_json
-            rescue JSON::GeneratorError, SystemStackError => ex
-              # Handle serialization errors (circular references, unsupported types, etc.)
-              raise JSONSerializationError,
-                "Failed to serialize Ruby object to JSON: #{ex.message}. " \
-                "Object type: #{value.class}, var path: #{variable_path}..."
-            end
-          else
-            value
-          end
-        end
-
-        # Alias for compatibility with template engine
-        alias resolve_variable get
-      end
-
-      # Validate that processed content is valid JSON
-      def validate_json(json_string)
-        JSON.parse(json_string)
-      rescue JSON::ParserError => ex
-        raise JSONSerializationError, "Processed data section is not valid JSON: #{ex.message}"
-      end
-
-      # Build template path with line number for error reporting
-      # (Used by HydrationDataAggregator)
-      def build_template_path
-        data_node   = @parser.section_node('data')
-        line_number = data_node ? data_node.location.start_line : 1
-
-        if @parser.file_path
-          "#{@parser.file_path}:#{line_number}"
-        else
-          "<inline>:#{line_number}"
-        end
-      end
-
-      class << self
+class << self
 # Generate only JSON data (for testing or API endpoints)
         def generate_json(parser, context)
           new(parser, context).process_data_section

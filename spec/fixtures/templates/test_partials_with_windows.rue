@@ -1,9 +1,9 @@
-<data window="mainData">
-{
-  "page_title": "Partials with Window Attributes",
-  "main_message": "Main template data"
-}
-</data>
+<schema lang="js-zod" window="mainData">
+const schema = z.object({
+  page_title: z.string(),
+  main_message: z.string()
+});
+</schema>
 
 <template>
   <div class="main-with-windows">

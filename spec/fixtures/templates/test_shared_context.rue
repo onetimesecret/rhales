@@ -1,12 +1,12 @@
-<data>
-{
-  "message": "{{greeting}}",
-  "user": {
-    "name": "{{user.name}}"
-  },
-  "authenticated": "{{authenticated}}"
-}
-</data>
+<schema lang="js-zod">
+const schema = z.object({
+  message: z.string(),
+  user: z.object({
+    name: z.string()
+  }),
+  authenticated: z.boolean()
+});
+</schema>
 
 <template>
   <!-- Variables from the context shared with <data> -->

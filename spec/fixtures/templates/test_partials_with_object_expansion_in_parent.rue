@@ -1,6 +1,10 @@
-<data window="mainData">
-{{{directly_embedded_hash_object}}}
-</data>
+<schema lang="js-zod" window="mainData">
+const schema = z.object({
+  key1_from_hash_object: z.string(),
+  key2_from_hash_object: z.string(),
+  key3_from_hash_object: z.string()
+});
+</schema>
 
 <template>
   <div class="main-with-windows">

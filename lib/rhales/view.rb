@@ -29,7 +29,7 @@ module Rhales
   # Templates have complete access to all server-side data:
   # - All client data passed to View.new
   # - All server data passed to View.new
-  # - Data from .rue file's <data> section (processed server-side)
+
   # - Runtime data (CSRF tokens, nonces, request metadata)
   # - Computed data (authentication status, theme classes)
   # - User objects, configuration, internal APIs
@@ -265,10 +265,9 @@ module Rhales
     #
     # RSFC Security Model: Templates have full server context access
     # - Templates can access all business data, user objects, methods, etc.
-    # - Templates can access data from .rue file's <data> section (processed server-side)
     # - This is like any server-side template (ERB, HAML, etc.)
     # - Security boundary is at server-to-client handoff, not within server rendering
-    # - Only data declared in <data> section reaches the client (after processing)
+    # - Only data declared in <schema> section reaches the client (after validation)
     def render_template_section(parser)
       template_content = parser.section('template')
       return '' unless template_content
@@ -276,11 +275,8 @@ module Rhales
       # Create partial resolver
       partial_resolver = create_partial_resolver
 
-      # Merge .rue file data with existing context
-      context_with_rue_data = create_context_with_rue_data(parser)
-
-      # Render with full server context (props + computed context + rue data)
-      TemplateEngine.render(template_content, context_with_rue_data, partial_resolver: partial_resolver)
+      # Render with full server context
+      TemplateEngine.render(template_content, @rsfc_context, partial_resolver: partial_resolver)
     end
 
     # Create partial resolver for {{> partial}} inclusions
@@ -296,30 +292,6 @@ module Rhales
           File.read(partial_path)
         end
       end
-    end
-
-# Create context that includes data from .rue file's data section
-    def create_context_with_rue_data(parser)
-      # Get data from .rue file's data section
-      rue_data = extract_rue_data(parser)
-
-      # Use builder pattern to merge rue data with existing client data
-      @rsfc_context.merge_client(rue_data)
-    end
-
-    # Extract and process data from .rue file's data section
-    def extract_rue_data(parser)
-      data_content = parser.section('data')
-      return {} unless data_content
-
-      # Process the data section as JSON and parse it
-      hydrator = Hydrator.new(parser, @rsfc_context)
-      hydrator.processed_data_hash
-    rescue JSON::ParserError, Hydrator::JSONSerializationError => ex
-      puts "Error processing data section: #{ex.message}"
-      # If data section isn't valid JSON, return empty hash
-      # This allows templates to work even with malformed data sections
-      {}
     end
 
     # Smart hydration injection with mount point detection on rendered HTML
@@ -387,8 +359,8 @@ module Rhales
       # Create partial resolver that uses the composition
       partial_resolver = create_partial_resolver_from_composition(composition)
 
-      # Merge .rue file data with existing context
-      context_with_rue_data = create_context_with_rue_data(root_parser)
+      # Use existing context for rendering
+      context_with_rue_data = @rsfc_context
 
       # Check if template has a layout
       if root_parser.layout && composition.template(root_parser.layout)

@@ -39,11 +39,9 @@ module Rhales
     private
 
     def process_template(_template_name, parser)
-      # Check for schema section first (preferred), then data section (deprecated)
+      # Process schema section
       if parser.schema_lang
         process_schema_section(parser)
-      elsif parser.section('data')
-        process_data_section_legacy(parser)
       end
     end
 
@@ -88,71 +86,6 @@ module Rhales
         merge_strategy: merge_strategy,
         section_type: :schema,
       }
-    end
-
-    # Process data section (deprecated): Template interpolation
-    def process_data_section_legacy(parser)
-      data_content = parser.section('data')
-      return unless data_content
-
-window_attr = parser.window_attribute || 'data'
-      merge_strategy = parser.merge_strategy
-
-      # Build template path for error reporting
-      template_path = build_template_path(parser)
-
-      # Process the data section with template interpolation
-      processed_data = process_data_section_with_interpolation(data_content, parser)
-
-      # Check for collisions only if the data is not empty
-      if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
-        existing = @window_attributes[window_attr]
-        existing_data = @merged_data[window_attr]
-
-        # Only raise collision error if existing data is also not empty
-        unless empty_data?(existing_data)
-          raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
-        end
-      end
-
-      # Merge or set the data
-      @merged_data[window_attr] = if @merged_data.key?(window_attr)
-        merge_data(
-          @merged_data[window_attr],
-          processed_data,
-          merge_strategy || 'deep',
-          window_attr,
-          template_path,
-        )
-      else
-        processed_data
-                                  end
-
-      # Track the window attribute
-      @window_attributes[window_attr] = {
-        path: template_path,
-        merge_strategy: merge_strategy,
-        section_type: :data,
-      }
-    end
-
-    # Process data section with template interpolation (for deprecated <data> sections)
-    def process_data_section_with_interpolation(data_content, parser)
-      # Create a JSON-aware context wrapper for data sections
-      json_context = JsonAwareContext.new(@context)
-
-      # Process template variables in the data section
-      processed_content = TemplateEngine.render(data_content, json_context)
-
-      # Parse as JSON
-      begin
-        JSON.parse(processed_content)
-      rescue JSON::ParserError => ex
-        template_path = build_template_path(parser)
-        raise JSONSerializationError,
-          "Invalid JSON in data section at #{template_path}: #{ex.message}\n" \
-          "Processed content: #{processed_content[0..200]}..."
-      end
     end
 
     def merge_data(target, source, strategy, window_attr, template_path)
@@ -214,17 +147,6 @@ window_attr = parser.window_attribute || 'data'
       target.merge(source)
     end
 
-    def build_template_path(parser)
-      data_node = parser.section_node('data')
-      line_number = data_node ? data_node.location.start_line : 1
-
-      if parser.file_path
-        "#{parser.file_path}:#{line_number}"
-      else
-        "<inline>:#{line_number}"
-      end
-    end
-
     def build_template_path_for_schema(parser)
       schema_node = parser.section_node('schema')
       line_number = schema_node ? schema_node.location.start_line : 1
@@ -247,44 +169,5 @@ window_attr = parser.window_attribute || 'data'
 
       false
     end
-  end
-
-  # Context wrapper that automatically converts Ruby objects to JSON in data sections
-  class JsonAwareContext
-    def initialize(context)
-      @context = context
-    end
-
-    # Delegate all methods to the wrapped context
-    def method_missing(method, *, &)
-      @context.send(method, *, &)
-    end
-
-    def respond_to_missing?(method, include_private = false)
-      @context.respond_to?(method, include_private)
-    end
-
-    # Override get method to return JSON-serialized objects
-    def get(variable_path)
-      value = @context.get(variable_path)
-
-      # Convert Ruby objects to JSON for data sections
-      case value
-      when Hash, Array
-        begin
-          value.to_json
-        rescue JSON::GeneratorError, SystemStackError => ex
-          # Handle serialization errors (circular references, unsupported types, etc.)
-          raise JSONSerializationError,
-            "Failed to serialize Ruby object to JSON: #{ex.message}. " \
-            "Object type: #{value.class}, var path: #{variable_path}..."
-        end
-      else
-        value
-      end
-    end
-
-    # Alias for compatibility with template engine
-    alias resolve_variable get
   end
 end
