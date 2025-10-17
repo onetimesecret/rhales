@@ -149,7 +149,7 @@ module Rhales
     def create_template_context(additional_context)
       if @context
         # Merge additional context into existing context by reconstructing with merged props
-        merged_props = @context.props.merge(additional_context)
+        merged_props = @context.client.merge(additional_context)
         @context.class.for_view(@context.req, @context.locale, **merged_props)
       else
         # Create minimal context with just the additional data

@@ -14,7 +14,7 @@ RSpec.describe Rhales::HydrationEndpoint do
     double('Context',
       to_h: { user: 'john', role: 'admin' },
       get: proc { |key| { user: 'john', role: 'admin' }[key] },
-      props: { user: 'john', role: 'admin' },
+      client: { user: 'john', role: 'admin' },
       req: nil,
       locale: 'en',
       class: double('ContextClass', for_view: double('Context')),

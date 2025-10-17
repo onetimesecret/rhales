@@ -11,13 +11,13 @@ puts "Verifying that partials work correctly with the customer UIContext class\n
 # Mock the UIContext class structure for testing
 # (simplified version based on the provided code)
 class MockUIContext < Rhales::Context
-  def initialize(req = nil, locale_override = nil, props: {})
+  def initialize(req = nil, locale_override = nil, client: {})
     # Simulate building onetime_window data like UIContext does
     onetime_window = build_mock_onetime_window_data(req, locale_override)
     enhanced_props = props.merge(onetime_window: onetime_window)
 
     # Call parent constructor with enhanced data
-    super(req, locale_override, props: enhanced_props)
+    super(req, locale_override, client: enhanced_props)
   end
 
   private
@@ -81,11 +81,11 @@ class MockUIContext < Rhales::Context
 
   class << self
     def for_view(req, locale, config: nil, **props)
-      new(req, locale, props: props)
+      new(req, locale, client: props)
     end
 
-    def minimal(props: {})
-      new(nil, nil, nil, 'en', props: props)
+    def minimal(client: {})
+      new(nil, nil, nil, 'en', client: props)
     end
   end
 end
@@ -138,7 +138,7 @@ def mock_req.env
   { 'ots.nonce' => 'test-nonce-from-request' }
 end
 
-ui_context = MockUIContext.minimal(props: {
+ui_context = MockUIContext.minimal(client: {
   extra_prop: 'from props',
 },
                                   )

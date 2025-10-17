@@ -301,7 +301,7 @@ module Rhales
     def create_merged_context(parent_context, local_data)
       # Extract all props from parent context and merge with local data
       # Local data takes precedence over parent props
-      merged_props = parent_context.props.merge(local_data)
+      merged_props = parent_context.client.merge(local_data)
 
       # Create new context with merged props, preserving other context attributes
       Context.for_view(

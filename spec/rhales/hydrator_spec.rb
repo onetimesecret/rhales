@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Rhales::Hydrator do
   let(:props) { { title: 'Test Page', count: 42, active: true } }
-  let(:context) { Rhales::Context.minimal(props: props) }
+  let(:context) { Rhales::Context.minimal(client: props) }
 
   describe '#process_data_section' do
     context 'with schema section' do
@@ -28,7 +28,7 @@ RSpec.describe Rhales::Hydrator do
         # Even if props contain strings that look like template variables,
         # they should not be interpolated
         special_props = { message: '{{user.name}}', count: 123 }
-        special_context = Rhales::Context.minimal(props: special_props)
+        special_context = Rhales::Context.minimal(client: special_props)
 
         parser = double('parser')
         allow(parser).to receive(:schema_lang).and_return('js-zod')
@@ -49,7 +49,7 @@ RSpec.describe Rhales::Hydrator do
           user: { id: 1, name: 'Alice', email: 'alice@example.com' },
           settings: { theme: 'dark', notifications: true }
         }
-        nested_context = Rhales::Context.minimal(props: nested_props)
+        nested_context = Rhales::Context.minimal(client: nested_props)
 
         parser = double('parser')
         allow(parser).to receive(:schema_lang).and_return('js-zod')
@@ -74,7 +74,7 @@ RSpec.describe Rhales::Hydrator do
           ],
           tags: %w[ruby rails testing]
         }
-        array_context = Rhales::Context.minimal(props: array_props)
+        array_context = Rhales::Context.minimal(client: array_props)
 
         parser = double('parser')
         allow(parser).to receive(:schema_lang).and_return('js-zod')

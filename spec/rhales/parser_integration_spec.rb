@@ -200,7 +200,7 @@ RSpec.describe 'Parser Integration' do
 
   describe 'TemplateEngine integration with parsers' do
     let(:context) do
-      Rhales::Context.minimal(props: {
+      Rhales::Context.minimal(client: {
         greeting: 'Hello World',
         authenticated: true,
         user: { name: 'John Doe' },
@@ -248,7 +248,7 @@ RSpec.describe 'Parser Integration' do
         </template>
       RUE
 
-      html_context = Rhales::Context.minimal(props: {
+      html_context = Rhales::Context.minimal(client: {
         greeting: '<strong>Bold</strong>',
       },
                                             )
@@ -389,7 +389,7 @@ RSpec.describe 'Parser Integration' do
         </template>
       RUE
 
-      context = Rhales::Context.minimal(props: { page_title: 'Test Title' })
+      context = Rhales::Context.minimal(client: { page_title: 'Test Title' })
 
       document = Rhales::RueDocument.new(content)
       document.parse!

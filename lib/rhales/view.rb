@@ -80,16 +80,9 @@ module Rhales
       @rsfc_context.config
     end
 
-    def initialize(req, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
+    def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
       @req           = req
       @locale        = locale_override
-
-      # Handle backward compatibility with deprecation warnings
-      if props || app_data
-        warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
-        client = props if props
-        server = app_data if app_data
-      end
 
       # Store parameters for context creation
       @client_param = client
@@ -100,14 +93,7 @@ module Rhales
       @rsfc_context = create_context
     end
 
-    # Backward compatibility accessors
-    def props
-      @rsfc_context.client
-    end
 
-    def app_data
-      @rsfc_context.server
-    end
 
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)

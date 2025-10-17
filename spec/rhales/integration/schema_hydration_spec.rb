@@ -13,7 +13,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { title: 'Test Page', count: 42, active: true },
+        client: { title: 'Test Page', count: 42, active: true },
         config: config
       )
 
@@ -44,7 +44,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: {
+        client: {
           user: { id: 1, name: 'Alice', email: 'alice@example.com' },
           settings: { theme: 'dark', notifications: true }
         },
@@ -69,7 +69,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { message: 'Hello from custom window' },
+        client: { message: 'Hello from custom window' },
         config: config
       )
 
@@ -87,7 +87,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
 
       # Props contain strings that look like template variables
       view = Rhales::View.new(nil, 'en',
-        props: { title: '{{should.not.interpolate}}', count: 99 },
+        client: { title: '{{should.not.interpolate}}', count: 99 },
         config: config
       )
 
@@ -105,7 +105,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { title: 'Data Hash Test', count: 123, active: false },
+        client: { title: 'Data Hash Test', count: 123, active: false },
         config: config
       )
 
@@ -128,7 +128,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { title: 'Legacy Test', name: 'World' },
+        client: { title: 'Legacy Test', name: 'World' },
         config: config
       )
 
@@ -142,7 +142,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { title: 'Interpolated Title', name: 'Bob' },
+        client: { title: 'Interpolated Title', name: 'Bob' },
         config: config
       )
 
@@ -164,7 +164,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       end
 
       view = Rhales::View.new(nil, 'en',
-        props: { value: 'test' },
+        client: { value: 'test' },
         config: config
       )
 

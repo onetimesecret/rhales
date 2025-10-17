@@ -80,7 +80,7 @@ RSpec.describe 'Rue Parser Improvements' do
   describe 'JSON object dumping in data sections' do
     it 'supports direct JSON object interpolation' do
       require 'json'
-      context = Rhales::Context.minimal(props: {
+      context = Rhales::Context.minimal(client: {
         'onetimeWindow' => { 'csrf' => 'abc123', 'user' => 'john' }.to_json
       })
 
@@ -207,7 +207,7 @@ RSpec.describe 'Rue Parser Improvements' do
 
   describe 'JSON object interpolation in data sections' do
     it 'supports Ruby Hash object interpolation' do
-      context = Rhales::Context.minimal(props: {
+      context = Rhales::Context.minimal(client: {
         'onetime_window' => { 'csrf' => 'abc123', 'user' => { 'id' => 123, 'name' => 'Alice' } }
       })
 
@@ -235,7 +235,7 @@ RSpec.describe 'Rue Parser Improvements' do
     end
 
     it 'supports Ruby Array object interpolation' do
-      context = Rhales::Context.minimal(props: {
+      context = Rhales::Context.minimal(client: {
         'items' => [{ 'id' => 1, 'name' => 'Item 1' }, { 'id' => 2, 'name' => 'Item 2' }]
       })
 
@@ -263,7 +263,7 @@ RSpec.describe 'Rue Parser Improvements' do
     end
 
     it 'maintains backward compatibility with string values' do
-      context = Rhales::Context.minimal(props: {
+      context = Rhales::Context.minimal(client: {
         'simple_string' => 'hello world'
       })
 

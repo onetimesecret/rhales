@@ -25,17 +25,10 @@ module Rhales
     class Context
       attr_reader :req, :locale, :client, :server, :config
 
-      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
+      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
         @req           = req
         @config        = config || Rhales.configuration
         @locale        = locale_override || @config.default_locale
-
-        # Handle backward compatibility with deprecation warnings
-        if props || app_data
-          warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
-          client = props if props
-          server = app_data if app_data
-        end
 
         # Normalize keys to strings for consistent access and expose with clean names
         @client_data = normalize_keys(client).freeze
@@ -110,14 +103,7 @@ module Rhales
         @server_data
       end
 
-      # Backward compatibility accessors
-      def props
-        @client_data
-      end
 
-      def app_data
-        @server_data
-      end
 
       # Extract session from request object
       def sess
@@ -305,27 +291,13 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, locale, client: {}, server: {}, config: nil, props: nil, app_data: nil, **additional_client)
-          # Handle backward compatibility
-          if props || app_data
-            warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
-            client = props if props
-            server = app_data if app_data
-          end
-
+        def for_view(req, locale, client: {}, server: {}, config: nil, **additional_client)
           all_client = client.merge(additional_client)
           new(req, locale, client: all_client, server: server, config: config)
         end
 
         # Create minimal context for testing
-        def minimal(locale = 'en', client: {}, server: {}, config: nil, props: nil, app_data: nil)
-          # Handle backward compatibility
-          if props || app_data
-            warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
-            client = props if props
-            server = app_data if app_data
-          end
-
+        def minimal(locale = 'en', client: {}, server: {}, config: nil)
           new(nil, locale, client: client, server: server, config: config)
         end
       end

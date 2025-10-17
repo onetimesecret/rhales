@@ -89,7 +89,7 @@ module Rhales
         # Check for schema section first (preferred)
         if @parser.schema_lang
           # Schema section: Direct props serialization
-          JSON.generate(@context.props)
+          JSON.generate(@context.client)
         elsif @parser.section('data')
           # Data section: Template interpolation (deprecated)
           data_content = @parser.section('data')

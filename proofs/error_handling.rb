@@ -11,7 +11,7 @@ puts
 # 1. Catching all Rhales errors
 begin
   template = '{{#if user}}Hello{{else'  # Missing closing {{/if}}
-  context  = Rhales::Context.minimal(props: { user: 'John' })
+  context  = Rhales::Context.minimal(client: { user: 'John' })
   Rhales::TemplateEngine.render(template, context)
 rescue Rhales::Error => ex
   puts "Caught any Rhales error: #{ex.class} - #{ex.message}"
@@ -22,7 +22,7 @@ puts
 # 2. Catching render errors (which wrap parse errors)
 begin
   template = '{{unclosed'
-  context  = Rhales::Context.minimal(props: {})
+  context  = Rhales::Context.minimal(client: {})
   Rhales::TemplateEngine.render(template, context)
 rescue Rhales::TemplateEngine::RenderError => ex
   puts 'Render error wrapping parse error:'
@@ -65,7 +65,7 @@ puts
 # 4. Render error example
 begin
   template = '{{> missing_partial}}'
-  context  = Rhales::Context.minimal(props: {})
+  context  = Rhales::Context.minimal(client: {})
   Rhales::TemplateEngine.render(template, context)
 rescue Rhales::RenderError => ex
   puts "Render error: #{ex.class} - #{ex.message}"

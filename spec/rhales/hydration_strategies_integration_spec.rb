@@ -21,7 +21,7 @@ RSpec.describe 'Hydration Strategies Integration' do
         data = { user: { name: 'John Doe' }, app_config: { theme: 'dark' } }
         key.split('.').reduce(data) { |obj, k| obj[k.to_sym] }
       },
-      props: {
+      client: {
         user: { name: 'John Doe', role: 'admin' },
         app_config: { theme: 'dark', api_url: 'https://api.example.com' }
       },

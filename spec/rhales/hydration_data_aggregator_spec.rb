@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Rhales::HydrationDataAggregator do
   let(:props) { { title: 'Test', count: 42, active: true } }
-  let(:context) { Rhales::Context.minimal(props: props) }
+  let(:context) { Rhales::Context.minimal(client: props) }
 
   describe '#aggregate' do
     context 'with schema sections' do
@@ -28,7 +28,7 @@ RSpec.describe Rhales::HydrationDataAggregator do
         result = aggregator.aggregate(composition)
 
         expect(result).to have_key('appData')
-        # Props are stored in the aggregated data with string keys (from context.props)
+        # Client data is stored in the aggregated data with string keys (from context.client)
         expect(result['appData']).to be_a(Hash)
         expect(result['appData']).to have_key('title')
         expect(result['appData']['title']).to eq('Test')

@@ -18,7 +18,7 @@ RSpec.describe Rhales::Context do
   let(:props) { { page_title: 'Test Page', content: 'Hello World' } }
 
   describe '#initialize' do
-    subject { described_class.new(mock_request, 'en', props: props) }
+    subject { described_class.new(mock_request, 'en', client: props) }
 
     it 'initializes with provided parameters' do
       expect(subject.req).to eq(mock_request)
@@ -26,7 +26,7 @@ RSpec.describe Rhales::Context do
       expect(subject.cust).to eq(mock_user)
       expect(subject.locale).to eq('en')
       # Props are normalized to string keys
-      expect(subject.props).to eq({ 'page_title' => 'Test Page', 'content' => 'Hello World' })
+      expect(subject.client).to eq({ 'page_title' => 'Test Page', 'content' => 'Hello World' })
     end
 
     it 'uses default values when not provided' do
@@ -42,7 +42,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#get' do
-    subject { described_class.new(mock_request, 'en', props: props) }
+    subject { described_class.new(mock_request, 'en', client: props) }
 
     it 'retrieves runtime data' do
       expect(subject.get('csrf_token')).to eq('test-csrf')
@@ -67,9 +67,9 @@ RSpec.describe Rhales::Context do
     end
 
     it 'has app_data attribute' do
-      expect(subject.app_data).to be_a(Hash)
-      expect(subject.app_data['csrf_token']).to eq('test-csrf')
-      expect(subject.app_data['authenticated']).to be(true)
+      expect(subject.server).to be_a(Hash)
+      expect(subject.server['csrf_token']).to eq('test-csrf')
+      expect(subject.server['authenticated']).to be(true)
     end
 
     it 'accesses environment through app namespace' do
@@ -79,7 +79,7 @@ RSpec.describe Rhales::Context do
 
     it 'supports dot notation' do
       nested_data = { user: { profile: { name: 'John' } } }
-      context     = described_class.new(nil, 'en', props: nested_data)
+      context     = described_class.new(nil, 'en', client: nested_data)
       expect(context.get('user.profile.name')).to eq('John')
     end
 
@@ -89,7 +89,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#variable?' do
-    subject { described_class.new(mock_request, 'en', props: props) }
+    subject { described_class.new(mock_request, 'en', client: props) }
 
     it 'returns true for existing variables' do
       expect(subject.variable?('page_title')).to be(true)
@@ -102,7 +102,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#available_variables' do
-    subject { described_class.new(nil, 'en', props: { user: { name: 'Test' } }) }
+    subject { described_class.new(nil, 'en', client: { user: { name: 'Test' } }) }
 
     it 'returns list of available variable paths' do
       variables = subject.available_variables
@@ -123,7 +123,7 @@ RSpec.describe Rhales::Context do
 
   describe '.minimal' do
     it 'creates minimal context for testing' do
-      context = described_class.minimal(props: { test: 'data' })
+      context = described_class.minimal(client: { test: 'data' })
       expect(context.req).to be_nil
       expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
       expect(context.cust).to be_a(Rhales::Adapters::AnonymousAuth)
