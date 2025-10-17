@@ -1,44 +1,34 @@
 # lib/rhales/schema_generator.rb
 
-require 'ferrum'
+require 'open3'
 require 'json'
+require 'tempfile'
 require 'fileutils'
 require_relative 'schema_extractor'
 
 module Rhales
-  # Generates JSON Schemas from Zod schemas using headless browser automation
+  # Generates JSON Schemas from Zod schemas using TypeScript execution
   #
-  # This class uses Ferrum (headless Chrome) to execute Zod schema code and
-  # convert it to JSON Schema format. The generated schemas are saved to disk
-  # for use by the validation middleware.
+  # This class uses pnpm exec tsx to execute Zod schema code and convert it
+  # to JSON Schema format. The generated schemas are saved to disk for use
+  # by the validation middleware.
   #
   # Usage:
   #   generator = SchemaGenerator.new(
   #     templates_dir: './templates',
-  #     output_dir: './lib/rhales/schemas',
-  #     zod_path: './node_modules/zod/v4-mini/index.js'
+  #     output_dir: './lib/rhales/schemas'
   #   )
-  #   generator.generate_all
+  #   results = generator.generate_all
   class SchemaGenerator
     class GenerationError < StandardError; end
 
-    DEFAULT_ZOD_PATHS = [
-      './node_modules/zod/v4-mini/index.js',
-      './node_modules/zod/lib/index.mjs',
-      '../node_modules/zod/v4-mini/index.js'
-    ].freeze
-
-    attr_reader :templates_dir, :output_dir, :zod_path
+    attr_reader :templates_dir, :output_dir
 
     # @param templates_dir [String] Directory containing .rue files
     # @param output_dir [String] Directory to save generated JSON schemas
-    # @param zod_path [String, nil] Path to Zod module (auto-detected if nil)
-    # @param headless [Boolean] Run browser in headless mode (default: true)
-    def initialize(templates_dir:, output_dir: './lib/rhales/schemas', zod_path: nil, headless: true)
+    def initialize(templates_dir:, output_dir: './lib/rhales/schemas')
       @templates_dir = File.expand_path(templates_dir)
       @output_dir = File.expand_path(output_dir)
-      @zod_path = zod_path || detect_zod_path
-      @headless = headless
 
       validate_setup!
       ensure_output_directory!
@@ -67,24 +57,18 @@ module Rhales
         errors: []
       }
 
-      browser = create_browser
-
-      begin
-        schemas.each do |schema_info|
-          begin
-            generate_schema(browser, schema_info)
-            results[:generated] += 1
-            puts "✓ Generated schema for: #{schema_info[:template_name]}"
-          rescue => e
-            results[:failed] += 1
-            results[:success] = false
-            error_msg = "Failed to generate schema for #{schema_info[:template_name]}: #{e.message}"
-            results[:errors] << error_msg
-            warn error_msg
-          end
+      schemas.each do |schema_info|
+        begin
+          generate_schema(schema_info)
+          results[:generated] += 1
+          puts "✓ Generated schema for: #{schema_info[:template_name]}"
+        rescue => e
+          results[:failed] += 1
+          results[:success] = false
+          error_msg = "Failed to generate schema for #{schema_info[:template_name]}: #{e.message}"
+          results[:errors] << error_msg
+          warn error_msg
         end
-      ensure
-        browser&.quit
       end
 
       results
@@ -92,89 +76,77 @@ module Rhales
 
     # Generate JSON Schema for a single template
     #
-    # @param browser [Ferrum::Browser] Browser instance
     # @param schema_info [Hash] Schema information from SchemaExtractor
     # @return [Hash] Generated JSON Schema
-    def generate_schema(browser, schema_info)
-      # Create HTML page that executes Zod and generates JSON Schema
-      html = build_schema_html(schema_info)
+    def generate_schema(schema_info)
+      # Create temp file in project directory so Node.js can resolve modules
+      temp_dir = File.join(Dir.pwd, 'tmp')
+      FileUtils.mkdir_p(temp_dir) unless Dir.exist?(temp_dir)
 
-      # Navigate to data URL with HTML content
-      page = browser.create_page
-      page.go("data:text/html;charset=utf-8,#{URI.encode_www_form_component(html)}")
+      temp_file = Tempfile.new(['schema', '.mts'], temp_dir)
 
-      # Wait for schema generation (max 5 seconds)
-      start_time = Time.now
-      json_schema = nil
+      begin
+        # Write TypeScript script
+        temp_file.write(build_typescript_script(schema_info))
+        temp_file.close
 
-      while Time.now - start_time < 5
-        json_schema = page.evaluate('window.__generatedSchema')
-        break if json_schema
-        sleep 0.1
+        # Execute with tsx via pnpm
+        stdout, stderr, status = Open3.capture3('pnpm', 'exec', 'tsx', temp_file.path)
+
+        unless status.success?
+          raise GenerationError, "TypeScript execution failed: #{stderr}"
+        end
+
+        # Parse JSON Schema from stdout
+        json_schema = JSON.parse(stdout)
+
+        # Save to disk
+        save_schema(schema_info[:template_name], json_schema)
+
+        json_schema
+      ensure
+        temp_file.unlink if temp_file
       end
-
-      unless json_schema
-        error_message = page.evaluate('window.__generationError') rescue 'Unknown error'
-        raise GenerationError, "Schema generation timed out or failed: #{error_message}"
-      end
-
-      # Save to disk
-      save_schema(schema_info[:template_name], json_schema)
-
-      json_schema
-    ensure
-      page&.close
     end
 
     private
 
-    def create_browser
-      Ferrum::Browser.new(
-        headless: @headless,
-        timeout: 30,
-        window_size: [1024, 768],
-        browser_options: {
-          'no-sandbox': nil,
-          'disable-gpu': nil
+    def build_typescript_script(schema_info)
+      # Escape single quotes in template name for TypeScript string
+      safe_name = schema_info[:template_name].gsub("'", "\\'")
+
+      <<~TYPESCRIPT
+        // Auto-generated schema generator for #{safe_name}
+        import { z } from 'zod/v4';
+
+        // Schema code from .rue template
+        #{schema_info[:schema_code].strip}
+
+        // Generate JSON Schema
+        try {
+          const jsonSchema = z.toJSONSchema(schema, {
+            target: 'draft-2020-12',
+            unrepresentable: 'any',
+            cycles: 'ref',
+            reused: 'inline',
+          });
+
+          // Add metadata
+          const schemaWithMeta = {
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
+            $id: `https://rhales.dev/schemas/#{safe_name}.json`,
+            title: '#{safe_name}',
+            description: 'Schema for #{safe_name} template',
+            ...jsonSchema,
+          };
+
+          // Output JSON to stdout
+          console.log(JSON.stringify(schemaWithMeta, null, 2));
+        } catch (error) {
+          console.error('Schema generation error:', error.message);
+          process.exit(1);
         }
-      )
-    end
-
-    def build_schema_html(schema_info)
-      <<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Schema Generation: #{schema_info[:template_name]}</title>
-        </head>
-        <body>
-          <h1>Generating schema...</h1>
-          <script type="module">
-            try {
-              // Import Zod
-              const zod = await import('file://#{@zod_path}');
-              const z = zod.z || zod.default || zod;
-
-              // Execute schema code
-              #{schema_info[:schema_code]}
-
-              // Convert to JSON Schema (Zod v4 has toJSONSchema method)
-              if (typeof z.toJSONSchema === 'function') {
-                window.__generatedSchema = z.toJSONSchema(schema);
-              } else {
-                throw new Error('z.toJSONSchema is not available - Zod v4 required');
-              }
-
-              console.log('✓ Schema generation successful');
-            } catch (error) {
-              window.__generationError = error.message;
-              console.error('✗ Schema generation failed:', error);
-            }
-          </script>
-        </body>
-        </html>
-      HTML
+      TYPESCRIPT
     end
 
     def save_schema(template_name, json_schema)
@@ -186,22 +158,21 @@ module Rhales
       File.write(schema_file, JSON.pretty_generate(json_schema))
     end
 
-    def detect_zod_path
-      DEFAULT_ZOD_PATHS.each do |path|
-        full_path = File.expand_path(path, @templates_dir)
-        return full_path if File.exist?(full_path)
-      end
-
-      raise GenerationError, "Could not find Zod module. Tried: #{DEFAULT_ZOD_PATHS.join(', ')}"
-    end
-
     def validate_setup!
       unless File.directory?(@templates_dir)
         raise GenerationError, "Templates directory does not exist: #{@templates_dir}"
       end
 
-      unless File.exist?(@zod_path)
-        raise GenerationError, "Zod module not found at: #{@zod_path}"
+      # Check pnpm is available
+      stdout, stderr, status = Open3.capture3('pnpm', '--version')
+      unless status.success?
+        raise GenerationError, "pnpm not found. Install pnpm to generate schemas: npm install -g pnpm"
+      end
+
+      # Check tsx is available (will be installed by pnpm if needed)
+      stdout, stderr, status = Open3.capture3('pnpm', 'exec', 'tsx', '--version')
+      unless status.success?
+        raise GenerationError, "tsx not found. Run: pnpm install tsx --save-dev"
       end
     end
 

@@ -38,7 +38,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'ferrum', '~> 0.15'      # Headless Chrome for schema generation
   spec.add_dependency 'json-schema', '~> 4.0'  # JSON Schema validation in middleware
 
   # Development dependencies should be specified in Gemfile instead of gemspec

@@ -143,6 +143,9 @@ module Rhales
     # Hydration settings
     attr_accessor :hydration
 
+    # Schema validation settings
+    attr_accessor :enable_schema_validation, :fail_on_validation_error, :schemas_dir
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -160,6 +163,11 @@ module Rhales
       @cache_parsed_templates = true
       @cache_ttl              = 3600 # 1 hour
       @hydration              = HydrationConfiguration.new
+
+      # Schema validation defaults
+      @enable_schema_validation = true
+      @fail_on_validation_error = false # Set by environment in middleware
+      @schemas_dir              = './lib/rhales/schemas'
     end
 
     # Build API base URL from site configuration

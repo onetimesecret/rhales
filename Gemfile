@@ -5,6 +5,7 @@ gemspec
 
 group :development, :test do
   gem 'benchmark'
+  gem 'bigdecimal', '~> 3.1' # Required by json-schema in Ruby 3.4+
   gem 'rack-test'
   gem 'rspec', '~> 3.12'
   gem 'simplecov', '~> 0.22'
