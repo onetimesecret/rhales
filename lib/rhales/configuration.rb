@@ -168,6 +168,9 @@ module Rhales
       @enable_schema_validation = true
       @fail_on_validation_error = false # Set by environment in middleware
       @schemas_dir              = './lib/rhales/schemas'
+
+      # Yield to block for configuration if provided
+      yield(self) if block_given?
     end
 
     # Build API base URL from site configuration

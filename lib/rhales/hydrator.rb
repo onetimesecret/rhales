@@ -120,9 +120,50 @@ module Rhales
 
       # Process variable interpolations in data section
       # Uses Rhales consistently for all template processing
+      # Wraps context in JsonAwareContext to auto-convert Ruby objects to JSON
       def process_data_variables(data_content)
-        rhales = TemplateEngine.new(data_content, @context)
+        json_context = JsonAwareContext.new(@context)
+        rhales = TemplateEngine.new(data_content, json_context)
         rhales.render
+      end
+
+      # Context wrapper that automatically converts Ruby objects to JSON in data sections
+      class JsonAwareContext
+        def initialize(context)
+          @context = context
+        end
+
+        # Delegate all methods to the wrapped context
+        def method_missing(method, *, &)
+          @context.send(method, *, &)
+        end
+
+        def respond_to_missing?(method, include_private = false)
+          @context.respond_to?(method, include_private)
+        end
+
+        # Override get method to return JSON-serialized objects
+        def get(variable_path)
+          value = @context.get(variable_path)
+
+          # Convert Ruby objects to JSON for data sections
+          case value
+          when Hash, Array
+            begin
+              value.to_json
+            rescue JSON::GeneratorError, SystemStackError => ex
+              # Handle serialization errors (circular references, unsupported types, etc.)
+              raise JSONSerializationError,
+                "Failed to serialize Ruby object to JSON: #{ex.message}. " \
+                "Object type: #{value.class}, var path: #{variable_path}..."
+            end
+          else
+            value
+          end
+        end
+
+        # Alias for compatibility with template engine
+        alias resolve_variable get
       end
 
       # Validate that processed content is valid JSON

@@ -6,90 +6,10 @@ require 'fileutils'
 RSpec.describe 'Schema-based Hydration Integration' do
   let(:templates_dir) { File.join(__dir__, '../../fixtures/templates/schema_test') }
 
-  before(:all) do
-    # Create test template directory
-    @templates_dir = File.join(__dir__, '../../fixtures/templates/schema_test')
-    FileUtils.mkdir_p(@templates_dir)
-
-    # Create a simple schema-based template
-    File.write(File.join(@templates_dir, 'simple_schema.rue'), <<~RUE)
-      <schema lang="js-zod" window="testData">
-      const schema = z.object({
-        title: z.string(),
-        count: z.number(),
-        active: z.boolean()
-      });
-      </schema>
-
-      <template>
-      <h1>{{title}}</h1>
-      <p>Count: {{count}}</p>
-      <p>Active: {{active}}</p>
-      </template>
-    RUE
-
-    # Create a template with nested objects
-    File.write(File.join(@templates_dir, 'nested_schema.rue'), <<~RUE)
-      <schema lang="js-zod" window="appData">
-      const schema = z.object({
-        user: z.object({
-          id: z.number(),
-          name: z.string(),
-          email: z.string()
-        }),
-        settings: z.object({
-          theme: z.string(),
-          notifications: z.boolean()
-        })
-      });
-      </schema>
-
-      <template>
-      <div>
-        <h2>User: {{user.name}}</h2>
-        <p>Email: {{user.email}}</p>
-        <p>Theme: {{settings.theme}}</p>
-      </div>
-      </template>
-    RUE
-
-    # Create a template with custom window attribute
-    File.write(File.join(@templates_dir, 'custom_window.rue'), <<~RUE)
-      <schema lang="js-zod" window="myCustomData">
-      const schema = z.object({
-        message: z.string()
-      });
-      </schema>
-
-      <template>
-      <p>{{message}}</p>
-      </template>
-    RUE
-
-    # Create a deprecated data section template for comparison
-    File.write(File.join(@templates_dir, 'legacy_data.rue'), <<~RUE)
-      <data window="legacyData">
-      {
-        "title": "{{title}}",
-        "interpolated": "Hello {{name}}"
-      }
-      </data>
-
-      <template>
-      <h1>{{title}}</h1>
-      </template>
-    RUE
-  end
-
-  after(:all) do
-    # Clean up test templates
-    FileUtils.rm_rf(@templates_dir) if @templates_dir && File.exist?(@templates_dir)
-  end
-
   describe 'rendering with schema sections' do
     it 'renders template with schema hydration and direct props serialization' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -114,13 +34,14 @@ RSpec.describe 'Schema-based Hydration Integration' do
       expect(html).to include('"count":42')
       expect(html).to include('"active":true')
 
-      # Check window variable assignment
-      expect(html).to include('window[\'testData\']')
+      # Check window variable assignment (uses dynamic targetName pattern)
+      expect(html).to include('data-window="testData"')
+      expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
     end
 
     it 'handles nested objects correctly' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -146,7 +67,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
 
     it 'uses custom window attribute from schema section' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -157,14 +78,14 @@ RSpec.describe 'Schema-based Hydration Integration' do
 
       html = view.render('custom_window')
 
-      # Check custom window variable
-      expect(html).to include('window[\'myCustomData\']')
-      expect(html).not_to include('window[\'data\']')
+      # Check custom window variable (uses dynamic targetName pattern)
+      expect(html).to include('data-window="myCustomData"')
+      expect(html).not_to include('data-window="data"')
     end
 
     it 'does not perform template interpolation on schema data' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       # Props contain strings that look like template variables
@@ -184,7 +105,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
   describe 'data_hash method with schema sections' do
     it 'returns props directly for schema sections' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -196,10 +117,11 @@ RSpec.describe 'Schema-based Hydration Integration' do
       data = view.data_hash('simple_schema')
 
       expect(data).to have_key('testData')
+      # JSON parsing returns string keys, not symbols
       expect(data['testData']).to eq({
-        title: 'Data Hash Test',
-        count: 123,
-        active: false
+        'title' => 'Data Hash Test',
+        'count' => 123,
+        'active' => false
       })
     end
   end
@@ -207,7 +129,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
   describe 'legacy data section behavior' do
     it 'still works with data sections and shows deprecation warning' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -222,7 +144,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
 
     it 'performs template interpolation for data sections' do
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -241,29 +163,11 @@ RSpec.describe 'Schema-based Hydration Integration' do
     end
   end
 
-  describe 'schema section priority over data section' do
-    it 'uses schema section when both are present' do
-      # Create a template with both sections (edge case)
-      File.write(File.join(@templates_dir, 'both_sections.rue'), <<~RUE)
-        <schema lang="js-zod" window="schemaData">
-        const schema = z.object({
-          value: z.string()
-        });
-        </schema>
-
-        <data window="dataData">
-        {
-          "value": "{{value}}"
-        }
-        </data>
-
-        <template>
-        <p>{{value}}</p>
-        </template>
-      RUE
-
+  describe 'schema and data section conflict' do
+    it 'raises error when both sections are present' do
+      # Having both sections is a parse error - template should use one or the other
       config = Rhales::Configuration.new do |c|
-        c.template_paths = [@templates_dir]
+        c.template_paths = [templates_dir]
       end
 
       view = Rhales::View.new(
@@ -272,12 +176,8 @@ RSpec.describe 'Schema-based Hydration Integration' do
         config: config
       )
 
-      data = view.data_hash('both_sections')
-
-      # Schema should take priority
-      expect(data).to have_key('schemaData')
-      expect(data).not_to have_key('dataData')
-      expect(data['schemaData']['value']).to eq('test')
+      # Should raise error when template has both sections (wrapped in TemplateNotFoundError)
+      expect { view.data_hash('both_sections') }.to raise_error(Rhales::View::TemplateNotFoundError, /Cannot have both/)
     end
   end
 end

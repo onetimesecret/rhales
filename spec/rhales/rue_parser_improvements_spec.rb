@@ -49,6 +49,7 @@ RSpec.describe 'Rue Parser Improvements' do
     it 'does not raise collision error for empty JSON objects' do
       template1 = double('template1')
       allow(template1).to receive(:section).with('data').and_return('{}')
+      allow(template1).to receive(:schema_lang).and_return(nil) # Not using schema
       allow(template1).to receive(:window_attribute).and_return('data')
       allow(template1).to receive(:merge_strategy).and_return(nil)
       allow(template1).to receive(:section_node).with('data').and_return(
@@ -58,6 +59,7 @@ RSpec.describe 'Rue Parser Improvements' do
 
       template2 = double('template2')
       allow(template2).to receive(:section).with('data').and_return('{}')
+      allow(template2).to receive(:schema_lang).and_return(nil) # Not using schema
       allow(template2).to receive(:window_attribute).and_return('data')
       allow(template2).to receive(:merge_strategy).and_return(nil)
       allow(template2).to receive(:section_node).with('data').and_return(
@@ -92,9 +94,12 @@ RSpec.describe 'Rue Parser Improvements' do
       document = Rhales::RueDocument.new(content)
       document.parse!
 
-      # Process the data section through the aggregator
-      aggregator = Rhales::HydrationDataAggregator.new(context)
-      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+      # Process the data section through the Hydrator (which has the public API)
+      # Note: Hydrator expects a RueDocument (which has window_attribute, etc.)
+      doc = Rhales::RueDocument.new(content)
+      doc.parse!
+      hydrator = Rhales::Hydrator.new(doc, context)
+      processed_data = hydrator.processed_data_hash
 
       expect(processed_data).to eq({ 'csrf' => 'abc123', 'user' => 'john' })
     end
@@ -130,8 +135,12 @@ RSpec.describe 'Rue Parser Improvements' do
       document = Rhales::RueDocument.new(content)
       expect { document.parse! }.not_to raise_error
 
-      aggregator = Rhales::HydrationDataAggregator.new(context)
-      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+      # Process the data section through the Hydrator
+      # Note: Hydrator expects a RueDocument (which has window_attribute, etc.)
+      doc = Rhales::RueDocument.new(content)
+      doc.parse!
+      hydrator = Rhales::Hydrator.new(doc, context)
+      processed_data = hydrator.processed_data_hash
 
       expect(processed_data).to eq([{"name" => "item1"}, {"name" => "item2"}])
     end
@@ -212,9 +221,12 @@ RSpec.describe 'Rue Parser Improvements' do
       document = Rhales::RueDocument.new(content)
       document.parse!
 
-      # Process the data section through the aggregator
-      aggregator = Rhales::HydrationDataAggregator.new(context)
-      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+      # Process the data section through the Hydrator
+      # Note: Hydrator expects a RueDocument (which has window_attribute, etc.)
+      doc = Rhales::RueDocument.new(content)
+      doc.parse!
+      hydrator = Rhales::Hydrator.new(doc, context)
+      processed_data = hydrator.processed_data_hash
 
       expect(processed_data).to eq({
         'csrf' => 'abc123',
@@ -237,8 +249,12 @@ RSpec.describe 'Rue Parser Improvements' do
       document = Rhales::RueDocument.new(content)
       document.parse!
 
-      aggregator = Rhales::HydrationDataAggregator.new(context)
-      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+      # Process the data section through the Hydrator
+      # Note: Hydrator expects a RueDocument (which has window_attribute, etc.)
+      doc = Rhales::RueDocument.new(content)
+      doc.parse!
+      hydrator = Rhales::Hydrator.new(doc, context)
+      processed_data = hydrator.processed_data_hash
 
       expect(processed_data).to eq([
         { 'id' => 1, 'name' => 'Item 1' },
@@ -261,8 +277,12 @@ RSpec.describe 'Rue Parser Improvements' do
       document = Rhales::RueDocument.new(content)
       document.parse!
 
-      aggregator = Rhales::HydrationDataAggregator.new(context)
-      processed_data = aggregator.send(:process_data_section, document.section('data'), document)
+      # Process the data section through the Hydrator
+      # Note: Hydrator expects a RueDocument (which has window_attribute, etc.)
+      doc = Rhales::RueDocument.new(content)
+      doc.parse!
+      hydrator = Rhales::Hydrator.new(doc, context)
+      processed_data = hydrator.processed_data_hash
 
       expect(processed_data).to eq('hello world')
     end
