@@ -54,14 +54,15 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :props, :config
+    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :props, :app_data, :config
 
-    def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
+    def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, app_data: {}, config: nil)
       @req           = req
       @sess          = sess
       @cust          = cust
       @locale        = locale_override
       @props         = props
+      @app_data      = app_data
       @config        = config || Rhales.configuration
 
       # Create context using the specified context class
@@ -178,7 +179,7 @@ module Rhales
     # Create the appropriate context for this view
     # Subclasses can override this to use different context types
     def create_context
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **@props)
+      context_class.for_view(@req, @sess, @cust, @locale, props: @props, app_data: @app_data, config: @config)
     end
 
     # Return the context class to use
@@ -285,7 +286,7 @@ module Rhales
       merged_props = @props.merge(rue_data)
 
       # Create new context with merged data
-      context_class.for_view(@req, @sess, @cust, @locale, config: @config, **merged_props)
+      context_class.for_view(@req, @sess, @cust, @locale, props: merged_props, app_data: @app_data, config: @config)
     end
 
     # Extract and process data from .rue file's data section
@@ -389,6 +390,7 @@ module Rhales
           context_with_rue_data.cust,
           context_with_rue_data.locale,
           props: layout_props,
+          app_data: context_with_rue_data.app_data,
           config: context_with_rue_data.config,
         )
 
@@ -414,15 +416,15 @@ module Rhales
       merged_data.each do |window_attr, data|
         # Generate unique ID for this data block
         unique_id = "rsfc-data-#{SecureRandom.hex(8)}"
+        nonce_attr = nonce_attribute
 
         # Create JSON script tag with optional reflection attributes
         json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ""
         json_script = <<~HTML.strip
-          <script id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
+          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes
-        nonce_attr = nonce_attribute
         hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ""
         hydration_script = if reflection_enabled?
           <<~HTML.strip
@@ -449,7 +451,10 @@ module Rhales
         hydration_parts << generate_reflection_utilities
       end
 
-      hydration_parts.join("\n")
+      return '' if hydration_parts.empty?
+
+      hydration_content = hydration_parts.join("\n")
+      "\n\n<!-- Rhales Hydration Start -->\n#{hydration_content}\n<!-- Rhales Hydration End -->"
     end
 
     # Check if reflection system is enabled

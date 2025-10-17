@@ -11,19 +11,21 @@ module Rhales
     # server-side data. Follows the established pattern from InitScriptContext
     # and EnvironmentContext for focused, single-responsibility context objects.
     #
-    # The context provides two layers of data:
+    # The context provides three layers of data:
     # 1. App: Framework-provided data (CSRF tokens, authentication, config)
-    # 2. Props: Application data passed to the view (user, content, features)
+    # 2. App Data: Template-only variables (page titles, HTML content, etc.)
+    # 3. Props: Application data that gets serialized to window state
     #
-    # App data is accessible as both direct variables and through the app.* namespace.
-    # Props take precedence over app data for variable resolution.
+    # App data and app_data are merged together and accessible through the app.* namespace.
+    # Props take precedence over app_data for variable resolution.
+    # Only props are serialized to the client via <schema> sections.
     #
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
       attr_reader :req, :sess, :cust, :locale, :props, :config, :app_data
 
-      def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, config: nil)
+      def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, app_data: {}, config: nil)
         @req           = req
         @sess          = sess || default_session
         @cust          = cust || default_customer
@@ -33,11 +35,12 @@ module Rhales
         # Normalize props keys to strings for consistent access
         @props = normalize_keys(props).freeze
 
-        # Build context layers (two-layer model: app + props)
-        @app_data = build_app_data.freeze
+        # Build context layers (three-layer model: app + app_data + props)
+        # app_data is merged with built-in app data
+        @app_data = build_app_data.merge(normalize_keys(app_data)).freeze
 
         # Pre-compute all_data before freezing
-        # Props take precedence over app data, and add app namespace
+        # Props take precedence over app_data, and add app namespace
         @all_data = @app_data.merge(@props).merge({ 'app' => @app_data }).freeze
 
         # Make context immutable after creation
@@ -226,13 +229,14 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, sess, cust, locale, config: nil, **props)
-          new(req, sess, cust, locale, props: props, config: config)
+        def for_view(req, sess, cust, locale, props: {}, app_data: {}, config: nil, **additional_props)
+          all_props = props.merge(additional_props)
+          new(req, sess, cust, locale, props: all_props, app_data: app_data, config: config)
         end
 
         # Create minimal context for testing
-        def minimal(props: {}, config: nil)
-          new(nil, nil, nil, 'en', props: props, config: config)
+        def minimal(props: {}, app_data: {}, config: nil)
+          new(nil, nil, nil, 'en', props: props, app_data: app_data, config: config)
         end
       end
   end
