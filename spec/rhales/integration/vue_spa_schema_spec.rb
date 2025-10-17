@@ -37,7 +37,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
 
       # Check that hydration script exists with correct window variable
       expect(html).to include('data-window="__ONETIME_STATE__"')
-      expect(html).to include('<script id="rsfc-data-')
+      expect(html).to match(/<script[^>]*\sid="rsfc-data-/)
       expect(html).to include('type="application/json"')
 
       # Check that complex nested data is serialized correctly (no interpolation)
@@ -50,7 +50,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       expect(html).to include('"billing_enabled":true')
 
       # Verify the entire JSON structure is valid
-      data_script_match = html.match(/<script id="rsfc-data-[^"]+"\s+type="application\/json"\s+data-window="__ONETIME_STATE__"\s*>(.*?)<\/script>/m)
+      data_script_match = html.match(/<script[^>]*\sid="rsfc-data-[^"]+"\s+type="application\/json"[^>]*data-window="__ONETIME_STATE__"[^>]*>(.*?)<\/script>/m)
       expect(data_script_match).not_to be_nil
 
       json_data = JSON.parse(data_script_match[1])
@@ -90,7 +90,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       expect(html).to include('"user":null')
 
       # Verify JSON is valid
-      data_script_match = html.match(/<script id="rsfc-data-[^"]+"\s+type="application\/json"\s+data-window="__ONETIME_STATE__"\s*>(.*?)<\/script>/m)
+      data_script_match = html.match(/<script[^>]*\sid="rsfc-data-[^"]+"\s+type="application\/json"[^>]*data-window="__ONETIME_STATE__"[^>]*>(.*?)<\/script>/m)
       json_data = JSON.parse(data_script_match[1])
       expect(json_data['user']).to be_nil
       expect(json_data['authentication']['custid']).to be_nil
@@ -150,7 +150,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       html = view.render('vue_spa_mount')
 
       # Just verify it renders without error and contains valid JSON
-      data_script_match = html.match(/<script id="rsfc-data-[^"]+"\s+type="application\/json"\s+data-window="__ONETIME_STATE__"\s*>(.*?)<\/script>/m)
+      data_script_match = html.match(/<script[^>]*\sid="rsfc-data-[^"]+"\s+type="application\/json"[^>]*data-window="__ONETIME_STATE__"[^>]*>(.*?)<\/script>/m)
       expect(data_script_match).not_to be_nil
       expect { JSON.parse(data_script_match[1]) }.not_to raise_error
     end

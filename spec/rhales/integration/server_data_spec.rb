@@ -1,8 +1,8 @@
 require 'spec_helper'
 require 'fileutils'
 
-RSpec.describe 'app_data parameter' do
-  let(:templates_dir) { File.join(__dir__, '../../fixtures/templates/app_data_test') }
+RSpec.describe 'server data parameter' do
+  let(:templates_dir) { File.join(__dir__, '../../fixtures/templates/server_data_test') }
 
   before do
     FileUtils.mkdir_p(templates_dir)
@@ -12,7 +12,7 @@ RSpec.describe 'app_data parameter' do
     FileUtils.rm_rf(templates_dir)
   end
 
-  it 'makes app_data available in templates but not in window state' do
+  it 'makes server data available in templates but not in window state' do
     # Create test template
     File.write(File.join(templates_dir, 'test.rue'), <<~RUE)
       <schema lang="js-zod" window="appState">
@@ -36,8 +36,8 @@ RSpec.describe 'app_data parameter' do
 
     view = Rhales::View.new(
       nil, nil, nil, 'en',
-      props: { user: 'Alice' },
-      app_data: {
+      client: { user: 'Alice' },
+      server: {
         page_title: 'Test Page',
         html_content: '<span>HTML</span>'
       },
@@ -46,13 +46,13 @@ RSpec.describe 'app_data parameter' do
 
     html = view.render('test')
 
-    # Template should render both props and app_data
+    # Template should render both client and server data
     expect(html).to include('<h1>Alice</h1>')
     expect(html).to include('<p>Test Page</p>')
     expect(html).to include('<span>HTML</span>')
 
-    # Window state should ONLY contain props
-    data_match = html.match(/<script id="rsfc-data-[^"]+"\s+type="application\/json"[^>]*>(.*?)<\/script>/m)
+    # Window state should ONLY contain client data
+    data_match = html.match(/<script[^>]*id="rsfc-data-[^"]+"\s+type="application\/json"[^>]*>(.*?)<\/script>/m)
     expect(data_match).not_to be_nil
 
     json_data = JSON.parse(data_match[1])
@@ -61,7 +61,7 @@ RSpec.describe 'app_data parameter' do
     expect(json_data).not_to have_key('html_content')
   end
 
-  it 'allows props and app_data to have overlapping keys (props win)' do
+  it 'allows client and server data to have overlapping keys (client wins)' do
     File.write(File.join(templates_dir, 'overlap.rue'), <<~RUE)
       <schema lang="js-zod" window="data">
       const schema = z.object({
@@ -80,13 +80,13 @@ RSpec.describe 'app_data parameter' do
 
     view = Rhales::View.new(
       nil, nil, nil, 'en',
-      props: { title: 'From Props' },
-      app_data: { title: 'From AppData' },
+      client: { title: 'From Client' },
+      server: { title: 'From Server' },
       config: config
     )
 
     html = view.render('overlap')
-    expect(html).to include('From Props')
+    expect(html).to include('From Client')
   end
 
   it 'works with Context.for_view factory method' do
@@ -111,8 +111,8 @@ RSpec.describe 'app_data parameter' do
 
     context = Rhales::Context.for_view(
       nil, nil, nil, 'en',
-      props: { data: 'Important' },
-      app_data: { helper: 'Template Only' },
+      client: { data: 'Important' },
+      server: { helper: 'Template Only' },
       config: config
     )
 
@@ -120,25 +120,26 @@ RSpec.describe 'app_data parameter' do
     expect(context.get('data')).to eq('Important')
     expect(context.get('helper')).to eq('Template Only')
 
-    # Verify only props are in props
-    expect(context.props).to eq({ 'data' => 'Important' })
+    # Verify only client data is in client accessor
+    expect(context.client).to eq({ 'data' => 'Important' })
   end
 
   it 'works with Context.minimal for testing' do
     config = Rhales::Configuration.new
 
     context = Rhales::Context.minimal(
-      props: { test: 'value' },
-      app_data: { template: 'only' },
+      'en',
+      client: { test: 'value' },
+      server: { template: 'only' },
       config: config
     )
 
     expect(context.get('test')).to eq('value')
     expect(context.get('template')).to eq('only')
-    expect(context.props).to eq({ 'test' => 'value' })
+    expect(context.client).to eq({ 'test' => 'value' })
   end
 
-  it 'preserves app_data through layout rendering' do
+  it 'preserves server data through layout rendering' do
     # Create layout template
     File.write(File.join(templates_dir, 'with_layout.rue'), <<~RUE)
       <schema lang="js-zod" window="pageData" layout="simple_layout">
@@ -173,8 +174,8 @@ RSpec.describe 'app_data parameter' do
 
     view = Rhales::View.new(
       nil, nil, nil, 'en',
-      props: { username: 'Bob' },
-      app_data: {
+      client: { username: 'Bob' },
+      server: {
         site_title: 'My Site',
         page_subtitle: 'Welcome'
       },
@@ -183,13 +184,13 @@ RSpec.describe 'app_data parameter' do
 
     html = view.render('with_layout')
 
-    # Both layout and content should access app_data
+    # Both layout and content should access server data
     expect(html).to include('<title>My Site</title>')
     expect(html).to include('<h2>Welcome</h2>')
     expect(html).to include('<p>User: Bob</p>')
 
-    # Window state should only have props
-    data_match = html.match(/<script id="rsfc-data-[^"]+"\s+type="application\/json"[^>]*>(.*?)<\/script>/m)
+    # Window state should only have client data
+    data_match = html.match(/<script[^>]*id="rsfc-data-[^"]+"\s+type="application\/json"[^>]*>(.*?)<\/script>/m)
     expect(data_match).not_to be_nil
 
     json_data = JSON.parse(data_match[1])
@@ -198,8 +199,8 @@ RSpec.describe 'app_data parameter' do
     expect(json_data).not_to have_key('page_subtitle')
   end
 
-  it 'handles empty app_data gracefully' do
-    File.write(File.join(templates_dir, 'empty_app.rue'), <<~RUE)
+  it 'handles empty server data gracefully' do
+    File.write(File.join(templates_dir, 'empty_server.rue'), <<~RUE)
       <schema lang="js-zod" window="data">
       const schema = z.object({
         value: z.string()
@@ -217,12 +218,12 @@ RSpec.describe 'app_data parameter' do
 
     view = Rhales::View.new(
       nil, nil, nil, 'en',
-      props: { value: 'test' },
-      app_data: {},  # Empty app_data
+      client: { value: 'test' },
+      server: {},  # Empty server data
       config: config
     )
 
-    html = view.render('empty_app')
+    html = view.render('empty_server')
     expect(html).to include('<div>test</div>')
   end
 end

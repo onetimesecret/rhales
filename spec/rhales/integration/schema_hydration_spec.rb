@@ -26,7 +26,7 @@ RSpec.describe 'Schema-based Hydration Integration' do
       expect(html).to include('Active: true')
 
       # Check hydration script exists
-      expect(html).to include('<script id="rsfc-data-')
+      expect(html).to match(/<script[^>]*\sid="rsfc-data-/)
       expect(html).to include('type="application/json"')
 
       # Check that data is serialized correctly

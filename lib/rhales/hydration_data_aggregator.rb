@@ -55,8 +55,8 @@ module Rhales
       # Build template path for error reporting
       template_path = build_template_path_for_schema(parser)
 
-      # Direct serialization of props (no template interpolation)
-      processed_data = @context.props
+      # Direct serialization of client data (no template interpolation)
+      processed_data = @context.client
 
       # Check for collisions only if the data is not empty
       if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)

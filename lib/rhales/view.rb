@@ -27,14 +27,15 @@ module Rhales
   #
   # ### Server Templates: Full Context Access
   # Templates have complete access to all server-side data:
-  # - All props passed to View.new
+  # - All client data passed to View.new
+  # - All server data passed to View.new
   # - Data from .rue file's <data> section (processed server-side)
   # - Runtime data (CSRF tokens, nonces, request metadata)
   # - Computed data (authentication status, theme classes)
   # - User objects, configuration, internal APIs
   #
   # ### Client Data: Explicit Allowlist
-  # Only data declared in <data> sections reahas_role?ches the browser:
+  # Only client data declared in <schema> sections reaches the browser:
   # - Creates a REST API-like boundary
   # - Server-side variable interpolation processes secrets safely
   # - JSON serialization validates data structure
@@ -44,8 +45,10 @@ module Rhales
   #   # Server template has full access:
   #   {{user.admin?}} {{csrf_token}} {{internal_config}}
   #
-  #   # Client only gets declared data:
-  #   { "user_name": "{{user.name}}", "theme": "{{user.theme}}" }
+  #   # Client only gets declared data from schema:
+  #   <schema lang="js-zod" window="data">
+  #   const schema = z.object({ userName: z.string() });
+  #   </schema>
   #
   # See docs/CONTEXT_AND_DATA_BOUNDARIES.md for complete details.
   #
@@ -54,19 +57,36 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :props, :app_data, :config
+    attr_reader :req, :sess, :cust, :locale, :rsfc_context, :client, :server, :config
 
-    def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, app_data: {}, config: nil)
+    def initialize(req, sess = nil, cust = nil, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
       @req           = req
       @sess          = sess
       @cust          = cust
       @locale        = locale_override
-      @props         = props
-      @app_data      = app_data
       @config        = config || Rhales.configuration
+
+      # Handle backward compatibility with deprecation warnings
+      if props || app_data
+        warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
+        client = props if props
+        server = app_data if app_data
+      end
+
+      @client        = client
+      @server        = server
 
       # Create context using the specified context class
       @rsfc_context = create_context
+    end
+
+    # Backward compatibility accessors
+    def props
+      @client
+    end
+
+    def app_data
+      @server
     end
 
     # Render RSFC template with hydration using two-pass architecture
@@ -179,7 +199,7 @@ module Rhales
     # Create the appropriate context for this view
     # Subclasses can override this to use different context types
     def create_context
-      context_class.for_view(@req, @sess, @cust, @locale, props: @props, app_data: @app_data, config: @config)
+      context_class.for_view(@req, @sess, @cust, @locale, client: @client, server: @server, config: @config)
     end
 
     # Return the context class to use
@@ -282,11 +302,11 @@ module Rhales
       # Get data from .rue file's data section
       rue_data = extract_rue_data(parser)
 
-      # Merge rue data with existing props (rue data takes precedence)
-      merged_props = @props.merge(rue_data)
+      # Merge rue data with existing client data (rue data takes precedence)
+      merged_client = @client.merge(rue_data)
 
       # Create new context with merged data
-      context_class.for_view(@req, @sess, @cust, @locale, props: merged_props, app_data: @app_data, config: @config)
+      context_class.for_view(@req, @sess, @cust, @locale, client: merged_client, server: @server, config: @config)
     end
 
     # Extract and process data from .rue file's data section
@@ -383,14 +403,14 @@ module Rhales
         return '' unless layout_content
 
         # Create new context with content for layout rendering
-        layout_props   = context_with_rue_data.props.merge('content' => content_html)
+        layout_client   = context_with_rue_data.client.merge('content' => content_html)
         layout_context = Context.new(
           context_with_rue_data.req,
           context_with_rue_data.sess,
           context_with_rue_data.cust,
           context_with_rue_data.locale,
-          props: layout_props,
-          app_data: context_with_rue_data.app_data,
+          client: layout_client,
+          server: context_with_rue_data.server,
           config: context_with_rue_data.config,
         )
 
@@ -545,15 +565,15 @@ module Rhales
           .sub(/_view$/, '')
       end
 
-      # Render template with props
-      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **props)
-        view = new(req, sess, cust, locale, props: props, config: config)
+      # Render template with client data
+      def render_with_data(req, sess, cust, locale, template_name: nil, config: nil, **client_data)
+        view = new(req, sess, cust, locale, client: client_data, config: config)
         view.render(template_name)
       end
 
-      # Create view instance with props
-      def with_data(req, sess, cust, locale, config: nil, **props)
-        new(req, sess, cust, locale, props: props, config: config)
+      # Create view instance with client data
+      def with_data(req, sess, cust, locale, config: nil, **client_data)
+        new(req, sess, cust, locale, client: client_data, config: config)
       end
     end
   end

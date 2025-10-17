@@ -12,36 +12,45 @@ module Rhales
     # and EnvironmentContext for focused, single-responsibility context objects.
     #
     # The context provides three layers of data:
-    # 1. App: Framework-provided data (CSRF tokens, authentication, config)
-    # 2. App Data: Template-only variables (page titles, HTML content, etc.)
-    # 3. Props: Application data that gets serialized to window state
+    # 1. Request: Framework-provided data (CSRF tokens, authentication, config)
+    # 2. Server: Template-only variables (page titles, HTML content, etc.)
+    # 3. Client: Application data that gets serialized to window state
     #
-    # App data and app_data are merged together and accessible through the app.* namespace.
-    # Props take precedence over app_data for variable resolution.
-    # Only props are serialized to the client via <schema> sections.
+    # Request data and server data are accessible in templates.
+    # Client data takes precedence over server data for variable resolution.
+    # Only client data is serialized to the browser via <schema> sections.
     #
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :sess, :cust, :locale, :props, :config, :app_data
+      attr_reader :req, :sess, :cust, :locale, :client, :server, :config
 
-      def initialize(req, sess = nil, cust = nil, locale_override = nil, props: {}, app_data: {}, config: nil)
+      def initialize(req, sess = nil, cust = nil, locale_override = nil, client: {}, server: {}, config: nil, props: nil, app_data: nil)
         @req           = req
         @sess          = sess || default_session
         @cust          = cust || default_customer
         @config        = config || Rhales.configuration
         @locale        = locale_override || @config.default_locale
 
-        # Normalize props keys to strings for consistent access
-        @props = normalize_keys(props).freeze
+        # Handle backward compatibility with deprecation warnings
+        if props || app_data
+          warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
+          client = props if props
+          server = app_data if app_data
+        end
 
-        # Build context layers (three-layer model: app + app_data + props)
-        # app_data is merged with built-in app data
-        @app_data = build_app_data.merge(normalize_keys(app_data)).freeze
+        # Normalize keys to strings for consistent access and expose with clean names
+        @client_data = normalize_keys(client).freeze
+        @client = @client_data  # Public accessor
+
+        # Build context layers (three-layer model: request + server + client)
+        # Server data is merged with built-in request/app data
+        @server_data = build_app_data.merge(normalize_keys(server)).freeze
+        @server = @server_data  # Public accessor
 
         # Pre-compute all_data before freezing
-        # Props take precedence over app_data, and add app namespace
-        @all_data = @app_data.merge(@props).merge({ 'app' => @app_data }).freeze
+        # Client takes precedence over server, and add app namespace for backward compatibility
+        @all_data = @server_data.merge(@client_data).merge({ 'app' => @server_data }).freeze
 
         # Make context immutable after creation
         freeze
@@ -98,6 +107,20 @@ module Rhales
         get(variable_path)
       end
 
+      # Add accessor for request data (maps to @server_data for 'app' namespace compatibility)
+      def request
+        @server_data
+      end
+
+      # Backward compatibility accessors
+      def props
+        @client_data
+      end
+
+      def app_data
+        @server_data
+      end
+
     private
 
       # Build consolidated app data (replaces runtime_data + computed_data)
@@ -137,8 +160,8 @@ module Rhales
       # Determine theme class for CSS
       def determine_theme_class
         # Default theme logic - can be overridden by business data
-        if props['theme']
-          "theme-#{props['theme']}"
+        if @client_data['theme']
+          "theme-#{@client_data['theme']}"
         elsif cust && cust.respond_to?(:theme_preference)
           "theme-#{cust.theme_preference}"
         else
@@ -229,14 +252,28 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, sess, cust, locale, props: {}, app_data: {}, config: nil, **additional_props)
-          all_props = props.merge(additional_props)
-          new(req, sess, cust, locale, props: all_props, app_data: app_data, config: config)
+        def for_view(req, sess, cust, locale, client: {}, server: {}, config: nil, props: nil, app_data: nil, **additional_client)
+          # Handle backward compatibility
+          if props || app_data
+            warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
+            client = props if props
+            server = app_data if app_data
+          end
+
+          all_client = client.merge(additional_client)
+          new(req, sess, cust, locale, client: all_client, server: server, config: config)
         end
 
         # Create minimal context for testing
-        def minimal(props: {}, app_data: {}, config: nil)
-          new(nil, nil, nil, 'en', props: props, app_data: app_data, config: config)
+        def minimal(locale = 'en', client: {}, server: {}, config: nil, props: nil, app_data: nil)
+          # Handle backward compatibility
+          if props || app_data
+            warn "[DEPRECATION] `props:` and `app_data:` parameters are deprecated. Use `client:` and `server:` instead."
+            client = props if props
+            server = app_data if app_data
+          end
+
+          new(nil, nil, nil, locale, client: client, server: server, config: config)
         end
       end
   end

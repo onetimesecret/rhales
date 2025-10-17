@@ -29,7 +29,7 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       expect(html).to include('class="theme-dark"')
 
       # Verify data hydration
-      expect(html).to include('<script id="rsfc-data-')
+      expect(html).to match(/<script[^>]*\sid="rsfc-data-/)
       expect(html).to include('type="application/json"')
       expect(html).to include('"message":"Welcome to Rhales"')
       expect(html).to include('"authenticated":"true"')
@@ -66,7 +66,7 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       view      = Rhales::View.new(nil, nil, nil, 'en', props: test_data)
       html      = view.render_hydration_only('test_shared_context')
 
-      expect(html).to include('<script id="rsfc-data-')
+      expect(html).to match(/<script[^>]*\sid="rsfc-data-/)
       expect(html).to include('var dataScript = document.getElementById(')
       expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'data\';')
       expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
@@ -140,7 +140,7 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       expect(html).to include('return targetName ? window[targetName] : undefined')
       expect(html).to include('if (dataScript && targetName)')
       expect(html).to include('if (targetName)')
-      
+
       # Verify insecure patterns are NOT used
       expect(html).not_to include('window.targetName')
     end
@@ -149,12 +149,12 @@ RSpec.describe 'Rhales Basic Rendering Integration' do
       # Test with potentially malicious nonce using the LinkBasedInjectionDetector directly
       # since the nonce comes from context, not configuration
       malicious_nonce = 'test" onload="alert(\'XSS\')'
-      
+
       hydration_config = Rhales::HydrationConfiguration.new
       detector = Rhales::LinkBasedInjectionDetector.new(hydration_config)
-      
+
       result = detector.generate_for_strategy(:preload, 'test_template', 'userData', malicious_nonce)
-      
+
       # Should escape the nonce properly
       expect(result).to include('nonce="test&quot; onload=&quot;alert(&#39;XSS&#39;)')
       expect(result).not_to include('nonce="test" onload="alert(\'XSS\')')
