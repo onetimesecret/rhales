@@ -5,7 +5,6 @@ gemspec
 
 group :development, :test do
   gem 'benchmark'
-  gem 'bigdecimal', '~> 3.1' # Required by json-schema in Ruby 3.4+
   gem 'rack-test'
   gem 'rspec', '~> 3.12'
   gem 'simplecov', '~> 0.22'
@@ -16,7 +15,7 @@ group :development do
   gem 'bundler', '~> 2.0'
   gem 'debug'
   gem 'kramdown', '~> 2.0' # Required for YARD markdown processing
-  gem 'rack', '~> 2.0'
+  gem 'rack', '>= 3.2', '< 4.0'
   gem 'rack-proxy', require: false
   gem 'rake', '~> 13.0'
   gem 'rubocop', '1.81'

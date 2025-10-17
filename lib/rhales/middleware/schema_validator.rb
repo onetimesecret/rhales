@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
-require 'json-schema'
+require 'json_schemer'
 
 module Rhales
   module Middleware
@@ -135,7 +135,11 @@ module Rhales
           return nil unless File.exist?(schema_path)
 
           schema_json = File.read(schema_path)
-          JSON.parse(schema_json)
+          schema_hash = JSON.parse(schema_json)
+
+          # Create JSONSchemer validator
+          # Note: json_schemer handles $schema and $id properly
+          JSONSchemer.schema(schema_hash)
         rescue JSON::ParserError => e
           warn "Rhales::SchemaValidator: Failed to parse schema for #{template_name}: #{e.message}"
           nil
@@ -178,37 +182,73 @@ module Rhales
       def validate_hydration_data(hydration_data, schema, template_name)
         errors = []
 
-        # Remove $schema and $id keys to prevent json-schema from trying to fetch them
-        validation_schema = schema.dup
-        validation_schema.delete('$schema')
-        validation_schema.delete('$id')
-
         hydration_data.each do |window_var, data|
-          # Validate data against schema using json-schema gem
-          # Note: Using draft-04 as the validator version to avoid remote fetches
+          # Validate data against schema using json_schemer
           begin
-            validation_errors = JSON::Validator.fully_validate(
-              validation_schema,
-              data,
-              version: :draft4,
-              strict: false,
-              validate_schema: false
-            )
+            validation_errors = schema.validate(data).to_a
 
             if validation_errors.any?
               errors << {
                 window: window_var,
                 template: template_name,
-                errors: validation_errors
+                errors: format_errors(validation_errors)
               }
             end
-          rescue JSON::Schema::SchemaError => e
+          rescue StandardError => e
             warn "Rhales::SchemaValidator: Schema validation error for #{template_name}: #{e.message}"
             # Don't add to errors array - this is a schema definition problem, not data problem
           end
         end
 
         errors
+      end
+
+      # Format json_schemer errors for display
+      def format_errors(validation_errors)
+        validation_errors.map do |error|
+          # json_schemer provides detailed error hash
+          # Example: { "data" => value, "data_pointer" => "/user/id", "schema" => {...}, "type" => "required", "error" => "..." }
+
+          path = error['data_pointer'] || '/'
+          type = error['type']
+          schema = error['schema'] || {}
+          data = error['data']
+
+          # For type validation errors, format like json-schema did
+          # "The property '#/count' of type string did not match the following type: number"
+          if schema['type'] && data
+            expected = schema['type']
+            actual = case data
+                     when String then 'string'
+                     when Integer, Float then 'number'
+                     when TrueClass, FalseClass then 'boolean'
+                     when Array then 'array'
+                     when Hash then 'object'
+                     when NilClass then 'null'
+                     else data.class.name.downcase
+                     end
+
+            "The property '#{path}' of type #{actual} did not match the following type: #{expected}"
+          elsif type == 'required'
+            details = error['details'] || {}
+            missing = details['missing_keys']&.join(', ') || 'unknown'
+            "The property '#{path}' is missing required field(s): #{missing}"
+          elsif schema['enum']
+            expected = schema['enum'].join(', ')
+            "The property '#{path}' must be one of: #{expected}"
+          elsif schema['minimum']
+            min = schema['minimum']
+            "The property '#{path}' must be >= #{min}"
+          elsif schema['maximum']
+            max = schema['maximum']
+            "The property '#{path}' must be <= #{max}"
+          elsif type == 'additionalProperties'
+            "The property '#{path}' is not defined in the schema and the schema does not allow additional properties"
+          else
+            # Fallback: use json_schemer's built-in error message
+            error['error'] || "The property '#{path}' failed '#{type}' validation"
+          end
+        end
       end
 
       # Handle validation errors

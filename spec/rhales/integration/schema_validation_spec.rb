@@ -3,7 +3,9 @@
 require 'spec_helper'
 require 'rhales/view'
 require 'rhales/middleware/schema_validator'
+require 'rack'
 require 'rack/mock'
+require 'fileutils'
 
 RSpec.describe 'Schema Validation Integration', type: :integration do
   let(:test_fixtures_dir) { File.join(__dir__, '../../fixtures/integration_test') }

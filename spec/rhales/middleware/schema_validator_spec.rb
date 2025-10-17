@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'rhales/middleware/schema_validator'
 require 'json'
+require 'fileutils'
 
 RSpec.describe Rhales::Middleware::SchemaValidator do
   let(:app) { ->(env) { [200, { 'Content-Type' => 'text/html' }, [html_response]] } }
