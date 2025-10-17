@@ -735,10 +735,10 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
     end
   end
 
-  describe 'Object expansion and namespace inconsistency' do
-    it 'shows that object expansion works in main templates but fails in partials' do
-      # TDD - This test demonstrates how object expansion is affected by the same
-      # namespace inconsistency issue that affects regular data sections
+  describe 'Object expansion (Fixed)' do
+    it 'shows that object expansion works in both main templates and partials' do
+      # This test demonstrates how object expansion now works correctly
+      # in both main templates and partials
 
       # Props with an object that should be expanded using {{{object}}} syntax
       object_expansion_props = {
@@ -751,7 +751,7 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
         }
       }
 
-      # Test main template with object expansion - SHOULD work
+      # Test main template with object expansion - now works!
       main_template_path = File.join('spec', 'fixtures', 'templates', 'main_object_expansion.rue')
       main_content = <<~RUE
         <data window="expandedData">
@@ -774,10 +774,9 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
 
       result = view.render('main_object_expansion')
 
-      # TODO: Object expansion in data sections is currently broken for server-side rendering
-      # The data IS available in client-side hydration but not in template context
-      expect(result).to include('<h1></h1>')  # Object expansion not working
-      expect(result).to include('<p></p>')    # Object expansion not working
+      # FIXED: Object expansion now works for server-side rendering
+      expect(result).to include('<h1>Expanded Value 1</h1>')
+      expect(result).to include('<p>Expanded Value 2</p>')
 
       # Namespaced access fails (expected - window attributes are for client-side)
       expect(result).to include('<span>Namespaced: </span>')
@@ -792,8 +791,9 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
       File.delete(main_template_path) if File.exist?(main_template_path)
     end
 
-    it 'demonstrates the BROKEN behavior: partials with object expansion cannot access expanded data' do
-      # TDD - This test shows the exact same namespace issue affects object expansion
+    it 'demonstrates the FIXED behavior: partials with object expansion can access expanded data' do
+      # This test shows that object expansion now works correctly in both
+      # main templates and partials
 
       object_expansion_props = {
         greeting: 'Hello from expansion',
@@ -847,21 +847,21 @@ RSpec.describe 'Namespace Inconsistency Problem (BROKEN - Needs Fix)' do
 
       result = view.render_template_only('main_with_expansion_partial')
 
-      # TODO: Object expansion in data sections is broken - main template is also empty
-      expect(result).to include('<h1>Main: </h1>')  # Empty due to object expansion bug
+      # FIXED: Object expansion now works in main templates
+      expect(result).to include('<h1>Main: Should appear in partial</h1>')
 
-      # Since object expansion is broken, partials can't inherit what doesn't exist
-      expect(result).to include('<p>Partial should access: </p>')  # Empty - no object expansion
-      expect(result).to include('<p>Partial should access: </p>')  # Empty - no object expansion
+      # FIXED: Partials can inherit and access expanded object data
+      expect(result).to include('<p>Partial should access: Should appear in partial</p>')
+      expect(result).to include('<p>Partial should access: Should also appear</p>')
 
-      # FIXED: Partial CAN access its own data section (my fix works!)
+      # FIXED: Partials can access their own data sections
       expect(result).to include('<p>Partial data: Data from partial</p>')
 
-      # This demonstrates the current state:
-      # 1. Object expansion in data sections is broken for both main and partials ❌
-      # 2. Partials CAN access their own data sections ✅ (fixed)
-      # 3. Once object expansion is fixed, partials will inherit expanded context ✅
-      # 4. The fix needs to address partial rendering context merging
+      # This demonstrates the fixed state:
+      # 1. Object expansion in data sections works for both main and partials ✅
+      # 2. Partials can access their own data sections ✅
+      # 3. Partials inherit expanded context from parent ✅
+      # 4. JsonAwareContext wrapper enables proper object serialization ✅
 
       # Clean up
       File.delete(main_template_path) if File.exist?(main_template_path)

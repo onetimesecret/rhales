@@ -110,7 +110,7 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       expect(html).to include('data-window="partial2Data"')
     end
 
-    it 'demonstrates object expansion scenario: partials inherit parent context but cannot access own data' do
+    it 'demonstrates object expansion: partials can access expanded data' do
       user = Rhales::Adapters::AuthenticatedAuth.new(name: 'Object Expansion Test', theme: 'light')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'object_expansion_test', created_at: Time.now)
 
@@ -126,20 +126,19 @@ RSpec.describe 'Rhales Partial Scope Integration' do
 
       html = view.render('test_partials_with_object_expansion_in_parent')
 
-      # CURRENT BROKEN BEHAVIOR: Main template doesn't work either with object expansion syntax
-      # This reveals that object expansion {{{object}}} in data sections may not be fully implemented
-      expect(html).to include('<h1></h1>')  # {{key1_from_hash_object}} - currently empty
-      expect(html).to include('<p></p>')    # {{key2_from_hash_object}} - currently empty
+      # FIXED BEHAVIOR: Object expansion now works in both main templates and partials
+      expect(html).to include('<h1>Value 1 from expansion</h1>')  # {{key1_from_hash_object}} works
+      expect(html).to include('<p>Value 2 from expansion</p>')    # {{key2_from_hash_object}} works
 
       # Namespaced access should be empty (expected behavior)
       expect(html).to include('<p></p>')  # {{mainData.key2_from_hash_object}} should be empty
 
-      # Partials also cannot access the data (demonstrates the same core issue)
-      expect(html).to include('Main message in partial 3: </p>')   # {{key1_from_hash_object}} fails
-      expect(html).to include('Partial 3 message: </p>')          # {{key2_from_hash_object}} fails
-      expect(html).to include('Partial 3 message: </p>')          # {{key3_from_hash_object}} fails
+      # Partials can now access the expanded data
+      expect(html).to include('Main message in partial 3: Value 1 from expansion</p>')
+      expect(html).to include('Partial 3 message: Value 2 from expansion</p>')
+      expect(html).to include('Partial 3 message: Value 3 from expansion</p>')
 
-      # However, client-side hydration should work correctly for the object expansion
+      # Client-side hydration continues to work correctly
       expect(html).to include('var dataScript = document.getElementById(')
       expect(html).to include('var targetName = dataScript.getAttribute(\'data-window\') || \'mainData\';')
       expect(html).to include('window[targetName] = JSON.parse(dataScript.textContent);')
@@ -151,9 +150,6 @@ RSpec.describe 'Rhales Partial Scope Integration' do
       expect(data_hash['mainData']['key1_from_hash_object']).to eq('Value 1 from expansion')
       expect(data_hash['mainData']['key2_from_hash_object']).to eq('Value 2 from expansion')
       expect(data_hash['mainData']['key3_from_hash_object']).to eq('Value 3 from expansion')
-
-      # This test reveals that the object expansion syntax needs support,
-      # AND that partials still have the same context inheritance issue
     end
 
     it 'demonstrates the core partial data access issue using regular data sections' do
