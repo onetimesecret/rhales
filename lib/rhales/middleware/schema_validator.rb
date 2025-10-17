@@ -70,6 +70,9 @@ module Rhales
         template_name = env['rhales.template_name']
         return [status, headers, body] unless template_name
 
+        # Get template path if available (for better error messages)
+        template_path = env['rhales.template_path']
+
         # Load schema for template
         schema = load_schema_cached(template_name)
         return [status, headers, body] unless schema
@@ -90,7 +93,7 @@ module Rhales
         @stats[:failures] += 1 if errors.any?
 
         # Handle errors
-        handle_errors(errors, template_name, elapsed_ms) if errors.any?
+        handle_errors(errors, template_name, template_path, elapsed_ms) if errors.any?
 
         [status, headers, body]
       end
@@ -122,7 +125,7 @@ module Rhales
         return true if @skip_paths.any? { |skip_path| path.start_with?(skip_path) }
 
         # Skip files with extensions typically not rendered by templates
-        return true if path.match?(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i)
+        return true if path.match?(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)\z/i)
 
         false
       end
@@ -252,8 +255,8 @@ module Rhales
       end
 
       # Handle validation errors
-      def handle_errors(errors, template_name, elapsed_ms)
-        error_message = build_error_message(errors, template_name, elapsed_ms)
+      def handle_errors(errors, template_name, template_path, elapsed_ms)
+        error_message = build_error_message(errors, template_name, template_path, elapsed_ms)
 
         if @fail_on_error
           # Development: Fail loudly
@@ -265,8 +268,9 @@ module Rhales
       end
 
       # Build detailed error message
-      def build_error_message(errors, template_name, elapsed_ms)
+      def build_error_message(errors, template_name, template_path, elapsed_ms)
         msg = ["Schema validation failed for template: #{template_name}"]
+        msg << "Template path: #{template_path}" if template_path
         msg << "Validation time: #{elapsed_ms}ms"
         msg << ""
 

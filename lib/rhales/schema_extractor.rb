@@ -1,5 +1,6 @@
 # lib/rhales/schema_extractor.rb
 
+require 'pathname'
 require_relative 'rue_document'
 
 module Rhales
@@ -120,8 +121,10 @@ module Rhales
     #   /path/to/templates/dashboard.rue => 'dashboard'
     #   /path/to/templates/pages/user/profile.rue => 'pages/user/profile'
     def derive_template_name(file_path)
-      relative_path = file_path.sub(@templates_dir + '/', '')
-      relative_path.sub(/\.rue$/, '')
+      templates_pathname = Pathname.new(@templates_dir)
+      file_pathname = Pathname.new(file_path)
+      relative_path = file_pathname.relative_path_from(templates_pathname)
+      relative_path.to_s.sub(/\.rue$/, '')
     end
   end
 end

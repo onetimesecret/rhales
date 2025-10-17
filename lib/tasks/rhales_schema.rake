@@ -87,7 +87,7 @@ namespace :rhales do
     task :validate do
       require 'rhales'
       require 'json'
-      require 'json-schema'
+      require 'json_schemer'
 
       # Default to current working directory
       schemas_dir = ENV.fetch('OUTPUT_DIR', './public/schemas')
@@ -121,22 +121,28 @@ namespace :rhales do
         begin
           schema = JSON.parse(File.read(file))
 
-          # Basic validation
+          # Validate against JSON Schema meta-schema
           unless schema.is_a?(Hash)
             errors << "#{relative_path}: Not a valid object"
             next
           end
 
-          # Check for required JSON Schema fields
-          unless schema['type']
-            errors << "#{relative_path}: Missing 'type' field"
-          end
+          # Use JSONSchemer to validate against the meta-schema
+          meta_schema = JSONSchemer.schema(
+            {
+              '$schema' => 'https://json-schema.org/draft/2020-12/schema'
+            }
+          )
 
-          unless schema['$schema']
-            errors << "#{relative_path}: Missing '$schema' field"
-          end
+          validation_errors = meta_schema.validate(schema).to_a
 
-          puts "✓ #{relative_path}"
+          if validation_errors.any?
+            validation_errors.each do |error|
+              errors << "#{relative_path}: #{error['type']} at #{error['data_pointer']}"
+            end
+          else
+            puts "✓ #{relative_path}"
+          end
         rescue JSON::ParserError => e
           errors << "#{relative_path}: Invalid JSON - #{e.message}"
         rescue => e
