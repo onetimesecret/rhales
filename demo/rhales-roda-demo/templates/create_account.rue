@@ -1,13 +1,15 @@
-<data layout="layouts/main">
-{
-  "title": "Create Account",
-  "fields": [
-    {"name": "login", "type": "email", "label": "Email", "placeholder": "you@example.com"},
-    {"name": "password", "type": "password", "label": "Password", "placeholder": "Min 6 characters"},
-    {"name": "password_confirm", "type": "password", "label": "Confirm Password", "placeholder": "Re-enter password"}
-  ]
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" layout="layouts/main">
+const schema = z.object({
+  title: z.string(),
+  fields: z.array(z.object({
+    name: z.string(),
+    type: z.string(),
+    label: z.string(),
+    placeholder: z.string()
+  })),
+  zodauth: z.any()
+});
+</schema>
 
 <template>
 <div class="card" style="max-width: 400px; margin: 0 auto;">

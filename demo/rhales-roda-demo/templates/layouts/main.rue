@@ -1,9 +1,9 @@
-<data window="layout">
-{
-  "app_name": "Rhales Demo",
-  "year": 2025
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" window="layout">
+const schema = z.object({
+  app_name: z.string(),
+  year: z.number()
+});
+</schema>
 
 <template>
 <!DOCTYPE html>
@@ -99,7 +99,7 @@
     }
     .stat-card h3 { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
     .stat-card .value { font-size: 2rem; font-weight: bold; color: #2c3e50; }
-    
+
     /* Home page styles */
     .hero-section { text-align: center; padding: 4rem 0; }
     .hero-title { font-size: 3rem; margin-bottom: 1rem; }

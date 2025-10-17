@@ -1,31 +1,19 @@
-<data window="userDashboard" layout="layouts/main">
-{
-  "welcome_message": "{{welcome_message}}",
-  "login_time": "{{login_time}}",
-  "features": [
-    {
-      "title": "Secure Data Boundary",
-      "description": "This data is only visible to authenticated users",
-      "icon": "🔒"
-    },
-    {
-      "title": "Server-Side Interpolation",
-      "description": "Data from Ruby merged into JSON at render time",
-      "icon": "🔄"
-    },
-    {
-      "title": "Client-Side Hydration",
-      "description": "Check browser console - data is available to JavaScript",
-      "icon": "🌊"
-    }
-  ],
-  "api_endpoints": {
-    "user": "/api/user",
-    "demo_data": "/api/demo-data"
-  },
-  "authenticated": true
-}
-</data>
+<schema lang="js-zod" version="2" envelope="SuccessEnvelope" window="userDashboard" layout="layouts/main">
+const schema = z.object({
+  welcome_message: z.string(),
+  login_time: z.string(),
+  features: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    icon: z.string()
+  })),
+  api_endpoints: z.object({
+    user: z.string(),
+    demo_data: z.string()
+  }),
+  authenticated: z.boolean()
+});
+</schema>
 
 <template>
 <div style="max-width: 800px; margin: 0 auto; padding: 2rem;">
