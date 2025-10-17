@@ -1,0 +1,21 @@
+<schema lang="js-zod" window="appData">
+const schema = z.object({
+  user: z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string()
+  }),
+  settings: z.object({
+    theme: z.string(),
+    notifications: z.boolean()
+  })
+});
+</schema>
+
+<template>
+<div>
+  <h2>User: {{user.name}}</h2>
+  <p>Email: {{user.email}}</p>
+  <p>Theme: {{settings.theme}}</p>
+</div>
+</template>

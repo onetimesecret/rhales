@@ -1,0 +1,15 @@
+<schema lang="js-zod" window="schemaData">
+const schema = z.object({
+  value: z.string()
+});
+</schema>
+
+<data window="dataData">
+{
+  "value": "{{value}}"
+}
+</data>
+
+<template>
+<p>{{value}}</p>
+</template>

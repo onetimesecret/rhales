@@ -1,0 +1,10 @@
+<data window="legacyData">
+{
+  "title": "{{title}}",
+  "interpolated": "Hello {{name}}"
+}
+</data>
+
+<template>
+<h1>{{title}}</h1>
+</template>
