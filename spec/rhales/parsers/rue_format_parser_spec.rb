@@ -365,7 +365,7 @@ RSpec.describe Rhales::RueFormatParser do
 
       parser = described_class.new(content)
       expect { parser.parse! }.to raise_error(Rhales::RueFormatParser::ParseError) do |error|
-        expect(error.message).to include('Must have at least one of: data, template')
+        expect(error.message).to include('Must have at least one of: schema, data, template')
       end
     end
 

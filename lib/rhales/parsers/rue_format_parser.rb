@@ -29,9 +29,9 @@ module Rhales
   class RueFormatParser
     # At least one of these sections must be present
     unless defined?(REQUIRES_ONE_OF_SECTIONS)
-      REQUIRES_ONE_OF_SECTIONS = %w[data template].freeze
+      REQUIRES_ONE_OF_SECTIONS = %w[schema data template].freeze
 
-      KNOWN_SECTIONS = %w[data template logic].freeze
+      KNOWN_SECTIONS = %w[schema data template logic].freeze
       ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
       # Regular expression to match HTML/XML comments outside of sections
@@ -317,6 +317,14 @@ module Rhales
     def validate_ast!
       sections = @ast.children.map { |node| node.value[:tag] }
 
+      # Check for mutual exclusivity between data and schema
+      if sections.include?('data') && sections.include?('schema')
+        raise ParseError.new(
+          "Cannot have both <data> and <schema> sections. Use <schema> for new code.",
+          line: 1, column: 1
+        )
+      end
+
       # Check that at least one required section is present
       required_present = REQUIRES_ONE_OF_SECTIONS & sections
       if required_present.empty?
@@ -380,10 +388,10 @@ module Rhales
         when scanner.scan(/<!--.*?-->/m)
           # Comment token - non-greedy match for complete comments
           { type: :comment, content: scanner.matched }
-        when scanner.scan(/<(data|template|logic)(\s[^>]*)?>/m)
+        when scanner.scan(/<(schema|data|template|logic)(\s[^>]*)?>/m)
           # Section start token - matches opening tags with optional attributes
           { type: :section_start, content: scanner.matched }
-        when scanner.scan(%r{</(data|template|logic)>}m)
+        when scanner.scan(%r{</(schema|data|template|logic)>}m)
           # Section end token - matches closing tags
           { type: :section_end, content: scanner.matched }
         when scanner.scan(/[^<]+/)
