@@ -132,7 +132,8 @@ module Rhales
     end
 
     def layout
-      data_attributes['layout']
+      # Check data section first (legacy), then schema section (v2+)
+      data_attributes['layout'] || schema_attributes['layout']
     end
 
 
