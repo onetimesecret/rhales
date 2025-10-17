@@ -339,7 +339,7 @@ RSpec.describe 'Rue Parser Improvements' do
 
       document = Rhales::RueDocument.new(content)
       expect { document.parse! }.to raise_error(Rhales::RueDocument::ParseError) do |error|
-        expect(error.message).to include('Must have at least one of: data, template')
+        expect(error.message).to include('Must have at least one of: schema, data, template')
       end
     end
 

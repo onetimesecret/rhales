@@ -6,12 +6,13 @@ require_relative 'errors'
 
 module Rhales
   # HydrationDataAggregator traverses the ViewComposition and executes
-  # all <data> sections to produce a single, merged JSON structure.
+  # all <data> and <schema> sections to produce a single, merged JSON structure.
   #
   # This class implements the server-side data aggregation phase of the
   # two-pass rendering model, handling:
   # - Traversal of the template dependency tree
-  # - Execution of <data> sections with full server context
+  # - Execution of <data> sections with template interpolation (deprecated)
+  # - Direct serialization of props for <schema> sections (preferred)
   # - Merge strategies (deep, shallow, strict)
   # - Collision detection and error reporting
   #
@@ -38,17 +39,24 @@ module Rhales
     private
 
     def process_template(_template_name, parser)
-      data_content = parser.section('data')
-      return unless data_content
+      # Check for schema section first (preferred), then data section (deprecated)
+      if parser.schema_lang
+        process_schema_section(parser)
+      elsif parser.section('data')
+        process_data_section_legacy(parser)
+      end
+    end
 
-      window_attr = parser.window_attribute || 'data'
-      merge_strategy = parser.merge_strategy
+    # Process schema section: Direct JSON serialization
+    def process_schema_section(parser)
+      window_attr = parser.schema_window || 'data'
+      merge_strategy = parser.schema_merge_strategy
 
       # Build template path for error reporting
-      template_path = build_template_path(parser)
+      template_path = build_template_path_for_schema(parser)
 
-      # Process the data section first to check if it's empty
-      processed_data = process_data_section(data_content, parser)
+      # Direct serialization of props (no template interpolation)
+      processed_data = @context.props
 
       # Check for collisions only if the data is not empty
       if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
@@ -78,10 +86,61 @@ module Rhales
       @window_attributes[window_attr] = {
         path: template_path,
         merge_strategy: merge_strategy,
+        section_type: :schema,
       }
     end
 
-    def process_data_section(data_content, parser)
+    # Process data section (deprecated): Template interpolation
+    def process_data_section_legacy(parser)
+      data_content = parser.section('data')
+      return unless data_content
+
+      # Emit deprecation warning
+      warn_data_section_deprecation(parser)
+
+      window_attr = parser.window_attribute || 'data'
+      merge_strategy = parser.merge_strategy
+
+      # Build template path for error reporting
+      template_path = build_template_path(parser)
+
+      # Process the data section with template interpolation
+      processed_data = process_data_section_with_interpolation(data_content, parser)
+
+      # Check for collisions only if the data is not empty
+      if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
+        existing = @window_attributes[window_attr]
+        existing_data = @merged_data[window_attr]
+
+        # Only raise collision error if existing data is also not empty
+        unless empty_data?(existing_data)
+          raise ::Rhales::HydrationCollisionError.new(window_attr, existing[:path], template_path)
+        end
+      end
+
+      # Merge or set the data
+      @merged_data[window_attr] = if @merged_data.key?(window_attr)
+        merge_data(
+          @merged_data[window_attr],
+          processed_data,
+          merge_strategy || 'deep',
+          window_attr,
+          template_path,
+        )
+      else
+        processed_data
+                                  end
+
+      # Track the window attribute
+      @window_attributes[window_attr] = {
+        path: template_path,
+        merge_strategy: merge_strategy,
+        section_type: :data,
+      }
+    end
+
+    # Process data section with template interpolation (for deprecated <data> sections)
+    def process_data_section_with_interpolation(data_content, parser)
       # Create a JSON-aware context wrapper for data sections
       json_context = JsonAwareContext.new(@context)
 
@@ -167,6 +226,59 @@ module Rhales
       else
         "<inline>:#{line_number}"
       end
+    end
+
+    def build_template_path_for_schema(parser)
+      schema_node = parser.section_node('schema')
+      line_number = schema_node ? schema_node.location.start_line : 1
+
+      if parser.file_path
+        "#{parser.file_path}:#{line_number}"
+      else
+        "<inline>:#{line_number}"
+      end
+    end
+
+    def warn_data_section_deprecation(parser)
+      template_path = parser.file_path || '<inline template>'
+
+      warn <<~WARNING
+
+        ================================================================================
+        DEPRECATION WARNING: Template uses deprecated <data> section
+        ================================================================================
+
+        Template: #{template_path}
+
+        The <data> section is deprecated and will be removed in Rhales v3.0.
+        Please migrate to <schema> sections for type safety and runtime validation.
+
+        Migration steps:
+        1. Replace <data> with <schema lang="js-zod" window="...">
+        2. Define your data structure using Zod schema syntax
+        3. Pass fully-resolved values as props (no {{variable}} interpolation needed)
+
+        Example:
+          Before (<data>):
+            <data window="appData">
+            {
+              "user": "{{user.name}}",
+              "count": {{items.count}}
+            }
+            </data>
+
+          After (<schema>):
+            <schema lang="js-zod" window="appData">
+            const schema = z.object({
+              user: z.string(),
+              count: z.number()
+            });
+            </schema>
+
+        For more information, visit: https://rhales.dev/docs/migration/data-to-schema
+        ================================================================================
+
+      WARNING
     end
 
     # Check if data is considered empty for collision detection

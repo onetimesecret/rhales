@@ -17,20 +17,37 @@ module Rhales
     # - Can process sensitive business logic
     #
     # ### Client Side (Data Hydration)
-    # - Only data declared in <data> section reaches the browser
+    # - Only data declared in <data> or <schema> sections reaches the browser
     # - Creates explicit allowlist like designing a REST API
-    # - Server-side variable interpolation processes secrets safely
+    # - For <data>: Server-side variable interpolation processes secrets safely
+    # - For <schema>: Direct props serialization (no interpolation)
     # - JSON serialization validates data structure
     #
-    # ### Process Flow
+    # ### Process Flow (Schema-based, preferred)
+    # 1. Backend provides fully-resolved props to render call
+    # 2. Props are directly serialized as JSON
+    # 3. Client receives only the declared props
+    #
+    # ### Process Flow (Data-based, deprecated)
     # 1. Server processes <data> section with full context access
     # 2. Variables like {{user.name}} are interpolated server-side
     # 3. Result is serialized as JSON and sent to client
     # 4. Client receives only the processed, safe data
     #
-    # ### Example
+    # ### Example (Schema-based)
     # ```rue
-    # <data>
+    # <schema lang="js-zod" window="appData">
+    # const schema = z.object({
+    #   user_name: z.string(),
+    #   theme: z.string()
+    # });
+    # </schema>
+    # ```
+    # Backend: render('template', user_name: user.name, theme: user.theme_preference)
+    #
+    # ### Example (Data-based, deprecated)
+    # ```rue
+    # <data window="appData">
     # {
     #   "user_name": "{{user.name}}",           // Safe: just the name
     #   "theme": "{{user.theme_preference}}"    // Safe: just the theme
@@ -67,19 +84,28 @@ module Rhales
         ''
       end
 
-      # Process <data> section and return JSON string
+      # Process <data> or <schema> section and return JSON string
       def process_data_section
-        data_content = @parser.section('data')
-        return '{}' unless data_content
+        # Check for schema section first (preferred)
+        if @parser.schema_lang
+          # Schema section: Direct props serialization
+          JSON.generate(@context.props)
+        elsif @parser.section('data')
+          # Data section: Template interpolation (deprecated)
+          data_content = @parser.section('data')
 
-        # Process variable interpolations in the data section
-        processed_content = process_data_variables(data_content)
+          # Process variable interpolations in the data section
+          processed_content = process_data_variables(data_content)
 
-        # Validate and return JSON
-        validate_json(processed_content)
-        processed_content
+          # Validate and return JSON
+          validate_json(processed_content)
+          processed_content
+        else
+          # No hydration section
+          '{}'
+        end
       rescue JSON::ParserError => ex
-        raise JSONSerializationError, "Invalid JSON in data section: #{ex.message}"
+        raise JSONSerializationError, "Invalid JSON in data/schema section: #{ex.message}"
       end
 
       # Get processed data as Ruby hash (for internal use)

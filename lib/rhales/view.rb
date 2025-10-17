@@ -72,6 +72,9 @@ module Rhales
     def render(template_name = nil)
       template_name ||= self.class.default_template_name
 
+      # Store template name in request env for middleware validation
+      @req.env['rhales.template_name'] = template_name if @req && @req.respond_to?(:env)
+
       # Phase 1: Build view composition and aggregate data
       composition           = build_view_composition(template_name)
       aggregator            = HydrationDataAggregator.new(@rsfc_context)
