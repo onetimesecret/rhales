@@ -8,8 +8,9 @@ namespace :rhales do
       require 'rhales/schema_extractor'
       require 'rhales/schema_generator'
 
+      # Default to current working directory (implementing project)
       templates_dir = ENV.fetch('TEMPLATES_DIR', './templates')
-      output_dir = ENV.fetch('OUTPUT_DIR', './lib/rhales/schemas')
+      output_dir = ENV.fetch('OUTPUT_DIR', './public/schemas')
 
       puts "Schema Generation"
       puts "=" * 60
@@ -18,12 +19,29 @@ namespace :rhales do
       puts "Zod: (using pnpm exec tsx)"
       puts
 
+      # Validate templates directory exists
+      unless Dir.exist?(templates_dir)
+        puts "⚠️  Templates directory not found: #{templates_dir}"
+        puts
+        puts "Usage:"
+        puts "  rake rhales:schema:generate TEMPLATES_DIR=./templates OUTPUT_DIR=./public/schemas"
+        puts
+        puts "Or from project root where templates/ exists:"
+        puts "  rake rhales:schema:generate"
+        exit 1
+      end
+
       # Extract schemas
       extractor = Rhales::SchemaExtractor.new(templates_dir)
       schemas = extractor.extract_all
 
       if schemas.empty?
-        puts "No schema sections found in templates"
+        puts "⚠️  No schema sections found in templates"
+        puts
+        puts "Make sure your .rue files have <schema> sections:"
+        puts "  <schema lang=\"js-zod\" window=\"appData\">"
+        puts "  const schema = z.object({ ... });"
+        puts "  </schema>"
         exit 0
       end
 
@@ -50,18 +68,19 @@ namespace :rhales do
       generated_count = results[:generated]
       failed_count = results[:failed]
 
-      if results[:errors].any?
-        results[:errors].each do |error|
-          puts "x #{error}"
-        end
+      if results[:success]
+        puts "✓ Successfully generated #{generated_count} schema(s)"
+        puts "✓ Output directory: #{output_dir}"
       else
-        puts "All schemas generated successfully"
+        puts "✗ Generation failed with #{failed_count} error(s)"
+        results[:errors].each do |error|
+          puts "  - #{error}"
+        end
       end
 
       puts
-      puts "Summary: #{generated_count} succeeded, #{failed_count} failed"
 
-      exit(failed_count > 0 ? 1 : 0)
+      exit(results[:success] ? 0 : 1)
     end
 
     desc 'Validate existing JSON Schemas'
@@ -70,21 +89,28 @@ namespace :rhales do
       require 'json'
       require 'json-schema'
 
-      schemas_dir = ENV.fetch('OUTPUT_DIR', './lib/rhales/schemas')
+      # Default to current working directory
+      schemas_dir = ENV.fetch('OUTPUT_DIR', './public/schemas')
 
       unless Dir.exist?(schemas_dir)
-        puts "Schemas directory not found: #{schemas_dir}"
+        puts "⚠️  Schemas directory not found: #{schemas_dir}"
+        puts
+        puts "Generate schemas first:"
+        puts "  rake rhales:schema:generate"
         exit 1
       end
 
       schema_files = Dir.glob("#{schemas_dir}/**/*.json")
 
       if schema_files.empty?
-        puts "No schema files found in #{schemas_dir}"
+        puts "⚠️  No schema files found in #{schemas_dir}"
+        puts
+        puts "Generate schemas first:"
+        puts "  rake rhales:schema:generate"
         exit 1
       end
 
-      puts "Validating #{schema_files.size} schema file(s)..."
+      puts "Validating #{schema_files.size} schema file(s) in #{schemas_dir}..."
       puts
 
       errors = []
@@ -101,12 +127,16 @@ namespace :rhales do
             next
           end
 
-          # Check for required fields
+          # Check for required JSON Schema fields
           unless schema['type']
             errors << "#{relative_path}: Missing 'type' field"
           end
 
-          puts "√ #{relative_path}"
+          unless schema['$schema']
+            errors << "#{relative_path}: Missing '$schema' field"
+          end
+
+          puts "✓ #{relative_path}"
         rescue JSON::ParserError => e
           errors << "#{relative_path}: Invalid JSON - #{e.message}"
         rescue => e
@@ -114,14 +144,14 @@ namespace :rhales do
         end
       end
 
+      puts
+
       if errors.any?
-        puts
         puts "Errors:"
-        errors.each { |err| puts "  x #{err}" }
+        errors.each { |err| puts "  ✗ #{err}" }
         exit 1
       else
-        puts
-        puts "All schemas valid"
+        puts "All schemas valid ✓"
       end
     end
 
@@ -130,7 +160,16 @@ namespace :rhales do
       require 'rhales'
       require 'rhales/schema_extractor'
 
+      # Default to current working directory
       templates_dir = ENV.fetch('TEMPLATES_DIR', './templates')
+
+      unless Dir.exist?(templates_dir)
+        puts "⚠️  Templates directory not found: #{templates_dir}"
+        puts
+        puts "Usage:"
+        puts "  rake rhales:schema:stats TEMPLATES_DIR=./templates"
+        exit 1
+      end
 
       extractor = Rhales::SchemaExtractor.new(templates_dir)
       stats = extractor.schema_stats

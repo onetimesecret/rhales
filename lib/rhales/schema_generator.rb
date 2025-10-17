@@ -16,7 +16,7 @@ module Rhales
   # Usage:
   #   generator = SchemaGenerator.new(
   #     templates_dir: './templates',
-  #     output_dir: './lib/rhales/schemas'
+  #     output_dir: './public/schemas'
   #   )
   #   results = generator.generate_all
   class SchemaGenerator
@@ -26,9 +26,18 @@ module Rhales
 
     # @param templates_dir [String] Directory containing .rue files
     # @param output_dir [String] Directory to save generated JSON schemas
-    def initialize(templates_dir:, output_dir: './lib/rhales/schemas')
+    #   Defaults to './public/schemas' (implementing project's public directory)
+    def initialize(templates_dir:, output_dir: nil)
       @templates_dir = File.expand_path(templates_dir)
-      @output_dir = File.expand_path(output_dir)
+
+      # Smart default: place schemas in public/schemas relative to current working directory
+      # This ensures schemas are generated in the implementing project, not the gem directory
+      @output_dir = if output_dir
+        File.expand_path(output_dir)
+      else
+        # Default to public/schemas in current working directory
+        File.expand_path('./public/schemas')
+      end
 
       validate_setup!
       ensure_output_directory!

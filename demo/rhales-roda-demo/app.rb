@@ -193,13 +193,61 @@ class RhalesDemo < Roda
         locals = {
           'welcome_message' => "Welcome back, #{current_user[:email]}!",
           'login_time' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+          # Dashboard specific props
+          'features' => [
+            {
+              'title' => 'Authenticated Access',
+              'description' => 'Only visible when logged in',
+              'icon' => '🔐',
+            },
+            {
+              'title' => 'Session Management',
+              'description' => 'Powered by Rodauth',
+              'icon' => '👤',
+            },
+            {
+              'title' => 'API Integration',
+              'description' => 'Fetch data with hydrated endpoints',
+              'icon' => '⚡',
+            },
+          ],
+          'api_endpoints' => {
+            'user' => '/api/user',
+            'demo_data' => '/api/demo-data',
+          },
         }
         view('dashboard',
           locals: template_locals(locals),
           layout: false,
         )
       else
-        view('home', locals: template_locals, layout: false)
+        # Home page props
+        locals = {
+          'page_type' => 'home',
+          'features' => [
+            {
+              'title' => 'Single File Components',
+              'description' => 'Combine templates, data, and logic in one file',
+              'icon' => '📦',
+            },
+            {
+              'title' => 'Type-Safe Hydration',
+              'description' => 'Zod schemas ensure contract safety',
+              'icon' => '🛡️',
+            },
+            {
+              'title' => 'Security First',
+              'description' => 'CSP nonces and HTML escaping by default',
+              'icon' => '🔒',
+            },
+            {
+              'title' => 'Framework Agnostic',
+              'description' => 'Works with Roda, Sinatra, Rails, and more',
+              'icon' => '🔧',
+            },
+          ],
+        }
+        view('home', locals: template_locals(locals), layout: false)
       end
 
       # Set CSP header after view rendering
@@ -236,8 +284,19 @@ class RhalesDemo < Roda
   # Helper method to provide common template data
   def template_locals(additional_locals = {})
     {
-      'demo_accounts' => DEMO_ACCOUNTS,
+      # Authentication state
       'authenticated' => respond_to?(:logged_in?) ? logged_in? : false,
+
+      # Demo accounts for login page
+      'demo_accounts' => DEMO_ACCOUNTS,
+
+      # Layout props (required by layouts/main.rue)
+      'app_name' => 'Rhales Demo',
+      'year' => Time.now.year,
+
+      # Flash messages (already handled by Tilt, but keeping for consistency)
+      'flash_notice' => respond_to?(:flash) ? flash['notice'] : nil,
+      'flash_error' => respond_to?(:flash) ? flash['error'] : nil,
     }.merge(additional_locals)
   end
 end

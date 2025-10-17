@@ -13,12 +13,12 @@ module Rhales
     #
     # @example Basic usage with Rack
     #   use Rhales::Middleware::SchemaValidator,
-    #     schemas_dir: './lib/rhales/schemas',
+    #     schemas_dir: './public/schemas',
     #     fail_on_error: ENV['RACK_ENV'] == 'development'
     #
     # @example With Roda
     #   use Rhales::Middleware::SchemaValidator,
-    #     schemas_dir: File.expand_path('../lib/rhales/schemas', __dir__),
+    #     schemas_dir: File.expand_path('../public/schemas', __dir__),
     #     fail_on_error: ENV['RACK_ENV'] == 'development',
     #     enabled: true
     #
@@ -39,7 +39,8 @@ module Rhales
       # @option options [Array<String>] :skip_paths Additional paths to skip validation
       def initialize(app, options = {})
         @app = app
-        @schemas_dir = options.fetch(:schemas_dir, './lib/rhales/schemas')
+        # Default to public/schemas in implementing project's directory
+        @schemas_dir = options.fetch(:schemas_dir, './public/schemas')
         @fail_on_error = options.fetch(:fail_on_error, false)
         @enabled = options.fetch(:enabled, true)
         @skip_paths = options.fetch(:skip_paths, [])

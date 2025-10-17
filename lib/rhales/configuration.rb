@@ -167,7 +167,7 @@ module Rhales
       # Schema validation defaults
       @enable_schema_validation = true
       @fail_on_validation_error = false # Set by environment in middleware
-      @schemas_dir              = './lib/rhales/schemas'
+      @schemas_dir              = './public/schemas' # Default to implementing project's public directory
 
       # Yield to block for configuration if provided
       yield(self) if block_given?
