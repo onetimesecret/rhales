@@ -1,6 +1,7 @@
 # lib/rhales/view.rb
 
 require 'securerandom'
+require 'forwardable'
 require_relative 'context'
 require_relative 'rue_document'
 require_relative 'template_engine'
@@ -54,46 +55,20 @@ module Rhales
   #
   # Subclasses can override context_class to use different context implementations.
   class View
+    extend Forwardable
+
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    attr_reader :req, :locale, :rsfc_context
+    attr_reader :req, :rsfc_context
 
     # Delegate context accessors to rsfc_context
-    def sess
-      @rsfc_context.sess
+    def_delegators :@rsfc_context, :sess, :cust, :client, :server, :config, :locale
+
+    def initialize(req, client: {}, server: {}, config: nil)
+      @req = req
+      @rsfc_context = context_class.for_view(req, client: client, server: server, config: config || Rhales.configuration)
     end
-
-    def cust
-      @rsfc_context.cust
-    end
-
-    def client
-      @rsfc_context.client
-    end
-
-    def server
-      @rsfc_context.server
-    end
-
-    def config
-      @rsfc_context.config
-    end
-
-    def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
-      @req           = req
-      @locale        = locale_override
-
-      # Store parameters for context creation
-      @client_param = client
-      @server_param = server
-      @config_param = config || Rhales.configuration
-
-      # Create context using the specified context class
-      @rsfc_context = create_context
-    end
-
-
 
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
@@ -202,12 +177,6 @@ module Rhales
 
     protected
 
-    # Create the appropriate context for this view
-    # Subclasses can override this to use different context types
-    def create_context
-      context_class.for_view(@req, @locale, client: @client_param, server: @server_param, config: @config_param)
-    end
-
     # Return the context class to use
     # Subclasses can override this to use different context implementations
     def context_class
@@ -313,17 +282,6 @@ module Rhales
       end
     end
 
-    # Legacy injection method (kept for backwards compatibility)
-    def inject_hydration_into_template(template_html, hydration_html)
-      # Try to inject before closing </body> tag
-      if template_html.include?('</body>')
-        template_html.sub('</body>', "#{hydration_html}\n</body>")
-      # Otherwise append to end
-      else
-        "#{template_html}\n#{hydration_html}"
-      end
-    end
-
     # Detect mount points in fully rendered HTML
     def detect_mount_point_in_rendered_html(template_html)
       return nil unless config&.hydration
@@ -400,13 +358,13 @@ module Rhales
         nonce_attr = nonce_attribute
 
         # Create JSON script tag with optional reflection attributes
-        json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ""
+        json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ''
         json_script = <<~HTML.strip
           <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes
-        hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ""
+        hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ''
         hydration_script = if reflection_enabled?
           <<~HTML.strip
             <script#{nonce_attr}#{hydration_attrs}>
@@ -527,14 +485,14 @@ module Rhales
       end
 
       # Render template with client data
-      def render_with_data(req, locale, template_name: nil, config: nil, **client_data)
-        view = new(req, locale, client: client_data, config: config)
+      def render_with_data(req, template_name: nil, config: nil, **client_data)
+        view = new(req, client: client_data, config: config)
         view.render(template_name)
       end
 
       # Create view instance with client data
-      def with_data(req, locale, config: nil, **client_data)
-        new(req, locale, client: client_data, config: config)
+      def with_data(req, config: nil, **client_data)
+        new(req, client: client_data, config: config)
       end
     end
   end

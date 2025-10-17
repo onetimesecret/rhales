@@ -1,5 +1,6 @@
 # lib/rhales/context.rb
 
+require 'ostruct'
 require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
@@ -23,12 +24,11 @@ module Rhales
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :locale, :client, :server, :config
+      attr_reader :req, :client, :server, :config
 
-      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
+      def initialize(req, client: {}, server: {}, config: nil)
         @req           = req
         @config        = config || Rhales.configuration
-        @locale        = locale_override || @config.default_locale
 
         # Normalize keys to strings for consistent access and expose with clean names
         @client_data = normalize_keys(client).freeze
@@ -130,10 +130,32 @@ module Rhales
         end
       end
 
+      # Extract locale from request env or use default
+      def locale
+        return @config.default_locale unless req
+        if req.respond_to?(:env) && req.env
+          # Check for custom rhales.locale first, then HTTP_ACCEPT_LANGUAGE
+          custom_locale = req.env['rhales.locale']
+          return custom_locale if custom_locale
+
+          # Parse HTTP_ACCEPT_LANGUAGE header
+          accept_language = req.env['HTTP_ACCEPT_LANGUAGE']
+          if accept_language
+            # Extract first locale from Accept-Language header (e.g., "en-US,en;q=0.9" -> "en-US")
+            first_locale = accept_language.split(',').first&.strip&.split(';')&.first
+            return first_locale if first_locale && !first_locale.empty?
+          end
+
+          @config.default_locale
+        else
+          @config.default_locale
+        end
+      end
+
       # Create a new context with updated client data
       def with_client(new_client_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: normalize_keys(new_client_data),
           server: @server_data,
           config: @config
@@ -143,7 +165,7 @@ module Rhales
       # Create a new context with updated server data
       def with_server(new_server_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: @client_data,
           server: normalize_keys(new_server_data),
           config: @config
@@ -153,7 +175,7 @@ module Rhales
       # Create a new context with merged client data
       def merge_client(additional_client_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: @client_data.merge(normalize_keys(additional_client_data)),
           server: @server_data,
           config: @config
@@ -189,11 +211,6 @@ module Rhales
         app['theme_class'] = determine_theme_class
 
         app
-      end
-
-      # Build API base URL from configuration (deprecated - moved to config)
-      def build_api_base_url
-        @config.api_base_url
       end
 
       # Determine theme class for CSS
@@ -291,14 +308,18 @@ module Rhales
 
       class << self
         # Create context with business data for a specific view
-        def for_view(req, locale, client: {}, server: {}, config: nil, **additional_client)
+        def for_view(req, client: {}, server: {}, config: nil, **additional_client)
           all_client = client.merge(additional_client)
-          new(req, locale, client: all_client, server: server, config: config)
+          new(req, client: all_client, server: server, config: config)
         end
 
-        # Create minimal context for testing
-        def minimal(locale = 'en', client: {}, server: {}, config: nil)
-          new(nil, locale, client: client, server: server, config: config)
+        # Create minimal context for testing (with optional locale override in request env)
+        def minimal(client: {}, server: {}, config: nil, locale: nil)
+          req = if locale
+            # Create a minimal request object with locale in env
+            OpenStruct.new(env: { 'rhales.locale' => locale })
+          end
+          new(req, client: client, server: server, config: config)
         end
       end
   end
