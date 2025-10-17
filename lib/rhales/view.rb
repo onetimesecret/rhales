@@ -151,7 +151,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_json(template_name, additional_context)
     end
 
@@ -160,7 +160,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_module(template_name, additional_context)
     end
 
@@ -169,7 +169,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.render_jsonp(template_name, callback_name, additional_context)
     end
 
@@ -178,7 +178,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.data_changed?(template_name, etag, additional_context)
     end
 
@@ -187,7 +187,7 @@ module Rhales
       require_relative 'hydration_endpoint'
 
       template_name ||= self.class.default_template_name
-      endpoint = HydrationEndpoint.new(@config, @rsfc_context)
+      endpoint = HydrationEndpoint.new(config, @rsfc_context)
       endpoint.calculate_etag(template_name, additional_context)
     end
 
@@ -245,8 +245,8 @@ module Rhales
     # Resolve template path
     def resolve_template_path(template_name)
       # Check configured template paths first
-      if @config && @config.template_paths && !@config.template_paths.empty?
-        @config.template_paths.each do |path|
+      if config && config.template_paths && !config.template_paths.empty?
+        config.template_paths.each do |path|
           template_path = File.join(path, "#{template_name}.rue")
           return template_path if File.exist?(template_path)
         end
@@ -262,8 +262,8 @@ module Rhales
       return templates_path if File.exist?(templates_path)
 
       # Return first configured path or web path for error message
-      if @config && @config.template_paths && !@config.template_paths.empty?
-        File.join(@config.template_paths.first, "#{template_name}.rue")
+      if config && config.template_paths && !config.template_paths.empty?
+        File.join(config.template_paths.first, "#{template_name}.rue")
       else
         web_path
       end
@@ -343,10 +343,10 @@ module Rhales
 
     # Smart hydration injection with mount point detection on rendered HTML
     def inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-      injector = HydrationInjector.new(@config.hydration, template_name)
+      injector = HydrationInjector.new(config.hydration, template_name)
 
       # Check if using link-based strategy
-      if @config.hydration.link_based_strategy?
+      if config.hydration.link_based_strategy?
         # For link-based strategies, we need the merged data context
         aggregator = HydrationDataAggregator.new(@rsfc_context)
         merged_data = aggregator.aggregate(composition)
@@ -373,9 +373,9 @@ module Rhales
 
     # Detect mount points in fully rendered HTML
     def detect_mount_point_in_rendered_html(template_html)
-      return nil unless @config&.hydration
+      return nil unless config&.hydration
 
-      custom_selectors = @config.hydration.mount_point_selectors || []
+      custom_selectors = config.hydration.mount_point_selectors || []
       detector = MountPointDetector.new
       detector.detect(template_html, custom_selectors)
     end
@@ -383,7 +383,7 @@ module Rhales
     # Build view composition for the given template
     def build_view_composition(template_name)
       loader      = method(:load_template_for_composition)
-      composition = ViewComposition.new(template_name, loader: loader, config: @config)
+      composition = ViewComposition.new(template_name, loader: loader, config: config)
       composition.resolve!
     end
 
@@ -487,7 +487,7 @@ module Rhales
 
     # Check if reflection system is enabled
     def reflection_enabled?
-      @config.hydration.reflection_enabled
+      config.hydration.reflection_enabled
     end
 
     # Generate JavaScript utilities for hydration reflection
@@ -548,14 +548,14 @@ module Rhales
 
     # Set CSP header if enabled
     def set_csp_header_if_enabled
-      return unless @config.csp_enabled
+      return unless config.csp_enabled
       return unless @req && @req.respond_to?(:env)
 
       # Get nonce from context
       nonce = @rsfc_context.get('nonce')
 
       # Create CSP instance and build header
-      csp = CSP.new(@config, nonce: nonce)
+      csp = CSP.new(config, nonce: nonce)
       header_value = csp.build_header
 
       # Set header in request environment for framework to use

@@ -122,7 +122,14 @@ module Rhales
       # Extract session from request object
       def sess
         return default_session unless req
-        req.respond_to?(:session) ? req.session : default_session
+        if req.respond_to?(:session)
+          session = req.session
+          # Check if session has the adapter interface (respond to authenticated?)
+          # If it's a plain Hash (like Rack::Request.session), use default session
+          session.respond_to?(:authenticated?) ? session : default_session
+        else
+          default_session
+        end
       end
 
       # Extract customer/user from request object

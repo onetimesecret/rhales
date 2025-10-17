@@ -126,7 +126,7 @@ module Rhales
       template_context = create_template_context(additional_context)
 
       # Process template to extract hydration data
-      view = View.new(@context.req, @context.locale, props: {})
+      view = View.new(@context.req, @context.locale, client: {})
       aggregator = HydrationDataAggregator.new(template_context)
 
       # Build composition to get template dependencies
@@ -153,7 +153,7 @@ module Rhales
         @context.class.for_view(@context.req, @context.locale, **merged_props)
       else
         # Create minimal context with just the additional data
-        Context.minimal(props: additional_context)
+        Context.minimal(client: additional_context)
       end
     end
 

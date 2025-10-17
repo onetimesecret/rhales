@@ -89,7 +89,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
       it 'renders successfully and passes validation' do
         # Create Rack app with middleware
         app = lambda do |env|
-          view = Rhales::View.new(mock_request, nil, nil, 'en', props: { userName: 'Alice' }, config: config)
+          view = Rhales::View.new(mock_request, 'en', client: { userName: 'Alice' }, config: config)
           html = view.render('valid_template')
           [200, { 'Content-Type' => 'text/html' }, [html]]
         end
@@ -152,7 +152,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
 
       it 'raises validation error with helpful message' do
         app = lambda do |env|
-          view = Rhales::View.new(mock_request, nil, nil, 'en', props: { count: 'not-a-number' }, config: config)
+          view = Rhales::View.new(mock_request, 'en', client: { count: 'not-a-number' }, config: config)
           html = view.render('invalid_template')
           [200, { 'Content-Type' => 'text/html' }, [html]]
         end
@@ -207,7 +207,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
 
       it 'logs warning but continues serving in production' do
         app = lambda do |env|
-          view = Rhales::View.new(mock_request, nil, nil, 'en', props: { count: 'bad-value' }, config: config)
+          view = Rhales::View.new(mock_request, 'en', client: { count: 'bad-value' }, config: config)
           html = view.render('prod_template')
           [200, { 'Content-Type' => 'text/html' }, [html]]
         end
@@ -262,7 +262,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
           template_name = env['rhales.template_name'] || 'template1'
           props = template_name == 'template1' ? { message: 'Hello' } : { count: 42 }
 
-          view = Rhales::View.new(mock_request, nil, nil, 'en', props: props, config: config)
+          view = Rhales::View.new(mock_request, 'en', client: props, config: config)
           html = view.render(template_name)
           [200, { 'Content-Type' => 'text/html' }, [html]]
         end
@@ -312,7 +312,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
       it 'validates with < 5ms overhead on average' do
         app = lambda do |env|
           req = Rack::Request.new(env)
-          view = Rhales::View.new(req, nil, nil, 'en', props: { value: 'test' }, config: config)
+          view = Rhales::View.new(req, 'en', client: { value: 'test' }, config: config)
           html = view.render('perf')
           [200, { 'Content-Type' => 'text/html' }, [html]]
         end
@@ -364,7 +364,7 @@ RSpec.describe 'Schema Validation Integration', type: :integration do
     it 'caches schemas across multiple requests for performance' do
       app = lambda do |env|
         req = Rack::Request.new(env)
-        view = Rhales::View.new(req, nil, nil, 'en', props: { test: true }, config: config)
+        view = Rhales::View.new(req, 'en', client: { test: true }, config: config)
         html = view.render('cached')
         [200, { 'Content-Type' => 'text/html' }, [html]]
       end

@@ -350,10 +350,11 @@ RSpec.describe 'Parser Integration' do
         page_title: 'AST Test Page',
       }
 
-      # Create authenticated context
+      # Create authenticated context with mock request
       user    = Rhales::Adapters::AuthenticatedAuth.new(name: 'Grammar User', theme: 'dark')
       session = Rhales::Adapters::AuthenticatedSession.new(id: 'test_session')
-      context = Rhales::Context.for_view(nil, 'en', **props)
+      mock_request = double('request', user: user, session: session, env: {})
+      context = Rhales::Context.for_view(mock_request, 'en', **props)
 
       # Parse through document
       document = Rhales::RueDocument.new(rue_content)
