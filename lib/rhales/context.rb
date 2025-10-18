@@ -1,6 +1,5 @@
 # lib/rhales/context.rb
 
-require 'ostruct'
 require_relative 'configuration'
 require_relative 'adapters/base_auth'
 require_relative 'adapters/base_session'
