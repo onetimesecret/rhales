@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'json'
+require_relative '../json_serializer'
 
 module Rhales
   module Middleware
@@ -156,7 +156,7 @@ module Rhales
         # Match script tags with data-window attribute
         html.scan(/<script[^>]*type=["']application\/json["'][^>]*data-window=["']([^"']+)["'][^>]*>(.*?)<\/script>/m) do |window_var, json_content|
           begin
-            hydration_blocks[window_var] = JSON.parse(json_content.strip)
+            hydration_blocks[window_var] = JSONSerializer.parse(json_content.strip)
           rescue JSON::ParserError => e
             # Skip malformed JSON blocks
             warn "Rhales::JsonResponder: Failed to parse hydration JSON for window.#{window_var}: #{e.message}"
@@ -172,7 +172,7 @@ module Rhales
       # @param env [Hash] Rack environment
       # @return [Array] Rack response tuple
       def json_response(data, env)
-        json_body = JSON.pretty_generate(data)
+        json_body = JSONSerializer.dump(data)
 
         [
           200,

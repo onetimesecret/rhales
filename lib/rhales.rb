@@ -2,6 +2,7 @@
 
 require_relative 'rhales/version'
 require_relative 'rhales/errors'
+require_relative 'rhales/json_serializer'
 require_relative 'rhales/configuration'
 require_relative 'rhales/adapters/base_auth'
 require_relative 'rhales/adapters/base_session'

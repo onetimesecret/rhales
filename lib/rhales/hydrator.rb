@@ -1,7 +1,7 @@
 # lib/rhales/hydrator.rb
 
-require 'json'
 require 'securerandom'
+require_relative 'json_serializer'
 
 module Rhales
     # Data Hydrator for RSFC client-side data injection
@@ -66,7 +66,7 @@ module Rhales
         # Check for schema section
         if @parser.schema_lang
           # Schema section: Direct props serialization
-          JSON.generate(@context.client)
+          JSONSerializer.dump(@context.client)
         else
           # No hydration section
           '{}'
@@ -78,7 +78,7 @@ module Rhales
       # Get processed data as Ruby hash (for internal use)
       def processed_data_hash
         json_string = process_data_section
-        JSON.parse(json_string)
+        JSONSerializer.parse(json_string)
       rescue JSON::ParserError => ex
         raise JSONSerializationError, "Cannot parse processed data as JSON: #{ex.message}"
       end

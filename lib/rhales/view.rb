@@ -9,6 +9,7 @@ require_relative 'hydrator'
 require_relative 'view_composition'
 require_relative 'hydration_data_aggregator'
 require_relative 'csp'
+require_relative 'json_serializer'
 require_relative 'refinements/require_refinements'
 
 using Rhales::Ruequire
@@ -360,7 +361,7 @@ module Rhales
         # Create JSON script tag with optional reflection attributes
         json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ''
         json_script = <<~HTML.strip
-          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSON.generate(data)}</script>
+          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSONSerializer.dump(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes
