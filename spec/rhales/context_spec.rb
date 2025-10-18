@@ -183,6 +183,18 @@ RSpec.describe Rhales::Context do
       expect(context.locale).to eq('en')
       expect(context.get('test')).to eq('data')
     end
+
+    it 'creates context with env when provided' do
+      context = described_class.minimal(
+        client: { test: 'data' },
+        env: { 'rhales.locale' => 'fr', 'custom_header' => 'value' }
+      )
+
+      expect(context.req).to be_a(described_class::MinimalRequest)
+      expect(context.req.env).to eq({ 'rhales.locale' => 'fr', 'custom_header' => 'value' })
+      expect(context.locale).to eq('fr')
+      expect(context.get('test')).to eq('data')
+    end
   end
 
   describe 'with custom configuration' do

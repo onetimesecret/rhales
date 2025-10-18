@@ -102,11 +102,10 @@ module Rhales
         @server_data
       end
 
-
-
       # Extract session from request object
       def sess
         return default_session unless req
+
         if req.respond_to?(:session)
           session = req.session
           # Check if session has the adapter interface (respond to authenticated?)
@@ -120,6 +119,7 @@ module Rhales
       # Extract user from request object
       def user
         return default_user unless req
+
         if req.respond_to?(:user)
           req.user
         else
@@ -130,6 +130,7 @@ module Rhales
       # Extract locale from request env or use default
       def locale
         return @config.default_locale unless req
+
         if req.respond_to?(:env) && req.env
           # Check for custom rhales.locale first, then HTTP_ACCEPT_LANGUAGE
           custom_locale = req.env['rhales.locale']
@@ -155,7 +156,7 @@ module Rhales
           @req,
           client: normalize_keys(new_client_data),
           server: @server_data,
-          config: @config
+          config: @config,
         )
       end
 
@@ -165,7 +166,7 @@ module Rhales
           @req,
           client: @client_data,
           server: normalize_keys(new_server_data),
-          config: @config
+          config: @config,
         )
       end
 
@@ -175,7 +176,7 @@ module Rhales
           @req,
           client: @client_data.merge(normalize_keys(additional_client_data)),
           server: @server_data,
-          config: @config
+          config: @config,
         )
       end
 
@@ -303,6 +304,16 @@ module Rhales
         csp.nonce_required?
       end
 
+      # Minimal request object for testing that supports env access
+      class MinimalRequest
+        attr_reader :env, :session, :user
+        def initialize(env = {}, session: nil, user: nil)
+          @env = env
+          @session = session
+          @user = user
+        end
+      end
+
       class << self
         # Create context with business data for a specific view
         def for_view(req, client: {}, server: {}, config: nil, **additional_client)
@@ -310,12 +321,9 @@ module Rhales
           new(req, client: all_client, server: server, config: config)
         end
 
-        # Create minimal context for testing (with optional locale override in request env)
-        def minimal(client: {}, server: {}, config: nil, locale: nil)
-          req = if locale
-            # Create a minimal request object with locale in env
-            OpenStruct.new(env: { 'rhales.locale' => locale })
-          end
+        # Create minimal context for testing with optional env override
+        def minimal(client: {}, server: {}, config: nil, env: nil)
+          req = env ? MinimalRequest.new(env) : nil
           new(req, client: client, server: server, config: config)
         end
       end
