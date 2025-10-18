@@ -45,6 +45,58 @@ RSpec.describe Rhales::JSONSerializer do
       result = described_class.dump(nil)
       expect(result).to eq('null')
     end
+
+    it 'produces compact output' do
+      data = { 'user' => 'Alice', 'count' => 42 }
+      result = described_class.dump(data)
+
+      # Compact format should not have extra whitespace
+      expect(result).not_to match(/\n/)
+      expect(result).not_to match(/\s{2,}/)
+    end
+  end
+
+  describe '.pretty_dump' do
+    it 'serializes with pretty formatting' do
+      data = { 'user' => 'Alice', 'count' => 42 }
+      result = described_class.pretty_dump(data)
+
+      expect(result).to be_a(String)
+      expect(result).to include('"user"')
+      expect(result).to include('"Alice"')
+      expect(result).to include('"count"')
+      expect(result).to include('42')
+      # Pretty format should have newlines and indentation
+      expect(result).to match(/\n/)
+    end
+
+    it 'formats nested structures with indentation' do
+      data = {
+        'user' => {
+          'id' => 1,
+          'name' => 'Alice'
+        }
+      }
+      result = described_class.pretty_dump(data)
+
+      expect(result).to include("\n")
+      expect(result).to include('"user"')
+      expect(result).to include('"id"')
+      expect(result).to include('"name"')
+    end
+
+    it 'handles arrays with pretty formatting' do
+      data = { 'items' => [1, 2, 3] }
+      result = described_class.pretty_dump(data)
+
+      expect(result).to include("\n")
+      expect(result).to include('"items"')
+    end
+
+    it 'handles empty structures' do
+      expect(described_class.pretty_dump({})).to include("{")
+      expect(described_class.pretty_dump([])).to include("[")
+    end
   end
 
   describe '.parse' do

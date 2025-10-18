@@ -21,6 +21,10 @@ module Rhales
   #   Rhales::JSONSerializer.parse('{"user":"Alice"}')
   #   # => {"user"=>"Alice"}
   #
+  # @example Pretty printing
+  #   Rhales::JSONSerializer.pretty_dump({ user: 'Alice', count: 42 })
+  #   # => "{\n  \"user\": \"Alice\",\n  \"count\": 42\n}"
+  #
   # @example Check backend
   #   Rhales::JSONSerializer.backend
   #   # => :oj (if available) or :json (stdlib)
@@ -32,10 +36,22 @@ module Rhales
       # Uses the serializer backend determined at load time (Oj or stdlib JSON).
       #
       # @param obj [Object] Ruby object to serialize
-      # @return [String] JSON string
+      # @return [String] JSON string (compact format)
       # @raise [TypeError] if object contains non-serializable types
       def dump(obj)
         @json_dumper.call(obj)
+      end
+
+      # Serialize Ruby object to pretty-printed JSON string
+      #
+      # Uses the serializer backend determined at load time (Oj or stdlib JSON).
+      # Output is formatted with indentation for readability.
+      #
+      # @param obj [Object] Ruby object to serialize
+      # @return [String] Pretty-printed JSON string with 2-space indentation
+      # @raise [TypeError] if object contains non-serializable types
+      def pretty_dump(obj)
+        @json_pretty_dumper.call(obj)
       end
 
       # Parse JSON string to Ruby object
@@ -78,10 +94,13 @@ module Rhales
         if oj_available
           @backend = :oj
           @json_dumper = ->(obj) { Oj.dump(obj, mode: :strict) }
+          @json_pretty_dumper = ->(obj) { Oj.dump(obj, mode: :strict, indent: 2) }
           @json_loader = ->(json_string) { Oj.load(json_string, mode: :strict, symbol_keys: false) }
         else
+          require 'json'
           @backend = :json
           @json_dumper = ->(obj) { JSON.generate(obj) }
+          @json_pretty_dumper = ->(obj) { JSON.pretty_generate(obj) }
           @json_loader = ->(json_string) { JSON.parse(json_string) }
         end
       end
