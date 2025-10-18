@@ -234,12 +234,17 @@ module Rhales
         if req&.respond_to?(:env)
           strategy_result = req.env['otto.strategy_result']
           if strategy_result&.respond_to?(:authenticated?)
-            return strategy_result.authenticated? && user && !user.anonymous?
+            return strategy_result.authenticated? && valid_user_present?
           end
         end
 
         # Fall back to checking session and user directly
-        sess&.authenticated? && user && !user.anonymous?
+        sess&.authenticated? && valid_user_present?
+      end
+
+      # Check if we have a valid (non-anonymous) user
+      def valid_user_present?
+        user && !user.anonymous?
       end
 
       # Get or generate CSP nonce
@@ -310,29 +315,6 @@ module Rhales
         paths
       end
 
-      # Get or generate nonce for CSP
-      def get_or_generate_nonce
-        # Try to get existing nonce from request env
-        if req && req.respond_to?(:env) && req.env
-          existing_nonce = req.env.fetch(@config.nonce_header_name, nil)
-          return existing_nonce if existing_nonce
-        end
-
-        # Generate new nonce if auto_nonce is enabled or CSP is enabled
-        return CSP.generate_nonce if @config.auto_nonce || (@config.csp_enabled && csp_nonce_required?)
-
-        # Return nil if nonce is not needed
-        nil
-      end
-
-      # Check if CSP policy requires nonce
-      def csp_nonce_required?
-        return false unless @config.csp_enabled
-
-        csp = CSP.new(@config)
-        csp.nonce_required?
-      end
-
       # Minimal request object for testing that supports required methods
       class MinimalRequest
         attr_reader :env, :session, :user, :locale, :nonce
@@ -346,7 +328,7 @@ module Rhales
         end
 
         def authenticated?
-          @user && !@user.respond_to?(:anonymous?) || !@user.anonymous?
+          @user && (!@user.respond_to?(:anonymous?) || !@user.anonymous?)
         end
       end
 
