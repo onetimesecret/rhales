@@ -126,7 +126,7 @@ module Rhales
       template_context = create_template_context(additional_context)
 
       # Process template to extract hydration data
-      view = View.new(@context.req, @context.locale, client: {})
+      view = View.new(@context.req, client: {})
       aggregator = HydrationDataAggregator.new(template_context)
 
       # Build composition to get template dependencies

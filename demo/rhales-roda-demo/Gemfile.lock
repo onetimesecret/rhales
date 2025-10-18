@@ -3,6 +3,7 @@ PATH
   specs:
     rhales (0.4.0)
       json_schemer (~> 2.3)
+      tilt
 
 GEM
   remote: https://rubygems.org/
