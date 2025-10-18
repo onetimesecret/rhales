@@ -230,11 +230,16 @@ module Rhales
 
       # Check if user is authenticated
       def authenticated?
-        # Check Otto strategy_result directly (framework-agnostic approach)
-        strategy_result = req&.respond_to?(:env) ? req.env['otto.strategy_result'] : nil
-        return false unless strategy_result&.respond_to?(:authenticated?)
+        # Try Otto strategy_result first (framework integration)
+        if req&.respond_to?(:env)
+          strategy_result = req.env['otto.strategy_result']
+          if strategy_result&.respond_to?(:authenticated?)
+            return strategy_result.authenticated? && user && !user.anonymous?
+          end
+        end
 
-        strategy_result.authenticated? && user && !user.anonymous?
+        # Fall back to checking session and user directly
+        sess&.authenticated? && user && !user.anonymous?
       end
 
       # Get or generate CSP nonce
