@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'json'
 require 'json_schemer'
+require_relative '../json_serializer'
 
 module Rhales
   module Middleware
@@ -138,7 +138,7 @@ module Rhales
           return nil unless File.exist?(schema_path)
 
           schema_json = File.read(schema_path)
-          schema_hash = JSON.parse(schema_json)
+          schema_hash = JSONSerializer.parse(schema_json)
 
           # Create JSONSchemer validator
           # Note: json_schemer handles $schema and $id properly
@@ -172,7 +172,7 @@ module Rhales
         # Match script tags with data-window attribute
         html.scan(/<script[^>]*type=["']application\/json["'][^>]*data-window=["']([^"']+)["'][^>]*>(.*?)<\/script>/m) do |window_var, json_content|
           begin
-            hydration_blocks[window_var] = JSON.parse(json_content.strip)
+            hydration_blocks[window_var] = JSONSerializer.parse(json_content.strip)
           rescue JSON::ParserError => e
             warn "Rhales::SchemaValidator: Failed to parse hydration JSON for window.#{window_var}: #{e.message}"
           end

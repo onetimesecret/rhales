@@ -1,10 +1,10 @@
 # lib/rhales/schema_generator.rb
 
 require 'open3'
-require 'json'
 require 'tempfile'
 require 'fileutils'
 require_relative 'schema_extractor'
+require_relative 'json_serializer'
 
 module Rhales
   # Generates JSON Schemas from Zod schemas using TypeScript execution
@@ -107,7 +107,7 @@ module Rhales
         end
 
         # Parse JSON Schema from stdout
-        json_schema = JSON.parse(stdout)
+        json_schema = JSONSerializer.parse(stdout)
 
         # Save to disk
         save_schema(schema_info[:template_name], json_schema)
@@ -164,7 +164,7 @@ module Rhales
       schema_dir = File.dirname(schema_file)
       FileUtils.mkdir_p(schema_dir) unless File.directory?(schema_dir)
 
-      File.write(schema_file, JSON.pretty_generate(json_schema))
+      File.write(schema_file, JSONSerializer.dump(json_schema))
     end
 
     def validate_setup!

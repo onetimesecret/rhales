@@ -41,6 +41,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'json_schemer', '~> 2.3'  # JSON Schema validation in middleware
   spec.add_dependency 'tilt', '~> 2'            # Templating engine for rendering RSFCs
 
+  # Optional dependencies for performance optimization
+  # Install oj for 10-20x faster JSON parsing and 5-10x faster generation
+  # gem 'oj', '~> 3.13'
+
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem
 end

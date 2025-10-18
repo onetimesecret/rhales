@@ -1,5 +1,5 @@
-require 'json'
 require 'digest'
+require_relative 'json_serializer'
 
 module Rhales
   # Handles API endpoint responses for link-based hydration strategies
@@ -48,7 +48,7 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: JSON.generate(merged_data),
+        content: JSONSerializer.dump(merged_data),
         content_type: 'application/json',
         headers: json_headers(merged_data)
       }
@@ -63,7 +63,7 @@ module Rhales
       }
 
       {
-        content: JSON.generate(error_data),
+        content: JSONSerializer.dump(error_data),
         content_type: 'application/json',
         headers: json_headers(error_data)
       }
@@ -78,7 +78,7 @@ module Rhales
       }
 
       {
-        content: JSON.generate(error_data),
+        content: JSONSerializer.dump(error_data),
         content_type: 'application/json',
         headers: json_headers(error_data)
       }
@@ -89,7 +89,7 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "export default #{JSON.generate(merged_data)};",
+        content: "export default #{JSONSerializer.dump(merged_data)};",
         content_type: 'text/javascript',
         headers: module_headers(merged_data)
       }
@@ -100,7 +100,7 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "#{callback_name}(#{JSON.generate(merged_data)});",
+        content: "#{callback_name}(#{JSONSerializer.dump(merged_data)});",
         content_type: 'application/javascript',
         headers: jsonp_headers(merged_data),
       }
@@ -116,7 +116,7 @@ module Rhales
     def calculate_etag(template_name, additional_context = {})
       merged_data = process_template_data(template_name, additional_context)
       # Simple ETag based on data hash
-      Digest::MD5.hexdigest(JSON.generate(merged_data))
+      Digest::MD5.hexdigest(JSONSerializer.dump(merged_data))
     end
 
     private
@@ -170,7 +170,7 @@ module Rhales
       end
 
       # Add ETag for caching
-      headers['ETag'] = %("#{Digest::MD5.hexdigest(JSON.generate(data))}")
+      headers['ETag'] = %("#{Digest::MD5.hexdigest(JSONSerializer.dump(data))}")
 
       headers
     end
