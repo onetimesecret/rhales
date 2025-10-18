@@ -286,6 +286,33 @@ window.data = {
 
 This creates a **REST API-like boundary** where you explicitly declare what data crosses the security boundary.
 
+### ⚠️ Critical: Schema Validates, Does NOT Filter
+
+**IMPORTANT**: The schema does NOT filter which data gets serialized. The ENTIRE `client:` hash is serialized to the browser. The schema only validates that the serialized data matches the expected structure.
+
+```ruby
+# ⚠️ DANGER: ALL client data serialized (including password!)
+view = Rhales::View.new(request,
+  client: {
+    user: 'Alice',
+    password: 'secret123',  # ← Serialized to browser!
+    api_key: 'xyz'          # ← Serialized to browser!
+  }
+)
+
+# Schema only validates structure, doesn't prevent serialization
+# If schema doesn't include password/api_key, validation FAILS
+# But data already leaked to browser in HTML response
+```
+
+**Your Responsibility**: Ensure the `client:` hash contains ONLY safe, public data. Never pass:
+- Passwords or credentials
+- API keys or secrets
+- Internal URLs or configuration
+- Personally identifiable information (PII) not intended for client
+
+The schema is a **contract validator**, not a **data filter**.
+
 ## Complete Example: Dashboard
 
 ### Backend (Ruby)
