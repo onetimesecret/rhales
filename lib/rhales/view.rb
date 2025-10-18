@@ -63,7 +63,7 @@ module Rhales
     attr_reader :req, :rsfc_context
 
     # Delegate context accessors to rsfc_context
-    def_delegators :@rsfc_context, :sess, :cust, :client, :server, :config, :locale
+    def_delegators :@rsfc_context, :sess, :user, :client, :server, :config, :locale
 
     def initialize(req, client: {}, server: {}, config: nil)
       @req = req

@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 
-# Proof that partials work correctly with UIContext (customer context class)
+# Proof that partials work correctly with UIContext (user context class)
 # This tests that the context scoping fix works with the real OneTimeSecret context
 
 require_relative '../lib/rhales'
 
 puts '=== Testing Partial Inheritance with UIContext ==='
-puts "Verifying that partials work correctly with the customer UIContext class\n\n"
+puts "Verifying that partials work correctly with the user UIContext class\n\n"
 
 # Mock the UIContext class structure for testing
 # (simplified version based on the provided code)

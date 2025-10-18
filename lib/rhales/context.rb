@@ -118,15 +118,13 @@ module Rhales
         end
       end
 
-      # Extract customer/user from request object
-      def cust
-        return default_customer unless req
+      # Extract user from request object
+      def user
+        return default_user unless req
         if req.respond_to?(:user)
           req.user
-        elsif req.respond_to?(:customer)
-          req.customer
         else
-          default_customer
+          default_user
         end
       end
 
@@ -218,8 +216,8 @@ module Rhales
         # Default theme logic - can be overridden by business data
         if @client_data['theme']
           "theme-#{@client_data['theme']}"
-        elsif cust && cust.respond_to?(:theme_preference)
-          "theme-#{cust.theme_preference}"
+        elsif user && user.respond_to?(:theme_preference)
+          "theme-#{user.theme_preference}"
         else
           'theme-light'
         end
@@ -227,7 +225,7 @@ module Rhales
 
       # Check if user is authenticated
       def authenticated?
-        sess && sess.authenticated? && cust && !cust.anonymous?
+        sess && sess.authenticated? && user && !user.anonymous?
       end
 
       # Get default session instance
@@ -235,8 +233,8 @@ module Rhales
         Rhales::Adapters::AnonymousSession.new
       end
 
-      # Get default customer instance
-      def default_customer
+      # Get default user instance
+      def default_user
         Rhales::Adapters::AnonymousAuth.new
       end
 

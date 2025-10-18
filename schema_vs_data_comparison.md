@@ -15,7 +15,7 @@ The test demonstrates that `<schema>` sections provide **direct JSON serializati
 view.render('vue_spa_mount',
   ui: { theme: 'dark', locale: 'en' },
   authentication: { authenticated: true, custid: 'cust_12345' },
-  user: { email: 'test@example.com', customer_since: 1640000000 },
+  user: { email: 'test@example.com', account_since: 1640000000 },
   # ... more props
 )
 ```
@@ -49,7 +49,7 @@ const schema = z.object({
 **Rendered Output:**
 ```html
 <script id="rsfc-data-..." type="application/json" data-window="__ONETIME_STATE__">
-{"ui":{"theme":"dark","locale":"en"},"authentication":{"authenticated":true,"custid":"cust_12345"},"user":{"email":"test@example.com","customer_since":1640000000},...}
+{"ui":{"theme":"dark","locale":"en"},"authentication":{"authenticated":true,"custid":"cust_12345"},"user":{"email":"test@example.com","account_since":1640000000},...}
 </script>
 <script nonce="..." data-hydration-target="__ONETIME_STATE__">
 window['__ONETIME_STATE__'] = JSON.parse(dataScript.textContent);
@@ -194,7 +194,7 @@ class VuePoint
     @serialized_data = run_serializers(@view_vars, i18n)
 
     # Pass hashes directly - no .to_json needed
-    view = Rhales::View.new(@req, @sess, @cust, @locale)
+    view = Rhales::View.new(@req)
     view.render(template_name, @serialized_data)
   end
 end

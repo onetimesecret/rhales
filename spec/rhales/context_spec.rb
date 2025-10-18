@@ -23,7 +23,7 @@ RSpec.describe Rhales::Context do
     it 'initializes with provided parameters' do
       expect(subject.req).to eq(mock_request)
       expect(subject.sess).to eq(mock_session)
-      expect(subject.cust).to eq(mock_user)
+      expect(subject.user).to eq(mock_user)
       expect(subject.locale).to eq('en')
       # Props are normalized to string keys
       expect(subject.client).to eq({ 'page_title' => 'Test Page', 'content' => 'Hello World' })
@@ -32,7 +32,7 @@ RSpec.describe Rhales::Context do
     it 'uses default values when not provided' do
       context = described_class.new(nil)
       expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
-      expect(context.cust).to be_a(Rhales::Adapters::AnonymousAuth)
+      expect(context.user).to be_a(Rhales::Adapters::AnonymousAuth)
       expect(context.locale).to eq('en')
     end
 
@@ -179,7 +179,7 @@ RSpec.describe Rhales::Context do
       context = described_class.minimal(client: { test: 'data' })
       expect(context.req).to be_nil
       expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
-      expect(context.cust).to be_a(Rhales::Adapters::AnonymousAuth)
+      expect(context.user).to be_a(Rhales::Adapters::AnonymousAuth)
       expect(context.locale).to eq('en')
       expect(context.get('test')).to eq('data')
     end
@@ -272,7 +272,7 @@ RSpec.describe Rhales::Context do
 
       expect(new_context.req).to eq(mock_request)
       expect(new_context.sess).to eq(mock_session)
-      expect(new_context.cust).to eq(mock_user)
+      expect(new_context.user).to eq(mock_user)
       expect(new_context.locale).to eq('en')
     end
 
