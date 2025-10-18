@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rhales (0.4.0)
+    rhales (0.5.0)
       json_schemer (~> 2.3)
       tilt (~> 2)
 
