@@ -23,12 +23,11 @@ module Rhales
     # One RSFCContext instance is created per page render and shared across
     # the main template and all partials to maintain security boundaries.
     class Context
-      attr_reader :req, :locale, :client, :server, :config
+      attr_reader :req, :client, :server, :config
 
-      def initialize(req, locale_override = nil, client: {}, server: {}, config: nil)
+      def initialize(req, client: {}, server: {}, config: nil)
         @req           = req
         @config        = config || Rhales.configuration
-        @locale        = locale_override || @config.default_locale
 
         # Normalize keys to strings for consistent access and expose with clean names
         @client_data = normalize_keys(client).freeze
@@ -103,11 +102,10 @@ module Rhales
         @server_data
       end
 
-
-
       # Extract session from request object
       def sess
         return default_session unless req
+
         if req.respond_to?(:session)
           session = req.session
           # Check if session has the adapter interface (respond to authenticated?)
@@ -118,45 +116,67 @@ module Rhales
         end
       end
 
-      # Extract customer/user from request object
-      def cust
-        return default_customer unless req
+      # Extract user from request object
+      def user
+        return default_user unless req
+
         if req.respond_to?(:user)
           req.user
-        elsif req.respond_to?(:customer)
-          req.customer
         else
-          default_customer
+          default_user
+        end
+      end
+
+      # Extract locale from request env or use default
+      def locale
+        return @config.default_locale unless req
+
+        if req.respond_to?(:env) && req.env
+          # Check for custom rhales.locale first, then HTTP_ACCEPT_LANGUAGE
+          custom_locale = req.env['rhales.locale']
+          return custom_locale if custom_locale
+
+          # Parse HTTP_ACCEPT_LANGUAGE header
+          accept_language = req.env['HTTP_ACCEPT_LANGUAGE']
+          if accept_language
+            # Extract first locale from Accept-Language header (e.g., "en-US,en;q=0.9" -> "en-US")
+            first_locale = accept_language.split(',').first&.strip&.split(';')&.first
+            return first_locale if first_locale && !first_locale.empty?
+          end
+
+          @config.default_locale
+        else
+          @config.default_locale
         end
       end
 
       # Create a new context with updated client data
       def with_client(new_client_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: normalize_keys(new_client_data),
           server: @server_data,
-          config: @config
+          config: @config,
         )
       end
 
       # Create a new context with updated server data
       def with_server(new_server_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: @client_data,
           server: normalize_keys(new_server_data),
-          config: @config
+          config: @config,
         )
       end
 
       # Create a new context with merged client data
       def merge_client(additional_client_data)
         self.class.new(
-          @req, @locale,
+          @req,
           client: @client_data.merge(normalize_keys(additional_client_data)),
           server: @server_data,
-          config: @config
+          config: @config,
         )
       end
 
@@ -191,18 +211,13 @@ module Rhales
         app
       end
 
-      # Build API base URL from configuration (deprecated - moved to config)
-      def build_api_base_url
-        @config.api_base_url
-      end
-
       # Determine theme class for CSS
       def determine_theme_class
         # Default theme logic - can be overridden by business data
         if @client_data['theme']
           "theme-#{@client_data['theme']}"
-        elsif cust && cust.respond_to?(:theme_preference)
-          "theme-#{cust.theme_preference}"
+        elsif user && user.respond_to?(:theme_preference)
+          "theme-#{user.theme_preference}"
         else
           'theme-light'
         end
@@ -210,7 +225,7 @@ module Rhales
 
       # Check if user is authenticated
       def authenticated?
-        sess && sess.authenticated? && cust && !cust.anonymous?
+        sess && sess.authenticated? && user && !user.anonymous?
       end
 
       # Get default session instance
@@ -218,8 +233,8 @@ module Rhales
         Rhales::Adapters::AnonymousSession.new
       end
 
-      # Get default customer instance
-      def default_customer
+      # Get default user instance
+      def default_user
         Rhales::Adapters::AnonymousAuth.new
       end
 
@@ -289,16 +304,27 @@ module Rhales
         csp.nonce_required?
       end
 
+      # Minimal request object for testing that supports env access
+      class MinimalRequest
+        attr_reader :env, :session, :user
+        def initialize(env = {}, session: nil, user: nil)
+          @env = env
+          @session = session
+          @user = user
+        end
+      end
+
       class << self
         # Create context with business data for a specific view
-        def for_view(req, locale, client: {}, server: {}, config: nil, **additional_client)
+        def for_view(req, client: {}, server: {}, config: nil, **additional_client)
           all_client = client.merge(additional_client)
-          new(req, locale, client: all_client, server: server, config: config)
+          new(req, client: all_client, server: server, config: config)
         end
 
-        # Create minimal context for testing
-        def minimal(locale = 'en', client: {}, server: {}, config: nil)
-          new(nil, locale, client: client, server: server, config: config)
+        # Create minimal context for testing with optional env override
+        def minimal(client: {}, server: {}, config: nil, env: nil)
+          req = env ? MinimalRequest.new(env) : nil
+          new(req, client: client, server: server, config: config)
         end
       end
   end

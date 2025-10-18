@@ -39,6 +39,7 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies
   spec.add_dependency 'json_schemer', '~> 2.3'  # JSON Schema validation in middleware
+  spec.add_dependency 'tilt', '~> 2'            # Templating engine for rendering RSFCs
 
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem

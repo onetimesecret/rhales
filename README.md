@@ -1,45 +1,46 @@
 # Rhales - Ruby Single File Components
 
 > [!CAUTION]
-> **Early Development Release** - Rhales is in active development (v0.1.0). The API may change between versions. While functional and tested, it's recommended for experimental use and contributions rather than production applications. Please report issues and provide feedback through GitHub.
+> **Early Development Release** - Rhales is in active development (v0.5). The API underwent breaking changes from v0.4. While functional and tested, it's recommended for experimental use and contributions. Please report issues and provide feedback through GitHub.
 
-Rhales is a framework for enforcing data contract between server-rendered pages and client-side data hydration. The key integration point is in `.rue` files called RSFCs (Ruby Single File Components). Similar to Vue.js single file components but designed for server-side rendering with rich data hydration for frontend frameworks like React, Vue, or Svelte.
+Rhales is a **type-safe contract enforcement framework** for server-rendered pages with client-side data hydration. It uses `.rue` files (Ruby Single File Components) that combine Zod schemas, Handlebars templates, and documentation into a single contract-first format.
 
-About the name:
-It all started with a simple mustache template many years ago. The successor to mustache, "Handlebars" is a visual analog for a mustache and successor to the format. "Two Whales Kissing" is another visual analog for a mustache and since we're working with Ruby we could call that, "Two Whales Kissing for Ruby", which is very long. Rhales combines Ruby and Whales into a one-word name for our library. It's a perfect name with absolutely no ambiguity or risk of confusion with other gems.
+**About the name:** It all started with a simple mustache template many years ago. Mustache's successor, "Handlebars," is a visual analog for a mustache. "Two Whales Kissing" is another visual analog for a mustache, and since we're working with Ruby, we call it "Rhales" (Ruby + Whales). It's a perfect name with absolutely no ambiguity or risk of confusion.
+
+## What's New in v0.5
+
+- ✅ **Schema-First Design**: Replaced `<data>` sections with Zod v4 `<schema>` sections
+- ✅ **Type Safety**: Contract enforcement between backend and frontend
+- ✅ **Simplified API**: Removed deprecated parameters (`sess`, `cust`, `props:`, `app_data:`)
+- ✅ **Clear Context Layers**: Renamed `app` → `request` for clarity
+- ✅ **Schema Tooling**: Rake tasks for schema generation and validation
+- ✅ **100% Migration**: All demo templates use schemas
+
+**Breaking changes from v0.4:** See [Migration Guide](#migration-from-v1x-to-v20) below.
 
 ## Features
 
-- **Server-side template rendering** with Handlebars-style syntax
-- **Enhanced hydration strategies** for optimal client-side performance
-- **API endpoint generation** for link-based hydration strategies
-- **Window collision detection** prevents silent data overwrites
-- **Explicit merge strategies** for controlled data sharing (shallow, deep, strict)
-- **Clear security boundaries** between server context and client data
-- **Partial support** for component composition
-- **Pluggable authentication adapters** for any auth system
-- **Security-first design** with XSS protection and automatic CSP generation
+- **Schema-based hydration** with Zod v4 for type-safe client data
+- **Server-side rendering** with Handlebars-style template syntax
+- **Three-layer context** for request, server, and client data separation
+- **Security-first design** with explicit server-to-client boundaries
+- **Layout & partial composition** for component reuse
+- **CSP support** with automatic nonce generation
+- **Framework agnostic** - works with Rails, Roda, Sinatra, Grape, Padrino
 - **Dependency injection** for testability and flexibility
-- **Resource hint optimization** with browser preload/prefetch support
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add to your Gemfile:
 
 ```ruby
 gem 'rhales'
 ```
 
-And then execute:
+Then execute:
 
 ```bash
 bundle install
-```
-
-Or install it yourself as:
-
-```bash
-gem install rhales
 ```
 
 ## Quick Start
@@ -47,54 +48,40 @@ gem install rhales
 ### 1. Configure Rhales
 
 ```ruby
-# Configure Rhales in your application initialization
+# config/initializers/rhales.rb or similar
 Rhales.configure do |config|
   config.default_locale = 'en'
-  config.template_paths = ['templates']  # or 'app/templates', 'views/templates', etc.
+  config.template_paths = ['templates']
   config.features = { dark_mode: true }
   config.site_host = 'example.com'
 
-  # Enhanced Hydration Configuration
-  config.hydration.injection_strategy = :preload  # or :late, :early, :earliest, :prefetch, :modulepreload, :lazy
-  config.hydration.api_endpoint_path = '/api/hydration'
-  config.hydration.fallback_to_late = true
-  config.hydration.api_cache_enabled = true
-  config.hydration.cors_enabled = true
-
-  # CSP configuration (enabled by default)
-  config.csp_enabled = true           # Enable automatic CSP header generation
-  config.auto_nonce = true            # Automatically generate nonces
-  config.csp_policy = {               # Customize CSP policy (optional)
-    'default-src' => ["'self'"],
-    'script-src' => ["'self'", "'nonce-{{nonce}}'"],
-    'style-src' => ["'self'", "'nonce-{{nonce}}'", "'unsafe-hashes'"]
-    # ... more directives
-  }
+  # CSP configuration
+  config.csp_enabled = true
+  config.auto_nonce = true
 end
 ```
 
-### 2. Create a Simple Component
+### 2. Create a .rue Component
 
-Create a `.rue` file in your templates directory:
+Create `templates/hello.rue`:
 
-```rue
-<!-- templates/hello.rue -->
-<data>
-{
-  "greeting": "{{greeting}}",
-  "user_name": "{{user.name}}"
-}
-</data>
+```xml
+<schema lang="js-zod" window="appData">
+const schema = z.object({
+  greeting: z.string(),
+  userName: z.string()
+});
+</schema>
 
 <template>
 <div class="hello-component">
-  <h1>{{greeting}}, {{user.name}}!</h1>
-  <p>Welcome to Rhales RSFC!</p>
+  <h1>{{greeting}}, {{userName}}!</h1>
+  <p>Welcome to Rhales v0.5</p>
 </div>
 </template>
 
 <logic>
-# Simple greeting component
+# Simple greeting component demonstrating schema-based hydration
 </logic>
 ```
 
@@ -102,232 +89,442 @@ Create a `.rue` file in your templates directory:
 
 ```ruby
 # In your controller/route handler
-view = Rhales::View.new(request, session, user, 'en',
-  props: {
+view = Rhales::View.new(
+  request,
+  client: {
     greeting: 'Hello',
-    user: { name: 'World' }
+    userName: 'World'
   }
 )
 
 html = view.render('hello')
-# Returns HTML with embedded JSON for client-side hydration
+# Returns HTML with schema-validated data injected as window.appData
+```
+
+## The .rue File Format
+
+A `.rue` file contains three sections:
+
+```xml
+<schema lang="js-zod" window="data" [version="2"] [envelope="Envelope"] [layout="layouts/main"]>
+const schema = z.object({
+  // Zod v4 schema defining client data contract
+});
+</schema>
+
+<template>
+  <!-- Handlebars-style HTML template -->
+  <!-- Has access to ALL context layers -->
+</template>
+
+<logic>
+# Optional Ruby documentation/comments
+</logic>
+```
+
+### Schema Section Attributes
+
+| Attribute | Required | Description | Example |
+|-----------|----------|-------------|---------|
+| `lang` | Yes | Schema language (currently only `js-zod`) | `"js-zod"` |
+| `window` | Yes | Browser global name | `"appData"` → `window.appData` |
+| `version` | No | Schema version | `"2"` |
+| `envelope` | No | Response wrapper type | `"SuccessEnvelope"` |
+| `layout` | No | Layout template reference | `"layouts/main"` |
+
+### Zod Schema Examples
+
+```javascript
+// Simple types
+z.object({
+  user: z.string(),
+  count: z.number(),
+  active: z.boolean()
+})
+
+// Complex nested structures
+z.object({
+  user: z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email()
+  }),
+  items: z.array(z.object({
+    id: z.number(),
+    title: z.string(),
+    price: z.number().positive()
+  })),
+  metadata: z.record(z.string())
+})
+
+// Optional and nullable
+z.object({
+  theme: z.string().optional(),
+  lastLogin: z.string().nullable()
+})
 ```
 
 ## Context and Data Model
 
-Rhales uses a **two-layer data model** for template rendering:
+Rhales uses a **three-layer context system** that separates concerns and enforces security boundaries:
 
-### 1. App Data (Framework Layer)
-All framework-provided data is available under the `app` namespace:
+### 1. Request Layer (Framework Data)
 
-```handlebars
-<!-- Framework data through app namespace -->
-{{app.csrf_token}}       <!-- CSRF token for forms -->
-{{app.nonce}}            <!-- CSP nonce for scripts -->
-{{app.authenticated}}    <!-- Authentication state -->
-{{app.environment}}      <!-- Current environment -->
-{{app.features.dark_mode}} <!-- Feature flags -->
-{{app.theme_class}}      <!-- Current theme -->
-```
-
-**Available App Variables:**
-- `app.api_base_url` - Base URL for API calls
-- `app.authenticated` - Whether user is authenticated
-- `app.csrf_token` - CSRF token for forms
-- `app.development` - Whether in development mode
-- `app.environment` - Current environment (production/staging/dev)
-- `app.features` - Feature flags hash
-- `app.nonce` - CSP nonce for inline scripts
-- `app.theme_class` - Current theme CSS class
-
-### 2. Props Data (Application Layer)
-Your application-specific data passed to each view:
+Framework-provided data available under the `request` namespace:
 
 ```handlebars
-<!-- Application data -->
-{{user.name}}            <!-- Direct access -->
-{{page_title}}           <!-- Props take precedence -->
-{{#if user.admin?}}
-  <a href="/admin">Admin Panel</a>
-{{/if}}
+{{request.nonce}}          <!-- CSP nonce for scripts -->
+{{request.csrf_token}}     <!-- CSRF token for forms -->
+{{request.authenticated?}} <!-- Authentication state -->
+{{request.locale}}         <!-- Current locale -->
 ```
+
+**Available Request Variables:**
+- `request.nonce` - CSP nonce for inline scripts/styles
+- `request.csrf_token` - CSRF token for form submissions
+- `request.authenticated?` - User authentication status
+- `request.locale` - Current locale (e.g., 'en', 'es')
+- `request.session` - Session object (if available)
+- `request.user` - User object (if available)
+
+### 2. Server Layer (Template-Only Data)
+
+Application data that stays on the server (not sent to browser):
+
+```ruby
+view = Rhales::View.new(
+  request,
+  server: {
+    page_title: 'Dashboard',
+    vite_assets_html: vite_javascript_tag('application'),
+    admin_notes: 'Internal use only'  # Never sent to client
+  }
+)
+```
+
+```handlebars
+{{server.page_title}}        <!-- Available in templates -->
+{{server.vite_assets_html}}  <!-- Server-side only -->
+```
+
+### 3. Client Layer (Serialized to Browser)
+
+Data serialized to browser via schema validation:
+
+```ruby
+view = Rhales::View.new(
+  request,
+  client: {
+    user: current_user.name,
+    items: Item.all.map(&:to_h)
+  }
+)
+```
+
+```handlebars
+{{client.user}}   <!-- Also serialized to window.appData.user -->
+{{client.items}}  <!-- Also serialized to window.appData.items -->
+```
+
+### Context Layer Fallback
+
+Variables can use shorthand notation (checks `client` → `server` → `request`):
+
+```handlebars
+<!-- Explicit layer access -->
+{{client.user}}
+{{server.page_title}}
+{{request.nonce}}
+
+<!-- Shorthand (automatic layer lookup) -->
+{{user}}        <!-- Finds client.user -->
+{{page_title}}  <!-- Finds server.page_title -->
+{{nonce}}       <!-- Finds request.nonce -->
+```
+
+## Security Model: Server-to-Client Boundary
+
+The `.rue` format enforces a **security boundary at the server-to-client handoff**:
 
 ### Server Templates: Full Context Access
-Templates have complete access to all server-side data:
-- User objects and authentication state
-- Database connections and internal APIs
-- Configuration values and secrets
-- Request metadata (CSRF tokens, nonces)
+
+Templates have access to ALL context layers:
 
 ```handlebars
-<!-- Full server access in templates -->
-{{#if user.admin?}}
-  <a href="/admin">Admin Panel</a>
+<!-- Server-side template has full access -->
+{{#if request.authenticated?}}
+  <div class="admin-panel">
+    <h2>Welcome {{client.user}}</h2>
+    <p>Secret: {{server.admin_notes}}</p>  <!-- Not sent to browser -->
+  </div>
 {{/if}}
-<div class="{{app.theme_class}}">{{user.full_name}}</div>
 ```
 
 ### Client Data: Explicit Allowlist
-Only data declared in `<data>` sections reaches the browser:
 
-```rue
-<data>
-{
-  "display_name": "{{user.name}}",
-  "preferences": {
-    "theme": "{{user.theme}}"
-  }
-}
-</data>
+Only schema-declared data reaches the browser:
+
+```xml
+<schema lang="js-zod" window="data">
+const schema = z.object({
+  user: z.string(),
+  userId: z.number()
+  // NOT declared: admin_notes, secret_key, internal_api_url
+});
+</schema>
 ```
 
-Becomes:
+**Result on client:**
+
 ```javascript
 window.data = {
-  "display_name": "John Doe",
-  "preferences": { "theme": "dark" }
+  user: "Alice",
+  userId: 123
+  // admin_notes, secret_key NOT included (never declared in schema)
 }
-// No access to user.admin?, internal APIs, etc.
 ```
 
-This creates a **REST API-like boundary** where you explicitly declare what data crosses the server-to-client security boundary.
+This creates a **REST API-like boundary** where you explicitly declare what data crosses the security boundary.
 
-For complete details, see [Context and Data Boundaries Documentation](docs/CONTEXT_AND_DATA_BOUNDARIES.md).
-  config.site_ssl_enabled = true
+## Complete Example: Dashboard
+
+### Backend (Ruby)
+
+```ruby
+# config/routes.rb (Rails) or route handler
+class DashboardController < ApplicationController
+  def show
+    view = Rhales::View.new(
+      request,
+      client: {
+        user: current_user.name,
+        userId: current_user.id,
+        items: current_user.items.map { |i|
+          { id: i.id, name: i.name, price: i.price }
+        },
+        apiBaseUrl: ENV['API_BASE_URL']
+      },
+      server: {
+        page_title: 'Dashboard',
+        internal_notes: 'User has premium access',  # Server-only
+        vite_assets: vite_javascript_tag('application')
+      }
+    )
+
+    render html: view.render('dashboard').html_safe
+  end
 end
 ```
 
-### 2. Create a .rue file
-
-Create `templates/dashboard.rue` - notice how the `<data>` section defines exactly what your frontend app will receive:
+### Frontend (.rue file)
 
 ```xml
-<data window="appState" schema="@/src/types/app-state.d.ts">
-{
-  "user": {
-    "id": "{{user.id}}",
-    "name": "{{user.name}}",
-    "email": "{{user.email}}",
-    "preferences": {{user.preferences}}
-  },
-  "products": {{recent_products}},
-  "cart": {
-    "items": {{cart.items}},
-    "total": "{{cart.total}}"
-  },
-  "api": {
-    "baseUrl": "{{api_base_url}}",
-    "csrfToken": "{{csrf_token}}"
-  },
-  "features": {{enabled_features}}
-}
-</data>
+<!-- templates/dashboard.rue -->
+<schema lang="js-zod" version="2" window="dashboardData" layout="layouts/main">
+const schema = z.object({
+  user: z.string(),
+  userId: z.number(),
+  items: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    price: z.number()
+  })),
+  apiBaseUrl: z.string().url()
+});
+</schema>
 
 <template>
-<!doctype html>
-<html lang="{{locale}}" class="{{theme_class}}">
+<div class="dashboard">
+  <h1>{{server.page_title}}</h1>
+
+  {{#if request.authenticated?}}
+    <p>Welcome, {{client.user}}!</p>
+
+    <div class="items">
+      {{#each client.items}}
+        <div class="item">
+          <h3>{{name}}</h3>
+          <p>${{price}}</p>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <p>Please log in</p>
+  {{/if}}
+</div>
+
+<!-- Client-side JavaScript can access validated data -->
+<script nonce="{{request.nonce}}">
+  // window.dashboardData is populated with schema-validated data
+  console.log('User ID:', window.dashboardData.userId);
+  console.log('Items:', window.dashboardData.items);
+
+  // Fetch additional data from API
+  fetch(window.dashboardData.apiBaseUrl + '/user/preferences')
+    .then(r => r.json())
+    .then(prefs => console.log('Preferences:', prefs));
+</script>
+</template>
+
+<logic>
+# Dashboard component demonstrates:
+# - Schema-based type safety
+# - Three-layer context access
+# - Conditional rendering based on auth
+# - Client-side data hydration
+# - CSP nonce support
+</logic>
+```
+
+### Generated HTML
+
+```html
+<div class="dashboard">
+  <h1>Dashboard</h1>
+  <p>Welcome, Alice!</p>
+  <div class="items">
+    <div class="item"><h3>Widget</h3><p>$19.99</p></div>
+    <div class="item"><h3>Gadget</h3><p>$29.99</p></div>
+  </div>
+</div>
+
+<!-- Hydration script injected automatically -->
+<script id="rsfc-data-abc123" type="application/json">
+{"user":"Alice","userId":123,"items":[{"id":1,"name":"Widget","price":19.99},{"id":2,"name":"Gadget","price":29.99}],"apiBaseUrl":"https://api.example.com"}
+</script>
+<script nonce="nonce-xyz789">
+window.dashboardData = JSON.parse(document.getElementById('rsfc-data-abc123').textContent);
+</script>
+
+<!-- Your client-side script -->
+<script nonce="nonce-xyz789">
+  console.log('User ID:', window.dashboardData.userId);
+  console.log('Items:', window.dashboardData.items);
+  fetch(window.dashboardData.apiBaseUrl + '/user/preferences')
+    .then(r => r.json())
+    .then(prefs => console.log('Preferences:', prefs));
+</script>
+```
+
+## Template Syntax
+
+Rhales uses Handlebars-style syntax:
+
+### Variables
+
+```handlebars
+{{variable}}       <!-- HTML-escaped (safe) -->
+{{{variable}}}     <!-- Raw output (use carefully!) -->
+{{object.property}}  <!-- Dot notation -->
+{{array.0}}        <!-- Array index -->
+```
+
+### Conditionals
+
+```handlebars
+{{#if condition}}
+  Content when true
+{{else}}
+  Content when false
+{{/if}}
+
+{{#unless condition}}
+  Content when false
+{{/unless}}
+```
+
+**Truthy/Falsy:**
+- Falsy: `nil`, `null`, `false`, `""`, `0`, `"false"`
+- Truthy: All other values
+
+### Loops
+
+```handlebars
+{{#each items}}
+  {{@index}}      <!-- 0-based index -->
+  {{@first}}      <!-- true if first item -->
+  {{@last}}       <!-- true if last item -->
+  {{this}}        <!-- current item (if primitive) -->
+  {{name}}        <!-- item.name (if object) -->
+{{/each}}
+```
+
+### Partials
+
+```handlebars
+{{> header}}              <!-- Include templates/header.rue -->
+{{> components/nav}}      <!-- Include templates/components/nav.rue -->
+```
+
+### Layouts
+
+```xml
+<!-- templates/pages/home.rue -->
+<schema lang="js-zod" window="data" layout="layouts/main">
+const schema = z.object({ page: z.string() });
+</schema>
+
+<template>
+  <h1>Home Page Content</h1>
+</template>
+```
+
+```xml
+<!-- templates/layouts/main.rue -->
+<schema lang="js-zod" window="layoutData">
+const schema = z.object({ siteName: z.string() });
+</schema>
+
+<template>
+<!DOCTYPE html>
+<html>
 <head>
-  <title>{{page_title}}</title>
-  <meta name="csrf-token" content="{{csrf_token}}">
+  <title>{{server.siteName}}</title>
 </head>
 <body>
-  <!-- Critical: The mounting point for your frontend framework -->
-  <div id="app">
-    <!-- Server-rendered content for SEO and initial load -->
-    <nav>{{> navigation}}</nav>
-    <main>
-      <h1>{{page_title}}</h1>
-      {{#if user}}
-        <p>Welcome back, {{user.name}}!</p>
-      {{else}}
-        <p>Please sign in to continue.</p>
-      {{/if}}
-    </main>
-  </div>
-
-  <!--
-    RSFC automatically generates hydration scripts:
-    - <script type="application/json" id="app-state-data">{...}</script>
-    - <script>window.appState = JSON.parse(...);</script>
-  -->
-
-  <!-- Your frontend framework takes over from here -->
-  <script nonce="{{nonce}}" type="module" src="/assets/app.js"></script>
+  <header>{{> components/header}}</header>
+  <main>
+    <!-- Page content injected here -->
+  </main>
+  <footer>{{> components/footer}}</footer>
 </body>
 </html>
 </template>
 ```
 
-### 3. The Manifold: Server-to-SPA Handoff
+## Schema Tooling
 
-This example demonstrates Rhales' core value proposition: **eliminating the coordination gap** between server state and frontend frameworks.
+Rhales provides rake tasks for schema management:
 
-**What you get:**
-- ✅ **Declarative data contract**: The `<data>` section explicitly defines what your frontend receives
-- ✅ **Type safety ready**: Schema reference points to TypeScript definitions
-- ✅ **Zero coordination overhead**: No separate API design needed for initial state
-- ✅ **SEO + SPA**: Server-rendered HTML with automatic client hydration
-- ✅ **Security boundaries**: Only explicitly declared data reaches the client
+```bash
+# Generate JSON schemas from .rue templates
+rake rhales:schema:generate TEMPLATES_DIR=./templates
 
-### 4. RSFC Security Model
+# Validate existing JSON schemas
+rake rhales:schema:validate
 
-**Key Principle: The security boundary is at the server-to-client handoff, not within server-side rendering.**
-
-```xml
-<data>
-{
-  "message": "{{greeting}}",    <!-- ✅ Exposed to client -->
-  "user": {
-    "name": "{{user.name}}"     <!-- ✅ Exposed to client -->
-  }
-  <!-- ❌ user.secret_key not declared, won't reach client -->
-}
-</data>
-
-<template>
-  <h1>{{greeting}}</h1>          <!-- ✅ Full server context access -->
-  <p>{{user.name}}</p>           <!-- ✅ Can access user object methods -->
-  <p>{{user.secret_key}}</p>     <!-- ✅ Server-side only, not in <data> -->
-</template>
+# Show schema statistics
+rake rhales:schema:stats TEMPLATES_DIR=./templates
 ```
 
-**Template Section (`<template>`):**
-- ✅ **Full server context access** - like ERB, HAML, or any server-side template
-- ✅ **Can call object methods** - `{{user.full_name}}`, `{{products.count}}`, etc.
-- ✅ **Rich server-side logic** - access to full business objects and their capabilities
-- ✅ **Private by default** - nothing in templates reaches the client unless explicitly declared
+**Example output:**
 
-**Data Section (`<data>`):**
-- ✅ **Explicit client allowlist** - only declared variables reach the browser
-- ✅ **JSON serialization boundary** - like designing a REST API endpoint
-- ✅ **Type safety foundation** - can validate against schemas
-- ❌ **Cannot expose secrets** - `user.secret_key` won't reach client unless declared
+```
+Schema Statistics
+============================================================
+Templates directory: templates
 
-This design gives you the flexibility of full server-side templating while maintaining explicit control over what data reaches the client.
+Total .rue files: 25
+Files with <schema>: 25
+Files without <schema>: 0
 
-**Generated output:**
-```html
-<!-- Server-rendered HTML -->
-<div id="app">
-  <nav>...</nav>
-  <main><h1>User Dashboard</h1><p>Welcome back, Alice!</p></main>
-</div>
-
-<!-- Automatic client hydration -->
-<script id="app-state-data" type="application/json">
-{"user":{"id":123,"name":"Alice","email":"alice@example.com","preferences":{...}},"products":[...],"cart":{...},"api":{...},"features":{...}}
-</script>
-<script nonce="abc123">
-window.appState = JSON.parse(document.getElementById('app-state-data').textContent);
-</script>
-
-<!-- Your Vue/React/Svelte app mounts here with full state -->
-<script nonce="abc123" type="module" src="/assets/app.js"></script>
+By language:
+  js-zod: 25
 ```
 
-### 5. Framework Integration
+## Framework Integration
 
-#### Rails
+### Rails
 
 ```ruby
 # config/initializers/rhales.rb
@@ -338,126 +535,23 @@ end
 
 # app/controllers/application_controller.rb
 class ApplicationController < ActionController::Base
-  def render_rhales(template_name, data = {})
-    view = Rhales::View.new(request, session, current_user, I18n.locale)
-    view.render(template_name, data)
+  def render_rhales(template_name, client: {}, server: {})
+    view = Rhales::View.new(request, client: client, server: server)
+    view.render(template_name)
   end
 end
 
 # In your controller
 def dashboard
-  @dashboard_html = render_rhales('dashboard',
-    page_title: 'User Dashboard',
-    user: current_user,
-    recent_products: Product.recent.limit(5),
-    cart: current_user.cart,
-    enabled_features: Feature.enabled_for(current_user)
+  html = render_rhales('dashboard',
+    client: { user: current_user.name, items: @items },
+    server: { page_title: 'Dashboard' }
   )
+  render html: html.html_safe
 end
 ```
 
-#### Sinatra
-
-```ruby
-# app.rb
-require 'sinatra'
-require 'rhales'
-
-Rhales.configure do |config|
-  config.template_paths = ['templates']
-  config.default_locale = 'en'
-end
-
-helpers do
-  def render_rhales(template_name, data = {})
-    view = Rhales::View.new(request, session, current_user, 'en')
-    view.render(template_name, data)
-  end
-end
-
-get '/dashboard' do
-  @dashboard_html = render_rhales('dashboard',
-    page_title: 'Dashboard',
-    user: current_user,
-    recent_products: Product.recent,
-    cart: session[:cart] || {},
-    enabled_features: FEATURES
-  )
-  erb :dashboard
-end
-```
-
-#### Padrino
-
-```ruby
-# config/apps.rb
-Padrino.configure_apps do
-  Rhales.configure do |config|
-    config.template_paths = ['app/templates']
-    config.default_locale = 'en'
-  end
-end
-
-# app/helpers/application_helper.rb
-module ApplicationHelper
-  def render_rhales(template_name, data = {})
-    view = Rhales::View.new(request, session, current_user, locale)
-    view.render(template_name, data)
-  end
-end
-
-# app/controllers/application_controller.rb
-get :dashboard do
-  @dashboard_html = render_rhales('dashboard',
-    page_title: 'Dashboard',
-    user: current_user,
-    recent_products: Product.recent,
-    cart: current_user&.cart,
-    enabled_features: settings.features
-  )
-  render :dashboard
-end
-```
-
-#### Grape
-
-```ruby
-# config.ru or initializer
-require 'grape'
-require 'rhales'
-
-Rhales.configure do |config|
-  config.template_paths = ['templates']
-  config.default_locale = 'en'
-end
-
-# api.rb
-class MyAPI < Grape::API
-  helpers do
-    def render_rhales(template_name, data = {})
-      # Create mock request/session for Grape
-      mock_request = OpenStruct.new(env: env)
-      mock_session = {}
-
-      view = Rhales::View.new(mock_request, mock_session, current_user, 'en')
-      view.render(template_name, data)
-    end
-  end
-
-  get '/dashboard' do
-    content_type 'text/html'
-    render_rhales('dashboard',
-      page_title: 'API Dashboard',
-      user: current_user,
-      recent_products: [],
-      cart: {},
-      enabled_features: { api_v2: true }
-    )
-  end
-end
-```
-
-#### Roda
+### Roda
 
 ```ruby
 # app.rb
@@ -472,594 +566,121 @@ class App < Roda
     config.default_locale = 'en'
   end
 
-  def render_rhales(template_name, data = {})
-    view = Rhales::View.new(request, session, current_user, 'en')
-    view.render(template_name, data)
-  end
-
   route do |r|
     r.on 'dashboard' do
-      @dashboard_html = render_rhales('dashboard',
-        page_title: 'Dashboard',
-        user: current_user,
-        recent_products: [],
-        cart: session[:cart],
-        enabled_features: FEATURES
+      view = Rhales::View.new(
+        request,
+        client: { user: current_user.name },
+        server: { page_title: 'Dashboard' }
       )
-      view('dashboard')
+      view.render('dashboard')
     end
   end
 end
 ```
 
-### 6. Basic Usage
+### Sinatra
 
 ```ruby
-# Create a view instance
-view = Rhales::View.new(request, session, current_user, locale)
+require 'sinatra'
+require 'rhales'
 
-# Render a template with rich data for frontend hydration
-html = view.render('dashboard',
-  page_title: 'User Dashboard',
-  user: current_user,
-  recent_products: Product.recent.limit(5),
-  cart: current_user.cart,
-  enabled_features: Feature.enabled_for(current_user)
-)
-
-# Or use the convenience method
-html = Rhales.render('dashboard',
-  request: request,
-  session: session,
-  user: current_user,
-  page_title: 'User Dashboard',
-  recent_products: products,
-  cart: cart_data,
-  enabled_features: features
-)
-```
-
-## Authentication Adapters
-
-Rhales supports pluggable authentication adapters. Implement the `Rhales::Adapters::BaseAuth` interface:
-
-```ruby
-class MyAuthAdapter < Rhales::Adapters::BaseAuth
-  def initialize(user)
-    @user = user
-  end
-
-  def anonymous?
-    @user.nil?
-  end
-
-  def theme_preference
-    @user&.theme || 'light'
-  end
-
-  def user_id
-    @user&.id
-  end
-
-  def role?(role)
-    @user&.roles&.include?(role)
-  end
-end
-
-# Use with Rhales
-user_adapter = MyAuthAdapter.new(current_user)
-view = Rhales::View.new(request, session, user_adapter)
-```
-
-## Template Syntax
-
-Rhales uses a Handlebars-style template syntax:
-
-### Variables
-- `{{variable}}` - HTML-escaped output
-- `{{{variable}}}` - Raw output (use carefully!)
-
-### Conditionals
-```erb
-{{#if condition}}
-  Content when true
-{{/if}}
-
-{{#unless condition}}
-  Content when false
-{{/unless}}
-```
-
-### Iteration
-```erb
-{{#each items}}
-  <div>{{name}} - {{@index}}</div>
-{{/each}}
-```
-
-### Partials
-```erb
-{{> header}}
-{{> navigation}}
-```
-
-## Enhanced Hydration Strategies
-
-Rhales provides multiple hydration strategies optimized for different performance requirements and use cases:
-
-### Traditional Strategies
-
-#### `:late` (Default - Backwards Compatible)
-Injects scripts before the closing `</body>` tag. Safe and reliable for all scenarios.
-
-```ruby
-config.hydration.injection_strategy = :late
-```
-
-#### `:early` (Mount Point Optimization)
-Injects scripts immediately before frontend mount points (`#app`, `#root`, etc.) for improved Time-to-Interactive.
-
-```ruby
-config.hydration.injection_strategy = :early
-config.hydration.mount_point_selectors = ['#app', '#root', '[data-mount]']
-config.hydration.fallback_to_late = true
-```
-
-#### `:earliest` (Head Section Injection)
-Injects scripts in the HTML head section for maximum performance, after meta tags and stylesheets.
-
-```ruby
-config.hydration.injection_strategy = :earliest
-config.hydration.fallback_to_late = true
-```
-
-### Link-Based Strategies (API Endpoints)
-
-These strategies generate separate API endpoints for hydration data, enabling better caching, parallel loading, and reduced HTML payload sizes.
-
-#### `:preload` (High Priority Loading)
-Generates `<link rel="preload">` tags with immediate script execution for critical data.
-
-```ruby
-config.hydration.injection_strategy = :preload
-config.hydration.api_endpoint_path = '/api/hydration'
-config.hydration.link_crossorigin = true
-```
-
-#### `:prefetch` (Future Page Optimization)
-Generates `<link rel="prefetch">` tags for data that will be needed on subsequent page loads.
-
-```ruby
-config.hydration.injection_strategy = :prefetch
-```
-
-#### `:modulepreload` (ES Module Support)
-Generates `<link rel="modulepreload">` tags with ES module imports for modern applications.
-
-```ruby
-config.hydration.injection_strategy = :modulepreload
-```
-
-#### `:lazy` (Intersection Observer)
-Loads data only when mount points become visible using Intersection Observer API.
-
-```ruby
-config.hydration.injection_strategy = :lazy
-config.hydration.lazy_mount_selector = '#app'
-```
-
-#### `:link` (Manual Loading)
-Generates basic link references with manual loading functions for custom hydration logic.
-
-```ruby
-config.hydration.injection_strategy = :link
-```
-
-### Strategy Performance Comparison
-
-| Strategy | Time-to-Interactive | Caching | Parallel Loading | Best Use Case |
-|----------|-------------------|---------|------------------|---------------|
-| `:late` | Standard | Basic | No | Legacy compatibility |
-| `:early` | Improved | Basic | No | SPA mount point optimization |
-| `:earliest` | Excellent | Basic | No | Critical path optimization |
-| `:preload` | Excellent | Advanced | Yes | High-priority data |
-| `:prefetch` | Standard | Advanced | Yes | Multi-page apps |
-| `:modulepreload` | Excellent | Advanced | Yes | Modern ES modules |
-| `:lazy` | Variable | Advanced | Yes | Below-fold content |
-| `:link` | Manual | Advanced | Yes | Custom implementations |
-
-### API Endpoint Setup
-
-For link-based strategies, you'll need to set up API endpoints in your application:
-
-```ruby
-# Rails example
-class HydrationController < ApplicationController
-  def show
-    template_name = params[:template]
-    endpoint = Rhales::HydrationEndpoint.new(rhales_config, current_context)
-
-    case request.format
-    when :json
-      result = endpoint.render_json(template_name)
-    when :js
-      result = endpoint.render_module(template_name)
-    else
-      result = endpoint.render_json(template_name)
-    end
-
-    render json: result[:content],
-           content_type: result[:content_type],
-           headers: result[:headers]
-  end
-end
-
-# routes.rb
-get '/api/hydration/:template', to: 'hydration#show'
-get '/api/hydration/:template.js', to: 'hydration#show', defaults: { format: :js }
-```
-
-#### Advanced Non-Rails Example
-
-For applications using custom frameworks or middleware, here's a complete controller implementation from a production Rack-based application:
-
-```ruby
-# Example from OneTime Secret (non-Rails application)
-module Manifold
-  module Controllers
-    class Data
-      include Controllers::Base
-
-      def rhales_hydration
-        publically do
-          template_name = params[:template]
-
-          # Build Rhales context from your app's current state
-          context = Rhales::Context.for_view(req, sess, cust, locale)
-          endpoint = Rhales::HydrationEndpoint.new(Rhales.configuration, context)
-
-          # Handle different formats
-          result = case req.env['HTTP_ACCEPT']
-                   when /application\/javascript/
-                     endpoint.render_module(template_name)
-                   else
-                     endpoint.render_json(template_name)
-                   end
-
-          # Set response content type and headers
-          res['Content-Type'] = result[:content_type]
-          result[:headers]&.each { |key, value| res[key] = value }
-
-          # Return the content
-          res.body = result[:content]
-        end
-      end
-    end
-  end
-end
-
-# Route configuration (framework-specific)
-# GET /api/hydration/:template -> data#rhales_hydration
-```
-
-**Key differences from Rails:**
-- **Framework-agnostic**: Uses `req`, `res`, `sess`, `cust`, `locale` from your framework
-- **Context creation**: Manually creates `Rhales::Context.for_view` with app objects
-- **Global configuration**: Uses `Rhales.configuration` instead of passing custom config
-- **Direct response handling**: Sets headers and body directly instead of using `render`
-- **Custom format detection**: Uses `req.env['HTTP_ACCEPT']` instead of `request.format`
-
-### Data Hydration Examples
-
-#### Traditional Inline Hydration
-```erb
-<data window="myData">
-{
-  "apiUrl": "{{api_base_url}}",
-  "user": {{user}},
-  "csrfToken": "{{csrf_token}}"
-}
-</data>
-```
-
-Generates:
-```html
-<script id="rsfc-data-abc123" type="application/json">
-{"apiUrl":"https://api.example.com","user":{"id":123},"csrfToken":"token"}
-</script>
-<script nonce="nonce123">
-window.myData = JSON.parse(document.getElementById('rsfc-data-abc123').textContent);
-</script>
-```
-
-#### Link-Based Hydration (`:preload` strategy)
-```erb
-<data window="myData">
-{
-  "apiUrl": "{{api_base_url}}",
-  "user": {{user}},
-  "csrfToken": "{{csrf_token}}"
-}
-</data>
-```
-
-Generates:
-```html
-<link rel="preload" href="/api/hydration/my_template" as="fetch" crossorigin>
-<script nonce="nonce123" data-hydration-target="myData">
-fetch('/api/hydration/my_template')
-  .then(r => r.json())
-  .then(data => {
-    window.myData = data;
-    window.dispatchEvent(new CustomEvent('rhales:hydrated', {
-      detail: { target: 'myData', data: data }
-    }));
-  })
-  .catch(err => console.error('Rhales hydration error:', err));
-</script>
-```
-
-#### ES Module Hydration (`:modulepreload` strategy)
-```html
-<link rel="modulepreload" href="/api/hydration/my_template.js">
-<script type="module" nonce="nonce123" data-hydration-target="myData">
-import data from '/api/hydration/my_template.js';
-window.myData = data;
-window.dispatchEvent(new CustomEvent('rhales:hydrated', {
-  detail: { target: 'myData', data: data }
-}));
-</script>
-```
-
-### Migration Guide
-
-#### From Basic to Enhanced Hydration
-
-**Step 1**: Update your configuration to use enhanced strategies:
-
-```ruby
-# Before (implicit :late strategy)
 Rhales.configure do |config|
-  # Basic configuration
+  config.template_paths = ['templates']
+  config.default_locale = 'en'
 end
 
-# After (explicit strategy selection)
-Rhales.configure do |config|
-  # Choose your strategy based on your needs
-  config.hydration.injection_strategy = :preload  # or :early, :earliest, etc.
-  config.hydration.fallback_to_late = true        # Safe fallback
-  config.hydration.api_endpoint_path = '/api/hydration'
-  config.hydration.api_cache_enabled = true
-end
-```
-
-**Step 2**: Set up API endpoints for link-based strategies (if using `:preload`, `:prefetch`, `:modulepreload`, `:lazy`, or `:link`):
-
-```ruby
-# Add to your routes
-get '/api/hydration/:template', to: 'hydration#show'
-get '/api/hydration/:template.js', to: 'hydration#show', defaults: { format: :js }
-
-# Create controller
-class HydrationController < ApplicationController
-  def show
-    template_name = params[:template]
-    endpoint = Rhales::HydrationEndpoint.new(rhales_config, current_context)
-    result = endpoint.render_json(template_name)
-
-    render json: result[:content],
-           content_type: result[:content_type],
-           headers: result[:headers]
+helpers do
+  def render_rhales(template_name, client: {}, server: {})
+    view = Rhales::View.new(request, client: client, server: server)
+    view.render(template_name)
   end
 end
+
+get '/dashboard' do
+  render_rhales('dashboard',
+    client: { user: 'Alice' },
+    server: { page_title: 'Dashboard' }
+  )
+end
 ```
 
-**Step 3**: Update your frontend code to listen for hydration events (optional):
+### Grape
 
-```javascript
-// Listen for hydration completion
-window.addEventListener('rhales:hydrated', (event) => {
-  console.log('Data loaded:', event.detail.target, event.detail.data);
+```ruby
+require 'grape'
+require 'rhales'
 
-  // Initialize your app with the loaded data
-  if (event.detail.target === 'appData') {
-    initializeApp(event.detail.data);
-  }
-});
-```
+Rhales.configure do |config|
+  config.template_paths = ['templates']
+  config.default_locale = 'en'
+end
 
-### Troubleshooting
+class MyAPI < Grape::API
+  helpers do
+    def render_rhales(template_name, client: {}, server: {})
+      mock_request = OpenStruct.new(env: env)
+      view = Rhales::View.new(mock_request, client: client, server: server)
+      view.render(template_name)
+    end
+  end
 
-#### Common Issues
-
-**1. Link-based strategies not working**
-- Ensure API endpoints are set up correctly
-- Check that `config.hydration.api_endpoint_path` matches your routes
-- Verify CORS settings if loading from different domains
-
-**2. Mount points not detected with `:early` strategy**
-- Check that your HTML contains valid mount point selectors (`#app`, `#root`, etc.)
-- Verify `config.hydration.mount_point_selectors` includes your selectors
-- Enable fallback: `config.hydration.fallback_to_late = true`
-
-**3. CSP violations with link-based strategies**
-- Ensure nonces are properly configured: `config.auto_nonce = true`
-- Add API endpoint domains to CSP `connect-src` directive
-- Check that `crossorigin` attribute is properly configured
-
-**4. Performance not improving with advanced strategies**
-- Verify browser support for chosen strategy (modulepreload requires modern browsers)
-- Check network timing in DevTools to confirm parallel loading
-- Consider using `:prefetch` for subsequent page loads vs `:preload` for current page
-
-**5. Hydration events not firing**
-- Ensure JavaScript is not blocked by CSP
-- Check browser console for script errors
-- Verify API endpoints return valid JSON responses
-
-### Window Collision Detection
-
-Rhales automatically detects when multiple templates try to use the same window attribute, preventing silent data overwrites:
-
-```erb
-<!-- layouts/main.rue -->
-<data window="appData">
-{"user": "{{user.name}}", "csrf": "{{csrf_token}}"}
-</data>
-
-<!-- pages/home.rue -->
-<data window="appData">  <!-- ❌ Collision detected! -->
-{"page": "home", "features": ["feature1"]}
-</data>
-```
-
-This raises a helpful error:
-```
-Window attribute collision detected
-
-Attribute: 'appData'
-First defined: layouts/main.rue:1
-Conflict with: pages/home.rue:1
-
-Quick fixes:
-  1. Rename one: <data window="homeData">
-  2. Enable merging: <data window="appData" merge="deep">
-```
-
-### Merge Strategies
-
-When you intentionally want to share data between templates, use explicit merge strategies:
-
-```erb
-<!-- layouts/main.rue -->
-<data window="appData">
-{
-  "user": {"name": "{{user.name}}", "role": "{{user.role}}"},
-  "csrf": "{{csrf_token}}"
-}
-</data>
-
-<!-- pages/home.rue with deep merge -->
-<data window="appData" merge="deep">
-{
-  "user": {"email": "{{user.email}}"},  <!-- Merged with layout user -->
-  "page": {"title": "Home", "features": {{features.to_json}}}
-}
-</data>
-```
-
-#### Available Merge Strategies
-
-**`merge="shallow"`** - Top-level key merge, throws error on conflicts:
-```javascript
-// Layout: {"user": {...}, "csrf": "abc"}
-// Page:   {"page": {...}, "user": {...}}  // ❌ Error: key conflict
-```
-
-**`merge="deep"`** - Recursive merge, last value wins on conflicts:
-```javascript
-// Layout: {"user": {"name": "John", "role": "admin"}}
-// Page:   {"user": {"email": "john@example.com"}}
-// Result: {"user": {"name": "John", "role": "admin", "email": "john@example.com"}}
-```
-
-**`merge="strict"`** - Recursive merge, throws error on any conflict:
-```javascript
-// Layout: {"user": {"name": "John"}}
-// Page:   {"user": {"name": "Jane"}}  // ❌ Error: value conflict
+  get '/dashboard' do
+    content_type 'text/html'
+    render_rhales('dashboard',
+      client: { user: 'Alice' },
+      server: { page_title: 'Dashboard' }
+    )
+  end
+end
 ```
 
 ## Content Security Policy (CSP)
 
-Rhales provides **security by default** with automatic CSP header generation and nonce management.
+Rhales provides **security by default** with automatic CSP support.
 
-### Automatic CSP Protection
-
-CSP is **enabled by default** when you configure Rhales:
+### Default CSP Configuration
 
 ```ruby
 Rhales.configure do |config|
-  # CSP is enabled by default with secure settings
   config.csp_enabled = true     # Default: true
   config.auto_nonce = true      # Default: true
 end
 ```
 
-### Default Security Policy
+### Using Nonces in Templates
 
-Rhales ships with a secure default CSP policy:
-
-```ruby
-{
-  'default-src' => ["'self'"],
-  'script-src' => ["'self'", "'nonce-{{nonce}}'"],
-  'style-src' => ["'self'", "'nonce-{{nonce}}'", "'unsafe-hashes'"],
-  'img-src' => ["'self'", 'data:'],
-  'font-src' => ["'self'"],
-  'connect-src' => ["'self'"],
-  'base-uri' => ["'self'"],
-  'form-action' => ["'self'"],
-  'frame-ancestors' => ["'none'"],
-  'object-src' => ["'none'"],
-  'upgrade-insecure-requests' => []
-}
-```
-
-### Automatic Nonce Generation
-
-Rhales automatically generates and manages CSP nonces:
-
-```erb
-<!-- In your .rue templates -->
-<script nonce="{{app.nonce}}">
-  // Your inline JavaScript with automatic nonce
-  console.log('Secure script execution');
+```handlebars
+<script nonce="{{request.nonce}}">
+  // Inline JavaScript with automatic nonce
+  console.log('Secure execution');
 </script>
 
-<style nonce="{{app.nonce}}">
-  /* Your inline styles with automatic nonce */
+<style nonce="{{request.nonce}}">
+  /* Inline styles with automatic nonce */
   .component { color: blue; }
 </style>
 ```
 
-### Framework Integration
-
-CSP headers are automatically set during view rendering:
-
-```ruby
-# Your framework code (Rails, Sinatra, Roda, etc.)
-def dashboard
-  view = Rhales::View.new(request, session, current_user, 'en')
-  html = view.render('dashboard', user: current_user)
-
-  # CSP header automatically added to response:
-  # Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; ...
-end
-```
-
 ### Custom CSP Policies
-
-Customize the CSP policy for your specific needs:
 
 ```ruby
 Rhales.configure do |config|
   config.csp_policy = {
     'default-src' => ["'self'"],
     'script-src' => ["'self'", "'nonce-{{nonce}}'", 'https://cdn.example.com'],
-    'style-src' => ["'self'", "'nonce-{{nonce}}'", 'https://fonts.googleapis.com'],
+    'style-src' => ["'self'", "'nonce-{{nonce}}'"],
     'img-src' => ["'self'", 'data:', 'https://images.example.com'],
-    'connect-src' => ["'self'", 'https://api.example.com'],
-    'font-src' => ["'self'", 'https://fonts.gstatic.com'],
-    # Add your own directives...
+    'connect-src' => ["'self'", 'https://api.example.com']
   }
 end
 ```
 
-### Per-Framework CSP Setup
+### Framework CSP Header Setup
 
 #### Rails
+
 ```ruby
-# app/controllers/application_controller.rb
 class ApplicationController < ActionController::Base
   after_action :set_csp_header
 
@@ -1072,23 +693,12 @@ class ApplicationController < ActionController::Base
 end
 ```
 
-#### Sinatra
-```ruby
-helpers do
-  def render_with_csp(template_name, data = {})
-    result = render_rhales(template_name, data)
-    csp_header = request.env['csp_header']
-    headers['Content-Security-Policy'] = csp_header if csp_header
-    result
-  end
-end
-```
-
 #### Roda
+
 ```ruby
 class App < Roda
-  def render_with_csp(template_name, data = {})
-    result = render_rhales(template_name, data)
+  def render_with_csp(template_name, **data)
+    result = render_rhales(template_name, **data)
     csp_header = request.env['csp_header']
     response.headers['Content-Security-Policy'] = csp_header if csp_header
     result
@@ -1096,29 +706,9 @@ class App < Roda
 end
 ```
 
-### CSP Benefits
-
-- **Security by default**: Protection against XSS attacks out of the box
-- **Automatic nonce management**: No manual nonce coordination needed
-- **Template integration**: Nonces automatically available in templates
-- **Framework agnostic**: Works with any Ruby web framework
-- **Customizable policies**: Adapt CSP rules to your application needs
-- **Zero configuration**: Secure defaults work immediately
-
-### Disabling CSP
-
-If you need to disable CSP for specific environments:
-
-```ruby
-Rhales.configure do |config|
-  config.csp_enabled = false  # Disable CSP header generation
-  config.auto_nonce = false   # Disable automatic nonce generation
-end
-```
-
 ## Testing
 
-Rhales includes comprehensive test helpers and is framework-agnostic:
+### Test Configuration
 
 ```ruby
 # test/test_helper.rb or spec/spec_helper.rb
@@ -1128,37 +718,149 @@ Rhales.configure do |config|
   config.default_locale = 'en'
   config.app_environment = 'test'
   config.cache_templates = false
-  config.template_paths = ['test/templates'] # or wherever your test templates are
+  config.template_paths = ['test/fixtures/templates']
 end
+```
 
-# Test context creation
-context = Rhales::Context.minimal(props: { user: { name: 'Test' } })
-expect(context.get('user.name')).to eq('Test')
+### Testing Context
 
-# Test template rendering
-template = '{{#if authenticated}}Welcome{{/if}}'
-result = Rhales.render_template(template, authenticated: true)
-expect(result).to eq('Welcome')
+```ruby
+# Minimal context for testing
+context = Rhales::Context.minimal(
+  client: { user: 'Test' },
+  server: { page_title: 'Test Page' }
+)
 
-# Test full template files
+expect(context.get('user')).to eq('Test')
+expect(context.get('page_title')).to eq('Test Page')
+```
+
+### Testing Templates
+
+```ruby
+# Test inline template
+template = '{{#if active}}Active{{else}}Inactive{{/if}}'
+result = Rhales.render_template(template, active: true)
+expect(result).to eq('Active')
+
+# Test .rue file
 mock_request = OpenStruct.new(env: {})
-mock_session = {}
-view = Rhales::View.new(mock_request, mock_session, nil, 'en')
-html = view.render('test_template', message: 'Hello World')
+view = Rhales::View.new(mock_request, client: { message: 'Hello' })
+html = view.render('test_template')
+expect(html).to include('Hello')
+```
+
+## Migration from v0.4 to v0.5
+
+### Breaking Changes
+
+1. **`<data>` sections removed** → Use `<schema>` sections
+2. **Parameters removed:**
+   - `sess` → Access via `request.session`
+   - `cust` → Access via `request.user`
+   - `props:` → Use `client:`
+   - `app_data:` → Use `server:`
+   - `locale` → Set via `request.env['rhales.locale']`
+3. **Context layer renamed:** `app` → `request`
+
+### Migration Steps
+
+#### 1. Update Ruby Code
+
+```ruby
+# v0.4 (REMOVED)
+view = Rhales::View.new(req, session, customer, 'en',
+  props: { user: customer.name },
+  app_data: { page_title: 'Dashboard' }
+)
+
+# v0.5 (Current)
+view = Rhales::View.new(req,
+  client: { user: customer.name },
+  server: { page_title: 'Dashboard' }
+)
+
+# Set locale in request
+req.env['rhales.locale'] = 'en'
+```
+
+#### 2. Convert Data to Schema
+
+```xml
+<!-- v0.4 (REMOVED) -->
+<data window="data">
+{
+  "user": "{{user.name}}",
+  "count": {{items.count}}
+}
+</data>
+
+<!-- v0.5 (Current) -->
+<schema lang="js-zod" window="data">
+const schema = z.object({
+  user: z.string(),
+  count: z.number()
+});
+</schema>
+```
+
+**Key difference:** In v0.5, pass resolved values in `client:` hash instead of relying on template interpolation in JSON.
+
+#### 3. Update Context References
+
+```handlebars
+<!-- v0.4 (REMOVED) -->
+{{app.nonce}}
+{{app.csrf_token}}
+
+<!-- v0.5 (Current) -->
+{{request.nonce}}
+{{request.csrf_token}}
+```
+
+#### 4. Update Backend Data Passing
+
+```ruby
+# v0.4: Template interpolation
+view = Rhales::View.new(req, sess, cust, 'en',
+  props: { user: cust }  # Object reference, interpolated in <data>
+)
+
+# v0.5: Resolved values upfront
+view = Rhales::View.new(req,
+  client: {
+    user: cust.name,      # Resolved value
+    userId: cust.id       # Resolved value
+  }
+)
 ```
 
 ## Development
 
-After checking out the repo, run:
-
 ```bash
+# Clone repository
+git clone https://github.com/onetimesecret/rhales.git
+cd rhales
+
+# Install dependencies
 bundle install
-bundle exec rspec
+
+# Run tests
+bundle exec rspec spec/rhales/
+
+# Run with documentation format
+bundle exec rspec spec/rhales/ --format documentation
+
+# Build gem
+gem build rhales.gemspec
+
+# Install locally
+gem install ./rhales-0.5.0.gem
 ```
 
 ## Contributing
 
-1. Fork it
+1. Fork it (https://github.com/onetimesecret/rhales/fork)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
@@ -1170,11 +872,11 @@ The gem is available as open source under the [MIT License](https://opensource.o
 
 ## AI Development Assistance
 
-Rhales was developed with assistance from AI tools. The following tools provided significant help with architecture design, code generation, and documentation:
+Rhales was developed with assistance from AI tools:
 
-- **Claude Sonnet 4** - Architecture design, code generation, and documentation
-- **Claude Desktop & Claude Code** - Interactive development sessions and debugging
-- **GitHub Copilot** - Code completion and refactoring assistance
+- **Claude Sonnet 4.5** - Architecture design, code generation, documentation
+- **Claude Desktop & Claude Code** - Interactive development and debugging
+- **GitHub Copilot** - Code completion and refactoring
 - **Qodo Merge Pro** - Code review and quality improvements
 
-I remain responsible for all design decisions and the final code. I believe in being transparent about development tools, especially as AI becomes more integrated into our workflows.
+I remain responsible for all design decisions and the final code. Being transparent about development tools as AI becomes more integrated into our workflows.

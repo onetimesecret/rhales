@@ -12,11 +12,11 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Simulate Onetime Secret's serialized data structure
-      view = Rhales::View.new(nil, 'en',
+      view = Rhales::View.new(nil,
         client: {
           ui: { theme: 'dark', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_12345' },
-          user: { email: 'test@example.com', customer_since: 1640000000 },
+          user: { email: 'test@example.com', account_since: 1640000000 },
           secret_options: { ttl: 3600, passphrase: true },
           site_host: 'onetimesecret.com',
           regions_enabled: false,
@@ -42,7 +42,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       # Check that complex nested data is serialized correctly (no interpolation)
       expect(html).to include('"ui":{"theme":"dark","locale":"en"}')
       expect(html).to include('"authentication":{"authenticated":true,"custid":"cust_12345"}')
-      expect(html).to include('"user":{"email":"test@example.com","customer_since":1640000000}')
+      expect(html).to include('"user":{"email":"test@example.com","account_since":1640000000}')
       expect(html).to include('"secret_options":{"ttl":3600,"passphrase":true}')
       expect(html).to include('"site_host":"onetimesecret.com"')
       expect(html).to include('"regions_enabled":false')
@@ -65,7 +65,7 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Test with nil user (not authenticated)
-      view = Rhales::View.new(nil, 'en',
+      view = Rhales::View.new(nil,
         client: {
           ui: { theme: 'light', locale: 'en' },
           authentication: { authenticated: false, custid: nil },
@@ -100,11 +100,11 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Test with string that looks like a template variable
-      view = Rhales::View.new(nil, 'en',
+      view = Rhales::View.new(nil,
         client: {
           ui: { theme: '{{should.not.interpolate}}', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_{{test}}' },
-          user: { email: 'test@example.com', customer_since: nil },
+          user: { email: 'test@example.com', account_since: nil },
           secret_options: { ttl: 3600, passphrase: false },
           site_host: 'onetimesecret.com',
           regions_enabled: false,
@@ -128,11 +128,11 @@ RSpec.describe 'Vue SPA Mount Point with Schema' do
       end
 
       # Add arrays to the props (extending the schema conceptually)
-      view = Rhales::View.new(nil, 'en',
+      view = Rhales::View.new(nil,
         client: {
           ui: { theme: 'dark', locale: 'en' },
           authentication: { authenticated: true, custid: 'cust_12345' },
-          user: { email: 'test@example.com', customer_since: 1640000000 },
+          user: { email: 'test@example.com', account_since: 1640000000 },
           secret_options: { ttl: 3600, passphrase: true },
           site_host: 'onetimesecret.com',
           regions_enabled: true,

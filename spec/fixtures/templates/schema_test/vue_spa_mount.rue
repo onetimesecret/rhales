@@ -10,7 +10,7 @@ const schema = z.object({
   }),
   user: z.object({
     email: z.string(),
-    customer_since: z.number().nullable()
+    account_since: z.number().nullable()
   }).nullable(),
   secret_options: z.object({
     ttl: z.number(),

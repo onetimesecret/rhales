@@ -181,7 +181,6 @@ module Rhales
 
       ::Rhales::View.new(
         request_data,
-        nil, # locale_override
         client: client_data,
         server: server_data,
       )

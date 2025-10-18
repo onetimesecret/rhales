@@ -18,12 +18,12 @@ RSpec.describe Rhales::Context do
   let(:props) { { page_title: 'Test Page', content: 'Hello World' } }
 
   describe '#initialize' do
-    subject { described_class.new(mock_request, 'en', client: props) }
+    subject { described_class.new(mock_request, client: props) }
 
     it 'initializes with provided parameters' do
       expect(subject.req).to eq(mock_request)
       expect(subject.sess).to eq(mock_session)
-      expect(subject.cust).to eq(mock_user)
+      expect(subject.user).to eq(mock_user)
       expect(subject.locale).to eq('en')
       # Props are normalized to string keys
       expect(subject.client).to eq({ 'page_title' => 'Test Page', 'content' => 'Hello World' })
@@ -32,7 +32,7 @@ RSpec.describe Rhales::Context do
     it 'uses default values when not provided' do
       context = described_class.new(nil)
       expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
-      expect(context.cust).to be_a(Rhales::Adapters::AnonymousAuth)
+      expect(context.user).to be_a(Rhales::Adapters::AnonymousAuth)
       expect(context.locale).to eq('en')
     end
 
@@ -42,7 +42,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#get' do
-    subject { described_class.new(mock_request, 'en', client: props) }
+    subject { described_class.new(mock_request, client: props) }
 
     it 'retrieves runtime data' do
       expect(subject.get('csrf_token')).to eq('test-csrf')
@@ -79,7 +79,7 @@ RSpec.describe Rhales::Context do
 
     it 'supports dot notation' do
       nested_data = { user: { profile: { name: 'John' } } }
-      context     = described_class.new(nil, 'en', client: nested_data)
+      context     = described_class.new(nil, client: nested_data)
       expect(context.get('user.profile.name')).to eq('John')
     end
 
@@ -89,7 +89,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#variable?' do
-    subject { described_class.new(mock_request, 'en', client: props) }
+    subject { described_class.new(mock_request, client: props) }
 
     it 'returns true for existing variables' do
       expect(subject.variable?('page_title')).to be(true)
@@ -102,7 +102,7 @@ RSpec.describe Rhales::Context do
   end
 
   describe '#available_variables' do
-    subject { described_class.new(nil, 'en', client: { user: { name: 'Test' } }) }
+    subject { described_class.new(nil, client: { user: { name: 'Test' } }) }
 
     it 'returns list of available variable paths' do
       variables = subject.available_variables
@@ -115,9 +115,62 @@ RSpec.describe Rhales::Context do
 
   describe '.for_view' do
     it 'creates context with props data' do
-      context = described_class.for_view(mock_request, 'es', test_data: 'value')
-      expect(context.locale).to eq('es')
+      context = described_class.for_view(mock_request, test_data: 'value')
+      expect(context.locale).to eq('en')  # Uses default when no Accept-Language header
       expect(context.get('test_data')).to eq('value')
+    end
+  end
+
+  describe 'locale parsing' do
+    it 'parses simple locale from HTTP_ACCEPT_LANGUAGE' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => 'es' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('es')
+    end
+
+    it 'parses locale with region from HTTP_ACCEPT_LANGUAGE' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => 'es-ES' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('es-ES')
+    end
+
+    it 'parses first locale from complex Accept-Language header' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => 'es-ES,es;q=0.9,en;q=0.8' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('es-ES')
+    end
+
+    it 'ignores quality values and extracts first locale' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => 'fr;q=0.7,es;q=0.9' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('fr')
+    end
+
+    it 'handles whitespace in Accept-Language header' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => ' es-MX , en ; q=0.8 ' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('es-MX')
+    end
+
+    it 'falls back to default when Accept-Language is empty' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => '' })
+      context = described_class.new(req)
+      expect(context.locale).to eq('en')
+    end
+
+    it 'prefers custom rhales.locale over HTTP_ACCEPT_LANGUAGE' do
+      req = double('request', env: {
+        'rhales.locale' => 'fr',
+        'HTTP_ACCEPT_LANGUAGE' => 'es'
+      })
+      context = described_class.new(req)
+      expect(context.locale).to eq('fr')
+    end
+
+    it 'uses default when no locale headers present' do
+      req = double('request', env: {})
+      context = described_class.new(req)
+      expect(context.locale).to eq('en')
     end
   end
 
@@ -126,14 +179,26 @@ RSpec.describe Rhales::Context do
       context = described_class.minimal(client: { test: 'data' })
       expect(context.req).to be_nil
       expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
-      expect(context.cust).to be_a(Rhales::Adapters::AnonymousAuth)
+      expect(context.user).to be_a(Rhales::Adapters::AnonymousAuth)
       expect(context.locale).to eq('en')
+      expect(context.get('test')).to eq('data')
+    end
+
+    it 'creates context with env when provided' do
+      context = described_class.minimal(
+        client: { test: 'data' },
+        env: { 'rhales.locale' => 'fr', 'custom_header' => 'value' }
+      )
+
+      expect(context.req).to be_a(described_class::MinimalRequest)
+      expect(context.req.env).to eq({ 'rhales.locale' => 'fr', 'custom_header' => 'value' })
+      expect(context.locale).to eq('fr')
       expect(context.get('test')).to eq('data')
     end
   end
 
   describe 'with custom configuration' do
-    subject { described_class.new(nil, nil, config: custom_config) }
+    subject { described_class.new(nil, config: custom_config) }
 
     let(:custom_config) do
       config                 = Rhales::Configuration.new
@@ -144,14 +209,20 @@ RSpec.describe Rhales::Context do
     end
 
     it 'uses custom configuration' do
-      expect(subject.locale).to eq('fr')
+      expect(subject.locale).to eq('fr')  # Uses custom default_locale from config
       expect(subject.get('environment')).to eq('staging')
       expect(subject.get('features.custom_feature')).to be(true)
+    end
+
+    it 'HTTP_ACCEPT_LANGUAGE overrides custom default_locale' do
+      req = double('request', env: { 'HTTP_ACCEPT_LANGUAGE' => 'es' })
+      context = described_class.new(req, config: custom_config)
+      expect(context.locale).to eq('es')  # Request header takes precedence
     end
   end
 
   describe 'builder pattern methods' do
-    subject { described_class.new(mock_request, 'en', client: { name: 'John', age: 30 }, server: { page_title: 'Test' }) }
+    subject { described_class.new(mock_request, client: { name: 'John', age: 30 }, server: { page_title: 'Test' }) }
 
     describe '#with_client' do
       it 'creates new context with replaced client data' do
@@ -213,7 +284,7 @@ RSpec.describe Rhales::Context do
 
       expect(new_context.req).to eq(mock_request)
       expect(new_context.sess).to eq(mock_session)
-      expect(new_context.cust).to eq(mock_user)
+      expect(new_context.user).to eq(mock_user)
       expect(new_context.locale).to eq('en')
     end
 
@@ -225,8 +296,10 @@ RSpec.describe Rhales::Context do
 
   describe 'CSP nonce generation' do
     context 'with existing nonce in request env' do
-      let(:mock_request_with_nonce) { double('request', env: { 'nonce' => 'existing-nonce' }) }
-      subject { described_class.new(mock_request_with_nonce, 'en') }
+      let(:mock_request_with_nonce) {
+        double('request', env: { 'nonce' => 'existing-nonce' })
+      }
+      subject { described_class.new(mock_request_with_nonce) }
 
       it 'uses existing nonce' do
         expect(subject.get('nonce')).to eq('existing-nonce')
@@ -241,7 +314,7 @@ RSpec.describe Rhales::Context do
         config
       end
       let(:mock_request_no_nonce) { double('request', env: {}) }
-      subject { described_class.new(mock_request_no_nonce, 'en', config: config) }
+      subject { described_class.new(mock_request_no_nonce, config: config) }
 
       it 'generates nonce automatically' do
         nonce = subject.get('nonce')
@@ -262,7 +335,7 @@ RSpec.describe Rhales::Context do
         config
       end
       let(:mock_request_no_nonce) { double('request', env: {}) }
-      subject { described_class.new(mock_request_no_nonce, 'en', config: config) }
+      subject { described_class.new(mock_request_no_nonce, config: config) }
 
       it 'generates nonce when CSP requires it' do
         nonce = subject.get('nonce')
@@ -283,7 +356,7 @@ RSpec.describe Rhales::Context do
         config
       end
       let(:mock_request_no_nonce) { double('request', env: {}) }
-      subject { described_class.new(mock_request_no_nonce, 'en', config: config) }
+      subject { described_class.new(mock_request_no_nonce, config: config) }
 
       it 'does not generate nonce' do
         expect(subject.get('nonce')).to be_nil
@@ -296,7 +369,7 @@ RSpec.describe Rhales::Context do
         config.auto_nonce = true
         config
       end
-      subject { described_class.new(nil, 'en', config: config) }
+      subject { described_class.new(nil, config: config) }
 
       it 'generates nonce even without request' do
         nonce = subject.get('nonce')

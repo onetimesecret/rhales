@@ -27,7 +27,7 @@ RSpec.describe 'Hydration Strategies Integration' do
       },
       req: nil,
       sess: nil,
-      cust: nil,
+      user: nil,
       locale: 'en',
       class: double('ContextClass', for_view: double('Context'))
     )

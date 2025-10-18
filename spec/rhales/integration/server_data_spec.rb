@@ -34,7 +34,7 @@ RSpec.describe 'server data parameter' do
       c.template_paths = [templates_dir]
     end
 
-    view = Rhales::View.new(nil, 'en',
+    view = Rhales::View.new(nil,
       client: { user: 'Alice' },
       server: {
         page_title: 'Test Page',
@@ -77,7 +77,7 @@ RSpec.describe 'server data parameter' do
       c.template_paths = [templates_dir]
     end
 
-    view = Rhales::View.new(nil, 'en',
+    view = Rhales::View.new(nil,
       client: { title: 'From Client' },
       server: { title: 'From Server' },
       config: config
@@ -107,7 +107,7 @@ RSpec.describe 'server data parameter' do
       c.template_paths = [templates_dir]
     end
 
-    context = Rhales::Context.for_view(nil, 'en',
+    context = Rhales::Context.for_view(nil,
       client: { data: 'Important' },
       server: { helper: 'Template Only' },
       config: config
@@ -125,7 +125,7 @@ RSpec.describe 'server data parameter' do
     config = Rhales::Configuration.new
 
     context = Rhales::Context.minimal(
-      'en',
+
       client: { test: 'value' },
       server: { template: 'only' },
       config: config
@@ -169,7 +169,7 @@ RSpec.describe 'server data parameter' do
       c.template_paths = [templates_dir]
     end
 
-    view = Rhales::View.new(nil, 'en',
+    view = Rhales::View.new(nil,
       client: { username: 'Bob' },
       server: {
         site_title: 'My Site',
@@ -212,7 +212,7 @@ RSpec.describe 'server data parameter' do
       c.template_paths = [templates_dir]
     end
 
-    view = Rhales::View.new(nil, 'en',
+    view = Rhales::View.new(nil,
       client: { value: 'test' },
       server: {},  # Empty server data
       config: config
