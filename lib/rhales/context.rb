@@ -102,32 +102,37 @@ module Rhales
         @server_data
       end
 
-      # Extract session from request object
+      # Get session from request
+      #
+      # Requires: Request object must respond to #session
+      # Provided by: Rack::Request extension in Onetime
+      #
+      # @return [Hash, AnonymousSession] Rack session hash or anonymous session
       def sess
-        return default_session unless req
+        return Adapters::AnonymousSession.new unless req&.respond_to?(:session)
 
-        if req.respond_to?(:session)
-          session = req.session
-          # Check if session has the adapter interface (respond to authenticated?)
-          # If it's a plain Hash (like Rack::Request.session), use default session
-          session.respond_to?(:authenticated?) ? session : default_session
-        else
-          default_session
-        end
+        session = req.session
+        # If session is a plain hash, wrap it in AnonymousSession
+        return Adapters::AnonymousSession.new if session.is_a?(Hash) && !session.respond_to?(:authenticated?)
+        session
       end
 
-      # Extract user from request object
+      # Get user from request
+      #
+      # Requires: Request object must respond to #user
+      # Provided by: Rack::Request extension in Onetime
+      #
+      # @return [Object, AnonymousAuth] User object or anonymous auth
       def user
-        return default_user unless req
-
-        if req.respond_to?(:user)
-          req.user
-        else
-          default_user
-        end
+        return Adapters::AnonymousAuth.new unless req&.respond_to?(:user)
+        req.user
       end
 
-      # Extract locale from request env or use default
+      # Get locale from request
+      #
+      # Parses locale from HTTP_ACCEPT_LANGUAGE or rhales.locale env variable
+      #
+      # @return [String] Locale code
       def locale
         return @config.default_locale unless req
 
@@ -182,7 +187,7 @@ module Rhales
 
     private
 
-      # Build consolidated app data (replaces runtime_data + computed_data)
+      # Build framework-provided server data
       def build_app_data
         app = {}
 
@@ -225,18 +230,47 @@ module Rhales
 
       # Check if user is authenticated
       def authenticated?
-        sess && sess.authenticated? && user && !user.anonymous?
+        # Try Otto strategy_result first (framework integration)
+        if req&.respond_to?(:env)
+          strategy_result = req.env['otto.strategy_result']
+          if strategy_result&.respond_to?(:authenticated?)
+            return strategy_result.authenticated? && valid_user_present?
+          end
+        end
+
+        # Fall back to checking session and user directly
+        sess&.authenticated? && valid_user_present?
       end
 
-      # Get default session instance
-      def default_session
-        Rhales::Adapters::AnonymousSession.new
+      # Check if we have a valid (non-anonymous) user
+      def valid_user_present?
+        user && !user.anonymous?
       end
 
-      # Get default user instance
-      def default_user
-        Rhales::Adapters::AnonymousAuth.new
+      # Get or generate CSP nonce
+      def get_or_generate_nonce
+        # Try to get existing nonce from request env
+        if req && req.respond_to?(:env) && req.env
+          existing_nonce = req.env.fetch(@config.nonce_header_name, nil)
+          return existing_nonce if existing_nonce
+        end
+
+        # Generate new nonce if auto_nonce is enabled or CSP is enabled
+        return CSP.generate_nonce if @config.auto_nonce || (@config.csp_enabled && csp_nonce_required?)
+
+        # Return nil if nonce is not needed
+        nil
       end
+
+      # Check if CSP policy requires nonce
+      def csp_nonce_required?
+        return false unless @config.csp_enabled
+
+        csp = CSP.new(@config)
+        csp.nonce_required?
+      end
+
+
 
       # Normalize hash keys to strings recursively
       def normalize_keys(data)
@@ -281,36 +315,20 @@ module Rhales
         paths
       end
 
-      # Get or generate nonce for CSP
-      def get_or_generate_nonce
-        # Try to get existing nonce from request env
-        if req && req.respond_to?(:env) && req.env
-          existing_nonce = req.env.fetch(@config.nonce_header_name, nil)
-          return existing_nonce if existing_nonce
-        end
-
-        # Generate new nonce if auto_nonce is enabled or CSP is enabled
-        return CSP.generate_nonce if @config.auto_nonce || (@config.csp_enabled && csp_nonce_required?)
-
-        # Return nil if nonce is not needed
-        nil
-      end
-
-      # Check if CSP policy requires nonce
-      def csp_nonce_required?
-        return false unless @config.csp_enabled
-
-        csp = CSP.new(@config)
-        csp.nonce_required?
-      end
-
-      # Minimal request object for testing that supports env access
+      # Minimal request object for testing that supports required methods
       class MinimalRequest
-        attr_reader :env, :session, :user
-        def initialize(env = {}, session: nil, user: nil)
+        attr_reader :env, :session, :user, :locale, :nonce
+
+        def initialize(env = {}, session: {}, user: nil, locale: 'en', nonce: 'test-nonce')
           @env = env
           @session = session
           @user = user
+          @locale = locale
+          @nonce = nonce
+        end
+
+        def authenticated?
+          @user && (!@user.respond_to?(:anonymous?) || !@user.anonymous?)
         end
       end
 
