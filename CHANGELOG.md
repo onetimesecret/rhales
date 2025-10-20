@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Production Logging**: Structured logging via `Rhales.logger=` for security auditing and debugging
+  - View rendering events with template details, timing, and hydration size
+  - Schema validation warnings for production debugging (missing/extra keys)
+  - Error logging with line numbers and section context
+  - Security events: unescaped variable warnings, CSP nonce generation
+  - Performance logging: template compilation, cache behavior, partial resolution
 - Window collision detection prevents silent data overwrites when multiple templates use the same window attribute
 - Explicit merge strategies (shallow, deep, strict) for controlled data sharing between templates
 - `HydrationCollisionError` with detailed error messages showing file paths and line numbers

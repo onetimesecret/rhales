@@ -1,10 +1,10 @@
 # lib/rhales/template_engine.rb
 
 require 'erb'
-require_relative 'parsers/rue_format_parser'
-require_relative 'parsers/handlebars_parser'
+require_relative '../parsers/rue_format_parser'
+require_relative '../parsers/handlebars_parser'
 require_relative 'rue_document'
-require_relative 'hydrator'
+require_relative '../hydration/hydrator'
 
 module Rhales
   # Rhales - Ruby Handlebars-style template engine
@@ -28,6 +28,8 @@ module Rhales
   # - {{#each items}} ... {{/each}} - Iteration with context
   # - {{> partial_name}} - Partial inclusion
   class TemplateEngine
+    include Rhales::Utils::LoggingHelpers
+
     class RenderError < ::Rhales::RenderError; end
     class PartialNotFoundError < RenderError; end
     class UndefinedVariableError < RenderError; end
@@ -43,31 +45,46 @@ module Rhales
     end
 
     def render
-      # Check if this is a simple template or a full .rue file
-      if simple_template?
-        # Use HandlebarsParser for simple templates
-        parser = HandlebarsParser.new(@template_content)
-        parser.parse!
-        render_content_nodes(parser.ast.children)
-      else
-        # Use RueDocument for .rue files
-        @parser = RueDocument.new(@template_content)
-        @parser.parse!
+      template_type = simple_template? ? :handlebars : :rue
 
-        # Get template section via RueDocument
-        template_content = @parser.section('template')
-        raise RenderError, 'Missing template section' unless template_content
+      log_timed_operation(Rhales.logger, :debug, 'Template compiled',
+        template_type: template_type, cached: false
+      ) do
+        # Check if this is a simple template or a full .rue file
+        if simple_template?
+          # Use HandlebarsParser for simple templates
+          parser = HandlebarsParser.new(@template_content)
+          parser.parse!
+          render_content_nodes(parser.ast.children)
+        else
+          # Use RueDocument for .rue files
+          @parser = RueDocument.new(@template_content)
+          @parser.parse!
 
-        # Render the template section as a simple template
-        render_template_string(template_content)
+          # Get template section via RueDocument
+          template_content = @parser.section('template')
+          raise RenderError, 'Missing template section' unless template_content
+
+          # Render the template section as a simple template
+          render_template_string(template_content)
+        end
       end
     rescue ::Rhales::ParseError => ex
       # Parse errors already have good error messages with location
+      log_with_metadata(Rhales.logger, :error, 'Template parse error',
+        error: ex.message, line: ex.line, column: ex.column, section: ex.source_type
+      )
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue ::Rhales::ValidationError => ex
       # Validation errors from RueDocument
+      log_with_metadata(Rhales.logger, :error, 'Template validation error',
+        error: ex.message, template_type: :rue
+      )
       raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
+      log_with_metadata(Rhales.logger, :error, 'Template render error',
+        error: ex.message, error_class: ex.class.name
+      )
       raise RenderError, "Template rendering failed: #{ex.message}"
     end
 
@@ -80,8 +97,6 @@ module Rhales
     def schema_path
       @parser&.schema_path
     end
-
-
 
     # Get template variables used in the template
     def template_variables
@@ -141,7 +156,15 @@ module Rhales
       raw  = node.value[:raw]
 
       value = get_variable_value(name)
-      raw ? value.to_s : escape_html(value.to_s)
+
+      if raw
+        log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
+          variable: name, value_type: value.class.name, template_context: 'variable_expression'
+        )
+        value.to_s
+      else
+        escape_html(value.to_s)
+      end
     end
 
     def render_partial_expression(node)
@@ -202,7 +225,14 @@ module Rhales
         ''
       else # Variables
         value = get_variable_value(content)
-        raw ? value.to_s : escape_html(value.to_s)
+        if raw
+          log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
+            variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
+          )
+          value.to_s
+        else
+          escape_html(value.to_s)
+        end
       end
     end
 

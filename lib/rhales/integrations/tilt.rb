@@ -1,8 +1,8 @@
-# lib/rhales/tilt.rb
+# lib/rhales/integrations/tilt.rb
 
 require 'tilt'
 require 'rhales'
-require_relative 'adapters/base_request'
+require_relative '../adapters/base_request'
 
 module Rhales
   # Tilt integration for Rhales templates

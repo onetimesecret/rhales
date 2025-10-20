@@ -1,6 +1,6 @@
 # lib/rhales/rue_document.rb
 
-require_relative 'parsers/rue_format_parser'
+require_relative '../parsers/rue_format_parser'
 
 module Rhales
   # High-level interface for parsed .rue files
@@ -115,7 +115,6 @@ module Rhales
     def layout
       schema_attributes['layout']
     end
-
 
     # Schema section accessors
     def schema_attributes

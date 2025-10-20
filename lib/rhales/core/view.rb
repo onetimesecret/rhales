@@ -5,12 +5,12 @@ require 'forwardable'
 require_relative 'context'
 require_relative 'rue_document'
 require_relative 'template_engine'
-require_relative 'hydrator'
+require_relative '../hydration/hydrator'
 require_relative 'view_composition'
-require_relative 'hydration_data_aggregator'
-require_relative 'csp'
-require_relative 'json_serializer'
-require_relative 'refinements/require_refinements'
+require_relative '../hydration/hydration_data_aggregator'
+require_relative '../security/csp'
+require_relative '../utils/json_serializer'
+require_relative '../integrations/refinements/require_refinements'
 
 using Rhales::Ruequire
 
@@ -57,6 +57,7 @@ module Rhales
   # Subclasses can override context_class to use different context implementations.
   class View
     extend Forwardable
+    include Rhales::Utils::LoggingHelpers
 
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
@@ -73,30 +74,56 @@ module Rhales
 
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       template_name ||= self.class.default_template_name
 
       # Store template name in request env for middleware validation
       @req.env['rhales.template_name'] = template_name if @req && @req.respond_to?(:env)
 
-      # Phase 1: Build view composition and aggregate data
-      composition           = build_view_composition(template_name)
-      aggregator            = HydrationDataAggregator.new(@rsfc_context)
-      merged_hydration_data = aggregator.aggregate(composition)
+      begin
+        # Phase 1: Build view composition and aggregate data
+        composition           = build_view_composition(template_name)
+        aggregator            = HydrationDataAggregator.new(@rsfc_context)
+        merged_hydration_data = aggregator.aggregate(composition)
 
-      # Phase 2: Render HTML with pre-computed data
-      # Render template content
-      template_html = render_template_with_composition(composition, template_name)
+        # Phase 2: Render HTML with pre-computed data
+        # Render template content
+        template_html = render_template_with_composition(composition, template_name)
 
-      # Generate hydration HTML with merged data
-      hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
+        # Generate hydration HTML with merged data
+        hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
 
-      # Set CSP header if enabled
-      set_csp_header_if_enabled
+        # Set CSP header if enabled
+        set_csp_header_if_enabled
 
-      # Smart hydration injection with mount point detection
-      inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-    rescue StandardError => ex
-      raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
+        # Smart hydration injection with mount point detection
+        result = inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
+
+        # Log successful render
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
+
+        log_with_metadata(Rhales.logger, :info, 'View rendered',
+          template: template_name,
+          layout: composition.layout,
+          partials: composition.dependencies.values.flatten.uniq,
+          duration_ms: duration_ms,
+          hydration_size_bytes: hydration_size
+        )
+
+        result
+      rescue StandardError => ex
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+
+        log_with_metadata(Rhales.logger, :error, 'View render failed',
+          template: template_name,
+          duration_ms: duration_ms,
+          error: ex.message,
+          error_class: ex.class.name
+        )
+
+        raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
+      end
     end
 
     # Render only the template section (without data hydration)
@@ -110,7 +137,7 @@ module Rhales
 
     # Render JSON response for API endpoints (link-based strategies)
     def render_json_only(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -119,7 +146,7 @@ module Rhales
 
     # Render ES module response for modulepreload strategy
     def render_module_only(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -128,7 +155,7 @@ module Rhales
 
     # Render JSONP response with callback
     def render_jsonp_only(template_name = nil, callback_name = 'callback', additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -137,7 +164,7 @@ module Rhales
 
     # Check if template data has changed for caching
     def data_changed?(template_name = nil, etag = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -146,7 +173,7 @@ module Rhales
 
     # Calculate ETag for current template data
     def calculate_etag(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)

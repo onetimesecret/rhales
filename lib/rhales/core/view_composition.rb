@@ -1,7 +1,7 @@
 # lib/rhales/view_composition.rb
 
 require_relative 'rue_document'
-require_relative 'refinements/require_refinements'
+require_relative '../integrations/refinements/require_refinements'
 
 using Rhales::Ruequire
 
@@ -23,6 +23,8 @@ module Rhales
   # - Immutable: Once created, the composition is read-only
   # - Cacheable: Can be cached in production for performance
   class ViewComposition
+    include Rhales::Utils::LoggingHelpers
+
     class TemplateNotFoundError < StandardError; end
     class CircularDependencyError < StandardError; end
 
@@ -39,9 +41,23 @@ module Rhales
 
     # Resolve all template dependencies
     def resolve!
-      load_template_recursive(@root_template_name)
-      freeze_composition
-      self
+      log_timed_operation(Rhales.logger, :debug, 'Template dependency resolution',
+        root_template: @root_template_name
+      ) do
+        load_template_recursive(@root_template_name)
+        freeze_composition
+
+        # Log resolution results
+        log_with_metadata(Rhales.logger, :info, 'Template composition resolved',
+          root_template: @root_template_name,
+          total_templates: @templates.size,
+          total_dependencies: @dependencies.values.sum(&:size),
+          partials: @dependencies.values.flatten.uniq,
+          layout: layout
+        )
+
+        self
+      end
     end
 
     # Iterate through all documents in render order
@@ -84,25 +100,50 @@ module Rhales
       @dependencies[template_name] || []
     end
 
+    # Get the layout for the root template (if any)
+    def layout
+      root_template = @templates[@root_template_name]
+      return nil unless root_template
+
+      root_template.layout
+    end
 
     private
 
-    def load_template_recursive(template_name, _parent_path = nil)
+    def load_template_recursive(template_name, parent_path = nil)
+      depth = @loading.size
+
       # Check for circular dependencies
       if @loading.include?(template_name)
+        log_with_metadata(Rhales.logger, :error, 'Circular dependency detected',
+          template: template_name,
+          dependency_chain: @loading.to_a,
+          depth: depth
+        )
         raise CircularDependencyError, "Circular dependency detected: #{template_name} -> #{@loading.to_a.join(' -> ')}"
       end
 
-      # Skip if already loaded
-      return if @templates.key?(template_name)
+      # Skip if already loaded (cache hit)
+      if @templates.key?(template_name)
+        Rhales.logger.debug("Template cache hit: template=#{template_name}")
+        return
+      end
 
       @loading.add(template_name)
 
       begin
         # Load template using the provided loader
+        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         parser = @loader.call(template_name)
+        load_duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
         unless parser
+          log_with_metadata(Rhales.logger, :error, 'Template not found',
+            template: template_name,
+            parent: parent_path,
+            depth: depth,
+            search_duration_ms: load_duration
+          )
           raise TemplateNotFoundError, "Template not found: #{template_name}"
         end
 
@@ -111,15 +152,42 @@ module Rhales
         @dependencies[template_name] = []
 
         # Extract and load partials
-        extract_partials(parser).each do |partial_name|
+        partials = extract_partials(parser)
+
+        if partials.any?
+          log_with_metadata(Rhales.logger, :debug, 'Partial resolution',
+            template: template_name,
+            partials_found: partials,
+            partial_count: partials.size,
+            depth: depth,
+            load_duration_ms: load_duration
+          )
+        end
+
+        partials.each do |partial_name|
           @dependencies[template_name] << partial_name
           load_template_recursive(partial_name, template_name)
         end
 
         # Load layout if specified and not already loaded
         if parser.layout && !@templates.key?(parser.layout)
+          log_with_metadata(Rhales.logger, :debug, 'Layout resolution',
+            template: template_name,
+            layout: parser.layout,
+            depth: depth
+          )
           load_template_recursive(parser.layout, template_name)
         end
+
+        # Log successful template load
+        log_with_metadata(Rhales.logger, :debug, 'Template loaded',
+          template: template_name,
+          parent: parent_path,
+          depth: depth,
+          has_partials: partials.any?,
+          has_layout: !parser.layout.nil?,
+          load_duration_ms: load_duration
+        )
       ensure
         @loading.delete(template_name)
       end

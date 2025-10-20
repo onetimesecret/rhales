@@ -8,7 +8,7 @@ require 'rack/session'
 # Add the lib directory to the load path
 $:.unshift(File.expand_path('../../lib', __dir__))
 require 'rhales'
-require 'rhales/tilt'
+require 'rhales/integrations/tilt'
 require 'mail'
 
 Mail.defaults do

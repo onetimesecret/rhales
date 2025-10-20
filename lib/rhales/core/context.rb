@@ -1,10 +1,10 @@
 # lib/rhales/context.rb
 
-require_relative 'configuration'
-require_relative 'adapters/base_auth'
-require_relative 'adapters/base_session'
-require_relative 'adapters/base_request'
-require_relative 'csp'
+require_relative '../configuration'
+require_relative '../adapters/base_auth'
+require_relative '../adapters/base_session'
+require_relative '../adapters/base_request'
+require_relative '../security/csp'
 
 module Rhales
     # RSFCContext provides a clean interface for RSFC templates to access

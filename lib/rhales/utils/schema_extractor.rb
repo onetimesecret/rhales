@@ -1,7 +1,7 @@
 # lib/rhales/schema_extractor.rb
 
 require 'pathname'
-require_relative 'rue_document'
+require_relative '../core/rue_document'
 
 module Rhales
   # Extracts schema definitions from .rue files

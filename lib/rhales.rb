@@ -1,27 +1,23 @@
 # lib/rhales.rb
 
+require 'logger'
+
+# Core framework files
 require_relative 'rhales/version'
-require_relative 'rhales/errors'
-require_relative 'rhales/json_serializer'
 require_relative 'rhales/configuration'
-require_relative 'rhales/adapters/base_auth'
-require_relative 'rhales/adapters/base_session'
-require_relative 'rhales/context'
-require_relative 'rhales/rue_document'
-require_relative 'rhales/parsers/handlebars_parser'
-require_relative 'rhales/parsers/rue_format_parser'
-require_relative 'rhales/template_engine'
-require_relative 'rhales/hydrator'
-require_relative 'rhales/view_composition'
-require_relative 'rhales/hydration_data_aggregator'
-require_relative 'rhales/mount_point_detector'
-require_relative 'rhales/safe_injection_validator'
-require_relative 'rhales/earliest_injection_detector'
-require_relative 'rhales/link_based_injection_detector'
-require_relative 'rhales/hydration_injector'
-require_relative 'rhales/hydration_endpoint'
-require_relative 'rhales/refinements/require_refinements'
-require_relative 'rhales/view'
+require_relative 'rhales/errors'
+
+# Load components in dependency order
+require_relative 'rhales/adapters'
+require_relative 'rhales/parsers'
+require_relative 'rhales/utils'
+
+# Security (depends on utils)
+require_relative 'rhales/security/csp'
+require_relative 'rhales/core'
+require_relative 'rhales/hydration'
+require_relative 'rhales/integrations'
+require_relative 'rhales/middleware'
 
 # Ruby Single File Components (RSFC)
 #
@@ -34,6 +30,14 @@ require_relative 'rhales/view'
 # - Partial support for component composition
 # - Pluggable authentication and session adapters
 # - Security-first design with XSS protection and CSP support
+#
+# Modular Loading:
+#   require 'rhales'           # Loads everything (default)
+#   require 'rhales/core'      # Core engine only
+#   require 'rhales/hydration' # Hydration system only
+#   require 'rhales/parsers'   # Template parsers only
+#   require 'rhales/utils'     # Utilities only
+#   require 'rhales/all'       # Explicit full load
 #
 # Usage:
 #   Rhales.configure do |config|
@@ -50,6 +54,14 @@ require_relative 'rhales/view'
 #   view = Rhales::View.new(request)
 #   html = view.render('my_component')
 module Rhales
+  class << self
+    attr_writer :logger
+
+    def logger
+      @logger ||= Logger.new($stdout)
+    end
+  end
+
   # Convenience method to create a view with props
   def self.render(template_name, request: nil, locale: nil, **props)
     view = View.new(request, locale, props: props)

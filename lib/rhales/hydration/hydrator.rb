@@ -1,7 +1,7 @@
 # lib/rhales/hydrator.rb
 
 require 'securerandom'
-require_relative 'json_serializer'
+require_relative '../utils/json_serializer'
 
 module Rhales
     # Data Hydrator for RSFC client-side data injection

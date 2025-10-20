@@ -59,6 +59,9 @@ Rhales.configure do |config|
   config.csp_enabled = true
   config.auto_nonce = true
 end
+
+# Optional: Configure logger
+Rhales.logger = Rails.logger
 ```
 
 ### 2. Create a .rue Component
@@ -731,6 +734,29 @@ class App < Roda
     result
   end
 end
+```
+
+## Logging
+
+Rhales provides production logging for security auditing and debugging:
+
+```ruby
+# Configure logger
+Rhales.logger = Rails.logger  # or Logger.new($stdout)
+```
+
+**Logged Events:**
+- View rendering (template, layout, partials, timing, hydration size)
+- Security warnings (unescaped variables, schema mismatches)
+- Errors with context (line numbers, sections, full messages)
+- Performance insights (cache hits, compilation timing)
+
+```ruby
+# Example log output
+INFO  View rendered: template=dashboard layout=main partials=[header,footer] duration_ms=15.2
+WARN  Hydration schema mismatch: template=user_profile missing=[email] extra=[]
+ERROR Template not found: template=missing_partial parent=dashboard
+DEBUG Template cache hit: template=header
 ```
 
 ## Testing
