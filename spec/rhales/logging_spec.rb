@@ -16,7 +16,7 @@ RSpec.describe 'Rhales Logging' do
 
   describe 'View rendering logging' do
     before do
-      Rhales::View.logger = logger
+      Rhales.logger = logger
     end
 
     it 'logs successful view renders with timing' do
@@ -59,7 +59,7 @@ RSpec.describe 'Rhales Logging' do
 
   describe 'Template engine logging' do
     before do
-      Rhales::TemplateEngine.logger = logger
+      Rhales.logger = logger
     end
 
     it 'logs template compilation with timing' do
@@ -106,7 +106,7 @@ RSpec.describe 'Rhales Logging' do
     let(:config) { Rhales::Configuration.new }
 
     before do
-      Rhales::CSP.logger = logger
+      Rhales.logger = logger
       config.csp_enabled = true
     end
 
@@ -128,26 +128,35 @@ RSpec.describe 'Rhales Logging' do
     end
   end
 
-  describe 'Logger inheritance' do
-    it 'View.logger inherits from Rhales.logger by default' do
+  describe 'Logger configuration' do
+    it 'uses Rhales.logger throughout the framework' do
       custom_logger = double('custom_logger')
+      allow(custom_logger).to receive(:debug)
+      allow(custom_logger).to receive(:info)
+
       Rhales.logger = custom_logger
 
-      # Reset View logger to trigger inheritance
-      Rhales::View.logger = nil
+      # View logging uses Rhales.logger
+      allow_any_instance_of(Rhales::View).to receive(:build_view_composition).and_return(
+        double('composition',
+          layout: nil,
+          template_names: [],
+          dependencies: {},
+          each_document_in_render_order: []
+        )
+      )
+      allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
+      allow_any_instance_of(Rhales::View).to receive(:generate_hydration_from_merged_data).and_return('')
+      allow_any_instance_of(Rhales::View).to receive(:set_csp_header_if_enabled)
+      allow_any_instance_of(Rhales::View).to receive(:inject_hydration_with_mount_points).and_return('<html></html>')
+      allow_any_instance_of(Rhales::HydrationDataAggregator).to receive(:aggregate).and_return({})
 
-      expect(Rhales::View.logger).to eq(custom_logger)
-    end
+      view = Rhales::View.new(mock_request, client: { user: 'test' })
+      view.render('test_template')
 
-    it 'allows View.logger to be overridden independently' do
-      rhales_logger = double('rhales_logger')
-      view_logger = double('view_logger')
-
-      Rhales.logger = rhales_logger
-      Rhales::View.logger = view_logger
-
-      expect(Rhales.logger).to eq(rhales_logger)
-      expect(Rhales::View.logger).to eq(view_logger)
+      expect(custom_logger).to have_received(:info).with(
+        a_string_matching(/View rendered/)
+      )
     end
   end
 end

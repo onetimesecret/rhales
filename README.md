@@ -60,12 +60,8 @@ Rhales.configure do |config|
   config.auto_nonce = true
 end
 
-# Optional: Configure logger for unified logging
-Rhales.logger = Rails.logger  # or SemanticLogger['Rhales'], etc.
-
-# Optional: Configure component-specific loggers
-Rhales::View.logger = custom_view_logger
-Rhales::TemplateEngine.logger = custom_template_logger
+# Optional: Configure logger
+Rhales.logger = Rails.logger
 ```
 
 ### 2. Create a .rue Component
@@ -740,41 +736,28 @@ class App < Roda
 end
 ```
 
-## Logging and Monitoring
+## Logging
 
-Rhales provides native logging for production monitoring, debugging, and security auditing.
-
-### Basic Configuration
+Rhales provides production logging for security auditing and debugging:
 
 ```ruby
-# Default logger
-Rhales.logger = Logger.new($stdout)
-
-# Production with SemanticLogger
-Rhales.logger = SemanticLogger['Rhales']
-
-# Component-specific loggers (optional)
-Rhales::View.logger = custom_view_logger
+# Configure logger
+Rhales.logger = Rails.logger  # or Logger.new($stdout)
 ```
 
-### Key Logging Events
-
-- **View Rendering**: Template name, layout, partials, timing, hydration size
-- **Template Compilation**: Parse timing, cache hits/misses, errors with line numbers  
-- **Security Events**: Unescaped variable warnings, CSP nonce generation
-- **Schema Validation**: Key mismatches, missing/extra fields
-- **Performance**: Partial resolution depth, cache statistics
+**Logged Events:**
+- View rendering (template, layout, partials, timing, hydration size)
+- Security warnings (unescaped variables, schema mismatches)
+- Errors with context (line numbers, sections, full messages)
+- Performance insights (cache hits, compilation timing)
 
 ```ruby
 # Example log output
-logger.info "View rendered: template=dashboard duration_ms=15.2 hydration_size_bytes=1024"
-logger.warn "Unescaped variable usage: variable=html_content template_context=variable_expression"
-logger.debug "Template cache hit: template=header cache_hits=15 cache_misses=3"
+INFO  View rendered: template=dashboard layout=main partials=[header,footer] duration_ms=15.2
+WARN  Hydration schema mismatch: template=user_profile missing=[email] extra=[]
+ERROR Template not found: template=missing_partial parent=dashboard
+DEBUG Template cache hit: template=header
 ```
-
-**Compatibility**: Works with standard Ruby Logger (formatted strings) and SemanticLogger (structured data).
-
-For detailed logging configuration and monitoring examples, see the [Logging Guide](docs/LOGGING.md).
 
 ## Testing
 

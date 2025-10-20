@@ -28,29 +28,6 @@ module Rhales
     class TemplateNotFoundError < StandardError; end
     class CircularDependencyError < StandardError; end
 
-    class << self
-      attr_accessor :logger
-
-      def logger
-        @logger ||= Rhales.logger
-      end
-
-      # Track cache statistics
-      attr_accessor :cache_stats
-
-      def cache_stats
-        @cache_stats ||= { hits: 0, misses: 0 }
-      end
-
-      def record_cache_hit
-        cache_stats[:hits] += 1
-      end
-
-      def record_cache_miss
-        cache_stats[:misses] += 1
-      end
-    end
-
     attr_reader :root_template_name, :templates, :dependencies
 
     def initialize(root_template_name, loader:, config: nil)
@@ -64,14 +41,14 @@ module Rhales
 
     # Resolve all template dependencies
     def resolve!
-      log_timed_operation(self.class.logger, :debug, 'Template dependency resolution',
+      log_timed_operation(Rhales.logger, :debug, 'Template dependency resolution',
         root_template: @root_template_name
       ) do
         load_template_recursive(@root_template_name)
         freeze_composition
 
         # Log resolution results
-        structured_log(self.class.logger, :info, 'Template composition resolved',
+        log_with_metadata(Rhales.logger, :info, 'Template composition resolved',
           root_template: @root_template_name,
           total_templates: @templates.size,
           total_dependencies: @dependencies.values.sum(&:size),
@@ -138,7 +115,7 @@ module Rhales
 
       # Check for circular dependencies
       if @loading.include?(template_name)
-        structured_log(self.class.logger, :error, 'Circular dependency detected',
+        log_with_metadata(Rhales.logger, :error, 'Circular dependency detected',
           template: template_name,
           dependency_chain: @loading.to_a,
           depth: depth
@@ -148,17 +125,9 @@ module Rhales
 
       # Skip if already loaded (cache hit)
       if @templates.key?(template_name)
-        self.class.record_cache_hit
-        structured_log(self.class.logger, :debug, 'Template cache hit',
-          template: template_name,
-          cache_hits: self.class.cache_stats[:hits],
-          cache_misses: self.class.cache_stats[:misses]
-        )
+        Rhales.logger.debug("Template cache hit: template=#{template_name}")
         return
       end
-
-      # Record cache miss
-      self.class.record_cache_miss
 
       @loading.add(template_name)
 
@@ -169,7 +138,7 @@ module Rhales
         load_duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
         unless parser
-          structured_log(self.class.logger, :error, 'Template not found',
+          log_with_metadata(Rhales.logger, :error, 'Template not found',
             template: template_name,
             parent: parent_path,
             depth: depth,
@@ -186,7 +155,7 @@ module Rhales
         partials = extract_partials(parser)
 
         if partials.any?
-          structured_log(self.class.logger, :debug, 'Partial resolution',
+          log_with_metadata(Rhales.logger, :debug, 'Partial resolution',
             template: template_name,
             partials_found: partials,
             partial_count: partials.size,
@@ -202,7 +171,7 @@ module Rhales
 
         # Load layout if specified and not already loaded
         if parser.layout && !@templates.key?(parser.layout)
-          structured_log(self.class.logger, :debug, 'Layout resolution',
+          log_with_metadata(Rhales.logger, :debug, 'Layout resolution',
             template: template_name,
             layout: parser.layout,
             depth: depth
@@ -210,16 +179,14 @@ module Rhales
           load_template_recursive(parser.layout, template_name)
         end
 
-        # Log successful template load with cache stats
-        structured_log(self.class.logger, :debug, 'Template loaded',
+        # Log successful template load
+        log_with_metadata(Rhales.logger, :debug, 'Template loaded',
           template: template_name,
           parent: parent_path,
           depth: depth,
           has_partials: partials.any?,
           has_layout: !parser.layout.nil?,
-          load_duration_ms: load_duration,
-          cache_hits: self.class.cache_stats[:hits],
-          cache_misses: self.class.cache_stats[:misses]
+          load_duration_ms: load_duration
         )
       ensure
         @loading.delete(template_name)

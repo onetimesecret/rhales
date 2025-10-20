@@ -35,14 +35,6 @@ module Rhales
     class UndefinedVariableError < RenderError; end
     class BlockNotFoundError < RenderError; end
 
-    class << self
-      attr_accessor :logger
-
-      def logger
-        @logger ||= Rhales.logger
-      end
-    end
-
     attr_reader :template_content, :context, :partial_resolver, :parser
 
     def initialize(template_content, context, partial_resolver: nil)
@@ -55,7 +47,7 @@ module Rhales
     def render
       template_type = simple_template? ? :handlebars : :rue
 
-      log_timed_operation(self.class.logger, :debug, 'Template compiled',
+      log_timed_operation(Rhales.logger, :debug, 'Template compiled',
         template_type: template_type, cached: false
       ) do
         # Check if this is a simple template or a full .rue file
@@ -79,18 +71,18 @@ module Rhales
       end
     rescue ::Rhales::ParseError => ex
       # Parse errors already have good error messages with location
-      structured_log(self.class.logger, :error, 'Template parse error',
+      log_with_metadata(Rhales.logger, :error, 'Template parse error',
         error: ex.message, line: ex.line, column: ex.column, section: ex.source_type
       )
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue ::Rhales::ValidationError => ex
       # Validation errors from RueDocument
-      structured_log(self.class.logger, :error, 'Template validation error',
+      log_with_metadata(Rhales.logger, :error, 'Template validation error',
         error: ex.message, template_type: :rue
       )
       raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
-      structured_log(self.class.logger, :error, 'Template render error',
+      log_with_metadata(Rhales.logger, :error, 'Template render error',
         error: ex.message, error_class: ex.class.name
       )
       raise RenderError, "Template rendering failed: #{ex.message}"
@@ -166,7 +158,7 @@ module Rhales
       value = get_variable_value(name)
 
       if raw
-        structured_log(self.class.logger, :warn, 'Unescaped variable usage',
+        log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
           variable: name, value_type: value.class.name, template_context: 'variable_expression'
         )
         value.to_s
@@ -234,7 +226,7 @@ module Rhales
       else # Variables
         value = get_variable_value(content)
         if raw
-          structured_log(self.class.logger, :warn, 'Unescaped variable usage',
+          log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
             variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
           )
           value.to_s
@@ -322,7 +314,7 @@ module Rhales
 
       # Log data sanitization events for audit trail
       if escaped != string
-        structured_log(self.class.logger, :debug, 'Data sanitization applied',
+        log_with_metadata(Rhales.logger, :debug, 'Data sanitization applied',
           original_length: string.length, escaped_length: escaped.length, had_html_entities: true
         )
       end

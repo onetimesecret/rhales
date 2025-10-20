@@ -62,14 +62,6 @@ module Rhales
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
 
-    class << self
-      attr_accessor :logger
-
-      def logger
-        @logger ||= Rhales.logger
-      end
-    end
-
     attr_reader :req, :rsfc_context
 
     # Delegate context accessors to rsfc_context
@@ -111,7 +103,7 @@ module Rhales
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
         hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
 
-        structured_log(self.class.logger, :info, 'View rendered',
+        log_with_metadata(Rhales.logger, :info, 'View rendered',
           template: template_name,
           layout: composition.layout,
           partials: composition.dependencies.values.flatten.uniq,
@@ -123,7 +115,7 @@ module Rhales
       rescue StandardError => ex
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
-        structured_log(self.class.logger, :error, 'View render failed',
+        log_with_metadata(Rhales.logger, :error, 'View render failed',
           template: template_name,
           duration_ms: duration_ms,
           error: ex.message,

@@ -12,17 +12,8 @@ module Rhales
   #   # => "default-src 'self'; script-src 'self' 'nonce-abc123'; ..."
   class CSP
     include Rhales::Utils::LoggingHelpers
-    
+
     attr_reader :config, :nonce
-
-    class << self
-      include Rhales::Utils::LoggingHelpers
-      attr_accessor :logger
-
-      def logger
-        @logger ||= Rhales.logger
-      end
-    end
 
     def initialize(config, nonce: nil)
       @config = config
@@ -53,9 +44,9 @@ module Rhales
       end
 
       header = policy_directives.join('; ')
-      
+
       # Log CSP header generation for security audit
-      structured_log(self.class.logger, :info, "CSP header generated",
+      log_with_metadata(Rhales.logger, :info, "CSP header generated",
         nonce_used: nonce_used,
         nonce: @nonce,
         directive_count: policy_directives.size,
@@ -68,14 +59,10 @@ module Rhales
     # Generate a new nonce value
     def self.generate_nonce
       nonce = SecureRandom.hex(16)
-      
+
       # Log nonce generation for security audit trail
-      structured_log(logger, :debug, "CSP nonce generated",
-        nonce: nonce,
-        length: nonce.length,
-        entropy_bits: nonce.length * 4
-      )
-      
+      Rhales.logger.debug("CSP nonce generated: nonce=#{nonce} length=#{nonce.length} entropy_bits=#{nonce.length * 4}")
+
       nonce
     end
 

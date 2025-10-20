@@ -22,14 +22,6 @@ module Rhales
 
     class JSONSerializationError < StandardError; end
 
-    class << self
-      attr_accessor :logger
-
-      def logger
-        @logger ||= Rhales.logger
-      end
-    end
-
     def initialize(context)
       @context = context
       @window_attributes = {}
@@ -38,7 +30,7 @@ module Rhales
 
     # Aggregate all hydration data from the view composition
     def aggregate(composition)
-      log_timed_operation(self.class.logger, :debug, 'Schema aggregation started',
+      log_timed_operation(Rhales.logger, :debug, 'Schema aggregation started',
         template_count: composition.template_names.size
       ) do
         composition.each_document_in_render_order do |template_name, parser|
@@ -54,7 +46,7 @@ module Rhales
     def process_template(template_name, parser)
       # Process schema section
       if parser.schema_lang
-        log_timed_operation(self.class.logger, :debug, 'Schema validation',
+        log_timed_operation(Rhales.logger, :debug, 'Schema validation',
           template: template_name,
           schema_lang: parser.schema_lang
         ) do
@@ -80,7 +72,7 @@ module Rhales
         extra_keys = actual_keys - expected_keys
 
         if missing_keys.any? || extra_keys.any?
-          structured_log(self.class.logger, :warn, 'Hydration schema mismatch',
+          log_with_metadata(Rhales.logger, :warn, 'Hydration schema mismatch',
             template: build_template_path_for_schema(parser),
             window_attribute: window_attr,
             expected_keys: expected_keys,
@@ -90,7 +82,7 @@ module Rhales
             client_data_size: client_data.size
           )
         else
-          structured_log(self.class.logger, :debug, 'Schema validation passed',
+          log_with_metadata(Rhales.logger, :debug, 'Schema validation passed',
             template: build_template_path_for_schema(parser),
             window_attribute: window_attr,
             key_count: expected_keys.size,
@@ -229,7 +221,7 @@ module Rhales
       end
       keys
     rescue StandardError => ex
-      structured_log(self.class.logger, :debug, 'Schema key extraction failed',
+      log_with_metadata(Rhales.logger, :debug, 'Schema key extraction failed',
         error: ex.message,
         schema_preview: schema_content[0..100]
       )
