@@ -1,7 +1,7 @@
 # lib/rhales/view_composition.rb
 
 require_relative 'rue_document'
-require_relative 'refinements/require_refinements'
+require_relative '../integrations/refinements/require_refinements'
 
 using Rhales::Ruequire
 

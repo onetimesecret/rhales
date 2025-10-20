@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'json_schemer'
-require_relative '../json_serializer'
+require_relative '../utils/json_serializer'
 
 module Rhales
   module Middleware

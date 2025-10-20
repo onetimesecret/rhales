@@ -1,5 +1,5 @@
 require 'digest'
-require_relative 'json_serializer'
+require_relative '../utils/json_serializer'
 
 module Rhales
   # Handles API endpoint responses for link-based hydration strategies

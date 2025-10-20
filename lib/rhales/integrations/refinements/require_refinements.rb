@@ -1,6 +1,6 @@
 # lib/rhales/refinements/require_refinements.rb
 
-require_relative '../rue_document'
+require_relative '../../core/rue_document'
 
 module Rhales
   module Ruequire

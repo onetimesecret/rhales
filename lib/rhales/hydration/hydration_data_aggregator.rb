@@ -1,8 +1,8 @@
 # lib/rhales/hydration_data_aggregator.rb
 
 require 'json'
-require_relative 'template_engine'
-require_relative 'errors'
+require_relative '../core/template_engine'
+require_relative '../errors'
 
 module Rhales
   # HydrationDataAggregator traverses the ViewComposition and executes

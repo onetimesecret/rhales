@@ -1,10 +1,10 @@
 # lib/rhales/template_engine.rb
 
 require 'erb'
-require_relative 'parsers/rue_format_parser'
-require_relative 'parsers/handlebars_parser'
+require_relative '../parsers/rue_format_parser'
+require_relative '../parsers/handlebars_parser'
 require_relative 'rue_document'
-require_relative 'hydrator'
+require_relative '../hydration/hydrator'
 
 module Rhales
   # Rhales - Ruby Handlebars-style template engine

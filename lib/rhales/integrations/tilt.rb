@@ -2,7 +2,7 @@
 
 require 'tilt'
 require 'rhales'
-require_relative 'adapters/base_request'
+require_relative '../adapters/base_request'
 
 module Rhales
   # Tilt integration for Rhales templates

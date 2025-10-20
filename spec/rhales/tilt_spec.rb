@@ -1,7 +1,7 @@
 # spec/rhales/tilt_spec.rb
 
 require 'spec_helper'
-require 'rhales/tilt'
+require 'rhales/integrations/tilt'
 
 RSpec.describe Rhales::TiltTemplate do
   let(:template_content) { '<h1>{{title}}</h1><p>{{content}}</p>' }

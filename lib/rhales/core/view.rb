@@ -5,12 +5,12 @@ require 'forwardable'
 require_relative 'context'
 require_relative 'rue_document'
 require_relative 'template_engine'
-require_relative 'hydrator'
+require_relative '../hydration/hydrator'
 require_relative 'view_composition'
-require_relative 'hydration_data_aggregator'
-require_relative 'csp'
-require_relative 'json_serializer'
-require_relative 'refinements/require_refinements'
+require_relative '../hydration/hydration_data_aggregator'
+require_relative '../security/csp'
+require_relative '../utils/json_serializer'
+require_relative '../integrations/refinements/require_refinements'
 
 using Rhales::Ruequire
 
@@ -110,7 +110,7 @@ module Rhales
 
     # Render JSON response for API endpoints (link-based strategies)
     def render_json_only(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -119,7 +119,7 @@ module Rhales
 
     # Render ES module response for modulepreload strategy
     def render_module_only(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -128,7 +128,7 @@ module Rhales
 
     # Render JSONP response with callback
     def render_jsonp_only(template_name = nil, callback_name = 'callback', additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -137,7 +137,7 @@ module Rhales
 
     # Check if template data has changed for caching
     def data_changed?(template_name = nil, etag = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
@@ -146,7 +146,7 @@ module Rhales
 
     # Calculate ETag for current template data
     def calculate_etag(template_name = nil, additional_context = {})
-      require_relative 'hydration_endpoint'
+      require_relative '../hydration/hydration_endpoint'
 
       template_name ||= self.class.default_template_name
       endpoint = HydrationEndpoint.new(config, @rsfc_context)
