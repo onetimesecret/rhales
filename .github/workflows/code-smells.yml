@@ -129,7 +129,7 @@ jobs:
             while read -r file; do
               if ! ruby -c "$file" > /dev/null 2>&1; then
                 echo "Syntax error in: $file"
-                ruby -c "$file"
+                ruby -c "$file" || true
               fi
             done
         continue-on-error: true

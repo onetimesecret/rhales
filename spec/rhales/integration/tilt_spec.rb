@@ -1,4 +1,4 @@
-# spec/rhales/tilt_spec.rb
+# spec/rhales/integration/tilt_spec.rb
 
 require 'spec_helper'
 require 'rhales/integrations/tilt'

@@ -1,4 +1,4 @@
-# lib/rhales/tilt.rb
+# lib/rhales/integrations/tilt.rb
 
 require 'tilt'
 require 'rhales'

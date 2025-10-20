@@ -38,7 +38,9 @@ module Rhales
       # Format individual log values
       def format_value(value)
         case value
-        when String, Symbol, Numeric, true, false, nil
+        when String
+          value.include?(' ') ? "\"#{value}\"" : value
+        when Symbol, Numeric, true, false, nil
           value.to_s
         when Array
           "[#{value.join(', ')}]"

@@ -97,7 +97,7 @@ RSpec.describe 'Rhales Logging' do
       }.to raise_error(Rhales::TemplateEngine::RenderError)
 
       expect(logger).to have_received(:error).with(
-        a_string_matching(/Template parse error: error=Expected/)
+        a_string_matching(/Template parse error: error="Expected/)
       )
     end
   end
