@@ -29,9 +29,7 @@ Gem::Specification.new do |spec|
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem
-  spec.files = Dir.chdir(__dir__) do
-    Dir['{lib}/**/*', '*.md', '*.txt', '*.gemspec'].select { |f| File.file?(f) }
-  end
+  spec.files = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
 
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
@@ -43,7 +41,7 @@ Gem::Specification.new do |spec|
 
   # Optional dependencies for performance optimization
   # Install oj for 10-20x faster JSON parsing and 5-10x faster generation
-  # gem 'oj', '~> 3.13'
+  # spec.add_dependency 'oj', '~> 3.13'
 
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem
