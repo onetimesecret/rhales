@@ -26,6 +26,8 @@ module Rhales
       @context = context
       @window_attributes = {}
       @merged_data = {}
+      @schema_cache = {}
+      @schemas_dir = File.join(Dir.pwd, 'public/schemas')
     end
 
     # Aggregate all hydration data from the view composition
@@ -50,20 +52,20 @@ module Rhales
           template: template_name,
           schema_lang: parser.schema_lang
         ) do
-          process_schema_section(parser)
+          process_schema_section(template_name, parser)
         end
       end
     end
 
     # Process schema section: Direct JSON serialization
-    def process_schema_section(parser)
+    def process_schema_section(template_name, parser)
       window_attr = parser.schema_window || 'data'
       merge_strategy = parser.schema_merge_strategy
 
       # Extract client data for validation
       client_data = @context.client || {}
       schema_content = parser.section('schema')
-      expected_keys = extract_expected_keys_from_schema(schema_content) if schema_content
+      expected_keys = extract_expected_keys(template_name, schema_content) if schema_content
 
       # Log schema validation details
       if expected_keys && expected_keys.any?
@@ -209,19 +211,85 @@ module Rhales
       false
     end
 
-    # Extract expected keys from Zod schema content (basic parsing)
-    def extract_expected_keys_from_schema(schema_content)
+    # Extract expected keys using hybrid approach
+    #
+    # Tries to load pre-generated JSON schema first (reliable, handles all Zod patterns).
+    # Falls back to regex parsing for development (before schemas are generated).
+    #
+    # To generate JSON schemas, run: rake rhales:schema:generate
+    def extract_expected_keys(template_name, schema_content)
+      # Try JSON schema first (reliable, comprehensive)
+      keys = extract_keys_from_json_schema(template_name)
+      if keys&.any?
+        log_with_metadata(Rhales.logger, :debug, 'Schema keys extracted from JSON schema',
+          template: template_name, key_count: keys.size, method: 'json_schema'
+        )
+        return keys
+      end
+
+      # Fall back to regex (development, before schemas generated)
+      keys = extract_keys_from_zod_regex(schema_content)
+      if keys.any?
+        log_with_metadata(Rhales.logger, :debug, 'Schema keys extracted from Zod regex',
+          template: template_name, key_count: keys.size, method: 'regex_fallback',
+          note: 'Run rake rhales:schema:generate for reliable validation'
+        )
+      end
+
+      keys
+    end
+
+    # Extract keys from pre-generated JSON schema (preferred method)
+    def extract_keys_from_json_schema(template_name)
+      schema = load_schema_cached(template_name)
+      return nil unless schema
+
+      # Extract all properties from JSON schema
+      properties = schema.dig('properties') || {}
+      properties.keys
+    rescue StandardError => ex
+      log_with_metadata(Rhales.logger, :debug, 'JSON schema loading failed',
+        template: template_name, error: ex.message
+      )
+      nil
+    end
+
+    # Load and cache JSON schema from disk
+    def load_schema_cached(template_name)
+      @schema_cache[template_name] ||= begin
+        schema_path = File.join(@schemas_dir, "#{template_name}.json")
+        return nil unless File.exist?(schema_path)
+
+        JSON.parse(File.read(schema_path))
+      rescue JSON::ParserError, Errno::ENOENT => ex
+        log_with_metadata(Rhales.logger, :debug, 'Schema file error',
+          template: template_name, path: schema_path, error: ex.class.name
+        )
+        nil
+      end
+    end
+
+    # Extract keys from Zod schema using regex (fallback method)
+    #
+    # NOTE: This is a basic implementation that only matches simple patterns like:
+    #   fieldName: z.string()
+    #
+    # It will miss:
+    # - Nested object literals: settings: { theme: z.enum([...]) }
+    # - Complex compositions and unions
+    # - Multiline definitions
+    #
+    # For reliable validation, generate JSON schemas with: rake rhales:schema:generate
+    def extract_keys_from_zod_regex(schema_content)
       return [] unless schema_content
 
-      # Simple regex to extract object keys from Zod schemas
-      # This is a basic implementation - could be enhanced with proper JS parsing
       keys = []
       schema_content.scan(/(\w+):\s*z\./) do |match|
         keys << match[0]
       end
       keys
     rescue StandardError => ex
-      log_with_metadata(Rhales.logger, :debug, 'Schema key extraction failed',
+      log_with_metadata(Rhales.logger, :debug, 'Regex key extraction failed',
         error: ex.message,
         schema_preview: schema_content[0..100]
       )
