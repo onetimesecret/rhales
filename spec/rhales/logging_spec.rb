@@ -21,11 +21,11 @@ RSpec.describe 'Rhales Logging' do
 
     it 'logs successful view renders with timing' do
       allow_any_instance_of(Rhales::View).to receive(:build_view_composition).and_return(
-        double('composition', 
-          layout: nil, 
-          partials: [],
-          each_document_in_render_order: [],
-          all_documents: []
+        double('composition',
+          layout: nil,
+          template_names: [],
+          dependencies: {},
+          each_document_in_render_order: []
         )
       )
       allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
@@ -46,7 +46,7 @@ RSpec.describe 'Rhales Logging' do
       allow_any_instance_of(Rhales::View).to receive(:build_view_composition).and_raise('Test error')
 
       view = Rhales::View.new(mock_request)
-      
+
       expect {
         view.render('test_template')
       }.to raise_error(Rhales::View::RenderError)
@@ -65,7 +65,7 @@ RSpec.describe 'Rhales Logging' do
     it 'logs template compilation with timing' do
       template = 'Hello {{user}}'
       context = Rhales::Context.minimal(client: { user: 'World' })
-      
+
       engine = Rhales::TemplateEngine.new(template, context)
       engine.render
 
@@ -77,7 +77,7 @@ RSpec.describe 'Rhales Logging' do
     it 'logs unescaped variable warnings' do
       template = 'Unsafe: {{{html}}}'
       context = Rhales::Context.minimal(client: { html: '<script>alert("xss")</script>' })
-      
+
       engine = Rhales::TemplateEngine.new(template, context)
       engine.render
 
@@ -89,9 +89,9 @@ RSpec.describe 'Rhales Logging' do
     it 'logs parse errors with location context' do
       template = '{{unclosed'
       context = Rhales::Context.minimal(client: {})
-      
+
       engine = Rhales::TemplateEngine.new(template, context)
-      
+
       expect {
         engine.render
       }.to raise_error(Rhales::TemplateEngine::RenderError)
@@ -104,7 +104,7 @@ RSpec.describe 'Rhales Logging' do
 
   describe 'CSP logging' do
     let(:config) { Rhales::Configuration.new }
-    
+
     before do
       Rhales::CSP.logger = logger
       config.csp_enabled = true
@@ -132,20 +132,20 @@ RSpec.describe 'Rhales Logging' do
     it 'View.logger inherits from Rhales.logger by default' do
       custom_logger = double('custom_logger')
       Rhales.logger = custom_logger
-      
+
       # Reset View logger to trigger inheritance
       Rhales::View.logger = nil
-      
+
       expect(Rhales::View.logger).to eq(custom_logger)
     end
 
     it 'allows View.logger to be overridden independently' do
       rhales_logger = double('rhales_logger')
       view_logger = double('view_logger')
-      
+
       Rhales.logger = rhales_logger
       Rhales::View.logger = view_logger
-      
+
       expect(Rhales.logger).to eq(rhales_logger)
       expect(Rhales::View.logger).to eq(view_logger)
     end

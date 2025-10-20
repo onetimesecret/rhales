@@ -24,7 +24,7 @@ module Rhales
   # - Cacheable: Can be cached in production for performance
   class ViewComposition
     include Rhales::Utils::LoggingHelpers
-    
+
     class TemplateNotFoundError < StandardError; end
     class CircularDependencyError < StandardError; end
 
@@ -34,18 +34,18 @@ module Rhales
       def logger
         @logger ||= Rhales.logger
       end
-      
+
       # Track cache statistics
       attr_accessor :cache_stats
-      
+
       def cache_stats
         @cache_stats ||= { hits: 0, misses: 0 }
       end
-      
+
       def record_cache_hit
         cache_stats[:hits] += 1
       end
-      
+
       def record_cache_miss
         cache_stats[:misses] += 1
       end
@@ -64,20 +64,21 @@ module Rhales
 
     # Resolve all template dependencies
     def resolve!
-      log_timed_operation(self.class.logger, :debug, "Template dependency resolution",
-                         root_template: @root_template_name) do
+      log_timed_operation(self.class.logger, :debug, 'Template dependency resolution',
+        root_template: @root_template_name
+      ) do
         load_template_recursive(@root_template_name)
         freeze_composition
-        
+
         # Log resolution results
-        structured_log(self.class.logger, :info, "Template composition resolved",
+        structured_log(self.class.logger, :info, 'Template composition resolved',
           root_template: @root_template_name,
           total_templates: @templates.size,
           total_dependencies: @dependencies.values.sum(&:size),
-          partials: partials.map(&:template_name),
-          layout: layout&.template_name
+          partials: @dependencies.values.flatten.uniq,
+          layout: layout
         )
-        
+
         self
       end
     end
@@ -122,15 +123,22 @@ module Rhales
       @dependencies[template_name] || []
     end
 
+    # Get the layout for the root template (if any)
+    def layout
+      root_template = @templates[@root_template_name]
+      return nil unless root_template
+
+      root_template.layout
+    end
 
     private
 
     def load_template_recursive(template_name, parent_path = nil)
       depth = @loading.size
-      
+
       # Check for circular dependencies
       if @loading.include?(template_name)
-        structured_log(self.class.logger, :error, "Circular dependency detected",
+        structured_log(self.class.logger, :error, 'Circular dependency detected',
           template: template_name,
           dependency_chain: @loading.to_a,
           depth: depth
@@ -141,14 +149,14 @@ module Rhales
       # Skip if already loaded (cache hit)
       if @templates.key?(template_name)
         self.class.record_cache_hit
-        structured_log(self.class.logger, :debug, "Template cache hit",
+        structured_log(self.class.logger, :debug, 'Template cache hit',
           template: template_name,
           cache_hits: self.class.cache_stats[:hits],
           cache_misses: self.class.cache_stats[:misses]
         )
         return
       end
-      
+
       # Record cache miss
       self.class.record_cache_miss
 
@@ -161,7 +169,7 @@ module Rhales
         load_duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
         unless parser
-          structured_log(self.class.logger, :error, "Template not found",
+          structured_log(self.class.logger, :error, 'Template not found',
             template: template_name,
             parent: parent_path,
             depth: depth,
@@ -176,9 +184,9 @@ module Rhales
 
         # Extract and load partials
         partials = extract_partials(parser)
-        
+
         if partials.any?
-          structured_log(self.class.logger, :debug, "Partial resolution",
+          structured_log(self.class.logger, :debug, 'Partial resolution',
             template: template_name,
             partials_found: partials,
             partial_count: partials.size,
@@ -194,16 +202,16 @@ module Rhales
 
         # Load layout if specified and not already loaded
         if parser.layout && !@templates.key?(parser.layout)
-          structured_log(self.class.logger, :debug, "Layout resolution",
+          structured_log(self.class.logger, :debug, 'Layout resolution',
             template: template_name,
             layout: parser.layout,
             depth: depth
           )
           load_template_recursive(parser.layout, template_name)
         end
-        
+
         # Log successful template load with cache stats
-        structured_log(self.class.logger, :debug, "Template loaded",
+        structured_log(self.class.logger, :debug, 'Template loaded',
           template: template_name,
           parent: parent_path,
           depth: depth,
@@ -213,7 +221,6 @@ module Rhales
           cache_hits: self.class.cache_stats[:hits],
           cache_misses: self.class.cache_stats[:misses]
         )
-        
       ensure
         @loading.delete(template_name)
       end

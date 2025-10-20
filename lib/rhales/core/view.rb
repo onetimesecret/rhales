@@ -110,11 +110,11 @@ module Rhales
         # Log successful render
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
         hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
-        
-        structured_log(self.class.logger, :info, "View rendered",
+
+        structured_log(self.class.logger, :info, 'View rendered',
           template: template_name,
-          layout: composition.layout&.template_name,
-          partials: composition.partials.map(&:template_name),
+          layout: composition.layout,
+          partials: composition.dependencies.values.flatten.uniq,
           duration_ms: duration_ms,
           hydration_size_bytes: hydration_size
         )
@@ -122,14 +122,14 @@ module Rhales
         result
       rescue StandardError => ex
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
-        
-        structured_log(self.class.logger, :error, "View render failed",
+
+        structured_log(self.class.logger, :error, 'View render failed',
           template: template_name,
           duration_ms: duration_ms,
           error: ex.message,
           error_class: ex.class.name
         )
-        
+
         raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
       end
     end

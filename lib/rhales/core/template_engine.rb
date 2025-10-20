@@ -54,9 +54,10 @@ module Rhales
 
     def render
       template_type = simple_template? ? :handlebars : :rue
-      
-      log_timed_operation(self.class.logger, :debug, "Template compiled", 
-                         template_type: template_type, cached: false) do
+
+      log_timed_operation(self.class.logger, :debug, 'Template compiled',
+        template_type: template_type, cached: false
+      ) do
         # Check if this is a simple template or a full .rue file
         if simple_template?
           # Use HandlebarsParser for simple templates
@@ -78,17 +79,20 @@ module Rhales
       end
     rescue ::Rhales::ParseError => ex
       # Parse errors already have good error messages with location
-      structured_log(self.class.logger, :error, "Template parse error", 
-        error: ex.message, line: ex.line, column: ex.column, section: ex.source_type)
+      structured_log(self.class.logger, :error, 'Template parse error',
+        error: ex.message, line: ex.line, column: ex.column, section: ex.source_type
+      )
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue ::Rhales::ValidationError => ex
       # Validation errors from RueDocument
-      structured_log(self.class.logger, :error, "Template validation error", 
-        error: ex.message, template_type: :rue)
+      structured_log(self.class.logger, :error, 'Template validation error',
+        error: ex.message, template_type: :rue
+      )
       raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
-      structured_log(self.class.logger, :error, "Template render error", 
-        error: ex.message, error_class: ex.class.name)
+      structured_log(self.class.logger, :error, 'Template render error',
+        error: ex.message, error_class: ex.class.name
+      )
       raise RenderError, "Template rendering failed: #{ex.message}"
     end
 
@@ -101,8 +105,6 @@ module Rhales
     def schema_path
       @parser&.schema_path
     end
-
-
 
     # Get template variables used in the template
     def template_variables
@@ -162,10 +164,11 @@ module Rhales
       raw  = node.value[:raw]
 
       value = get_variable_value(name)
-      
+
       if raw
-        structured_log(self.class.logger, :warn, "Unescaped variable usage", 
-          variable: name, value_type: value.class.name, template_context: "variable_expression")
+        structured_log(self.class.logger, :warn, 'Unescaped variable usage',
+          variable: name, value_type: value.class.name, template_context: 'variable_expression'
+        )
         value.to_s
       else
         escape_html(value.to_s)
@@ -231,8 +234,9 @@ module Rhales
       else # Variables
         value = get_variable_value(content)
         if raw
-          structured_log(self.class.logger, :warn, "Unescaped variable usage", 
-            variable: content, value_type: value.class.name, template_context: "handlebars_expression")
+          structured_log(self.class.logger, :warn, 'Unescaped variable usage',
+            variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
+          )
           value.to_s
         else
           escape_html(value.to_s)
@@ -315,13 +319,14 @@ module Rhales
     # HTML escape for XSS protection
     def escape_html(string)
       escaped = ERB::Util.html_escape(string)
-      
+
       # Log data sanitization events for audit trail
       if escaped != string
-        structured_log(self.class.logger, :debug, "Data sanitization applied", 
-          original_length: string.length, escaped_length: escaped.length, had_html_entities: true)
+        structured_log(self.class.logger, :debug, 'Data sanitization applied',
+          original_length: string.length, escaped_length: escaped.length, had_html_entities: true
+        )
       end
-      
+
       escaped
     end
 
