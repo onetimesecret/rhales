@@ -1,5 +1,7 @@
 # lib/rhales.rb
 
+require 'logger'
+
 # Core framework files
 require_relative 'rhales/version'
 require_relative 'rhales/configuration'
@@ -52,6 +54,14 @@ require_relative 'rhales/middleware'
 #   view = Rhales::View.new(request)
 #   html = view.render('my_component')
 module Rhales
+  class << self
+    attr_accessor :logger
+
+    def logger
+      @logger ||= Logger.new($stdout)
+    end
+  end
+
   # Convenience method to create a view with props
   def self.render(template_name, request: nil, locale: nil, **props)
     view = View.new(request, locale, props: props)

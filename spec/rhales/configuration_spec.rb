@@ -183,4 +183,21 @@ RSpec.describe Rhales do
       expect(new_config).not_to be(original_config)
     end
   end
+
+  describe '.logger' do
+    it 'returns a logger instance' do
+      expect(described_class.logger).to be_a(Logger)
+    end
+
+    it 'allows setting a custom logger' do
+      custom_logger = double('logger')
+      described_class.logger = custom_logger
+      expect(described_class.logger).to eq(custom_logger)
+    end
+
+    it 'defaults to a Logger instance when not set' do
+      described_class.logger = nil
+      expect(described_class.logger).to be_a(Logger)
+    end
+  end
 end

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Configurable logger with `Rhales.logger=` for unified logging infrastructure integration
 - Window collision detection prevents silent data overwrites when multiple templates use the same window attribute
 - Explicit merge strategies (shallow, deep, strict) for controlled data sharing between templates
 - `HydrationCollisionError` with detailed error messages showing file paths and line numbers

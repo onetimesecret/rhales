@@ -59,6 +59,9 @@ Rhales.configure do |config|
   config.csp_enabled = true
   config.auto_nonce = true
 end
+
+# Optional: Configure logger for unified logging
+Rhales.logger = Rails.logger  # or SemanticLogger['Rhales'], etc.
 ```
 
 ### 2. Create a .rue Component
