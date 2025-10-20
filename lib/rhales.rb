@@ -55,7 +55,7 @@ require_relative 'rhales/middleware'
 #   html = view.render('my_component')
 module Rhales
   class << self
-    attr_accessor :logger
+    attr_writer :logger
 
     def logger
       @logger ||= Logger.new($stdout)

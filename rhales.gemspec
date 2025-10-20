@@ -29,7 +29,12 @@ Gem::Specification.new do |spec|
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem
-  spec.files = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  # Use git if available, otherwise fall back to Dir.glob for non-git environments
+  spec.files = if File.exist?('.git') && system('git --version > /dev/null 2>&1')
+                 `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+               else
+                 Dir.glob('{lib,exe}/**/*', File::FNM_DOTMATCH).reject { |f| File.directory?(f) }
+               end
 
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }

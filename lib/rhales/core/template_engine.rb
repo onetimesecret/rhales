@@ -310,16 +310,7 @@ module Rhales
 
     # HTML escape for XSS protection
     def escape_html(string)
-      escaped = ERB::Util.html_escape(string)
-
-      # Log data sanitization events for audit trail
-      if escaped != string
-        log_with_metadata(Rhales.logger, :debug, 'Data sanitization applied',
-          original_length: string.length, escaped_length: escaped.length, had_html_entities: true
-        )
-      end
-
-      escaped
+      ERB::Util.html_escape(string)
     end
 
     # Context wrapper for {{#each}} iterations

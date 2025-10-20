@@ -62,8 +62,8 @@ detectors:
     reject:
       - '/^.$/' # Single letter names
       - '/[0-9]$/' # Names ending in numbers
-      - '/^_/' # Names starting with underscore (common Ruby pattern)
-    accept: []
+    accept:
+      - '_' # Single underscore for intentionally unused parameters
 
   UncommunicativeVariableName:
     enabled: true

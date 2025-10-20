@@ -14,7 +14,7 @@ module Rhales
         log_with_metadata(logger, level, message, metadata.merge(duration_ms: duration_ms))
 
         result
-      rescue => ex
+      rescue StandardError => ex
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
         log_with_metadata(logger, :error, "#{message} failed",
           metadata.merge(
