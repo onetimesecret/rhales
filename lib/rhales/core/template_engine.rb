@@ -28,10 +28,20 @@ module Rhales
   # - {{#each items}} ... {{/each}} - Iteration with context
   # - {{> partial_name}} - Partial inclusion
   class TemplateEngine
+    include Rhales::Utils::LoggingHelpers
+
     class RenderError < ::Rhales::RenderError; end
     class PartialNotFoundError < RenderError; end
     class UndefinedVariableError < RenderError; end
     class BlockNotFoundError < RenderError; end
+
+    class << self
+      attr_accessor :logger
+
+      def logger
+        @logger ||= Rhales.logger
+      end
+    end
 
     attr_reader :template_content, :context, :partial_resolver, :parser
 
@@ -43,31 +53,42 @@ module Rhales
     end
 
     def render
-      # Check if this is a simple template or a full .rue file
-      if simple_template?
-        # Use HandlebarsParser for simple templates
-        parser = HandlebarsParser.new(@template_content)
-        parser.parse!
-        render_content_nodes(parser.ast.children)
-      else
-        # Use RueDocument for .rue files
-        @parser = RueDocument.new(@template_content)
-        @parser.parse!
+      template_type = simple_template? ? :handlebars : :rue
+      
+      log_timed_operation(self.class.logger, :debug, "Template compiled", 
+                         template_type: template_type, cached: false) do
+        # Check if this is a simple template or a full .rue file
+        if simple_template?
+          # Use HandlebarsParser for simple templates
+          parser = HandlebarsParser.new(@template_content)
+          parser.parse!
+          render_content_nodes(parser.ast.children)
+        else
+          # Use RueDocument for .rue files
+          @parser = RueDocument.new(@template_content)
+          @parser.parse!
 
-        # Get template section via RueDocument
-        template_content = @parser.section('template')
-        raise RenderError, 'Missing template section' unless template_content
+          # Get template section via RueDocument
+          template_content = @parser.section('template')
+          raise RenderError, 'Missing template section' unless template_content
 
-        # Render the template section as a simple template
-        render_template_string(template_content)
+          # Render the template section as a simple template
+          render_template_string(template_content)
+        end
       end
     rescue ::Rhales::ParseError => ex
       # Parse errors already have good error messages with location
+      structured_log(self.class.logger, :error, "Template parse error", 
+        error: ex.message, line: ex.line, column: ex.column, section: ex.source_type)
       raise RenderError, "Template parsing failed: #{ex.message}"
     rescue ::Rhales::ValidationError => ex
       # Validation errors from RueDocument
+      structured_log(self.class.logger, :error, "Template validation error", 
+        error: ex.message, template_type: :rue)
       raise RenderError, "Template validation failed: #{ex.message}"
     rescue StandardError => ex
+      structured_log(self.class.logger, :error, "Template render error", 
+        error: ex.message, error_class: ex.class.name)
       raise RenderError, "Template rendering failed: #{ex.message}"
     end
 
@@ -141,7 +162,14 @@ module Rhales
       raw  = node.value[:raw]
 
       value = get_variable_value(name)
-      raw ? value.to_s : escape_html(value.to_s)
+      
+      if raw
+        structured_log(self.class.logger, :warn, "Unescaped variable usage", 
+          variable: name, value_type: value.class.name, template_context: "variable_expression")
+        value.to_s
+      else
+        escape_html(value.to_s)
+      end
     end
 
     def render_partial_expression(node)
@@ -202,7 +230,13 @@ module Rhales
         ''
       else # Variables
         value = get_variable_value(content)
-        raw ? value.to_s : escape_html(value.to_s)
+        if raw
+          structured_log(self.class.logger, :warn, "Unescaped variable usage", 
+            variable: content, value_type: value.class.name, template_context: "handlebars_expression")
+          value.to_s
+        else
+          escape_html(value.to_s)
+        end
       end
     end
 
@@ -280,7 +314,15 @@ module Rhales
 
     # HTML escape for XSS protection
     def escape_html(string)
-      ERB::Util.html_escape(string)
+      escaped = ERB::Util.html_escape(string)
+      
+      # Log data sanitization events for audit trail
+      if escaped != string
+        structured_log(self.class.logger, :debug, "Data sanitization applied", 
+          original_length: string.length, escaped_length: escaped.length, had_html_entities: true)
+      end
+      
+      escaped
     end
 
     # Context wrapper for {{#each}} iterations

@@ -8,7 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Configurable logger with `Rhales.logger=` for unified logging infrastructure integration
+- **Native Logging System**: Comprehensive production-ready logging with structured data support
+  - Configurable logger with `Rhales.logger=` for unified logging infrastructure integration
+  - Component-specific loggers: `Rhales::View.logger`, `Rhales::TemplateEngine.logger`, etc.
+  - Compatible with both standard Ruby Logger and SemanticLogger
+  - View rendering events: template name, layout, partials, duration, hydration size
+  - Template compilation logging with timing and cache status
+  - Schema validation logging with key mismatch detection
+  - Security audit trail: unescaped variable warnings, CSP nonce generation, data sanitization
+  - Performance insights: partial resolution depth/timing, cache hit rates, template recompilation triggers
+  - Error logging with full context: parse errors with line/column, validation errors, render failures
 - Window collision detection prevents silent data overwrites when multiple templates use the same window attribute
 - Explicit merge strategies (shallow, deep, strict) for controlled data sharing between templates
 - `HydrationCollisionError` with detailed error messages showing file paths and line numbers

@@ -11,7 +11,18 @@ module Rhales
   #   header = csp.build_header
   #   # => "default-src 'self'; script-src 'self' 'nonce-abc123'; ..."
   class CSP
+    include Rhales::Utils::LoggingHelpers
+    
     attr_reader :config, :nonce
+
+    class << self
+      include Rhales::Utils::LoggingHelpers
+      attr_accessor :logger
+
+      def logger
+        @logger ||= Rhales.logger
+      end
+    end
 
     def initialize(config, nonce: nil)
       @config = config
@@ -23,6 +34,7 @@ module Rhales
       return nil unless @config.csp_enabled
 
       policy_directives = []
+      nonce_used = false
 
       @config.csp_policy.each do |directive, sources|
         if sources.empty?
@@ -30,18 +42,41 @@ module Rhales
           policy_directives << directive
         else
           # Process sources and interpolate nonce if present
-          processed_sources = sources.map { |source| interpolate_nonce(source) }
+          processed_sources = sources.map do |source|
+            interpolated = interpolate_nonce(source)
+            nonce_used = true if interpolated != source
+            interpolated
+          end
           directive_string = "#{directive} #{processed_sources.join(' ')}"
           policy_directives << directive_string
         end
       end
 
-      policy_directives.join('; ')
+      header = policy_directives.join('; ')
+      
+      # Log CSP header generation for security audit
+      structured_log(self.class.logger, :info, "CSP header generated",
+        nonce_used: nonce_used,
+        nonce: @nonce,
+        directive_count: policy_directives.size,
+        header_length: header.length
+      )
+
+      header
     end
 
     # Generate a new nonce value
     def self.generate_nonce
-      SecureRandom.hex(16)
+      nonce = SecureRandom.hex(16)
+      
+      # Log nonce generation for security audit trail
+      structured_log(logger, :debug, "CSP nonce generated",
+        nonce: nonce,
+        length: nonce.length,
+        entropy_bits: nonce.length * 4
+      )
+      
+      nonce
     end
 
     # Validate CSP policy configuration

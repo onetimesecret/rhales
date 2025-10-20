@@ -57,9 +57,18 @@ module Rhales
   # Subclasses can override context_class to use different context implementations.
   class View
     extend Forwardable
+    include Rhales::Utils::LoggingHelpers
 
     class RenderError < StandardError; end
     class TemplateNotFoundError < RenderError; end
+
+    class << self
+      attr_accessor :logger
+
+      def logger
+        @logger ||= Rhales.logger
+      end
+    end
 
     attr_reader :req, :rsfc_context
 
@@ -73,30 +82,56 @@ module Rhales
 
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       template_name ||= self.class.default_template_name
 
       # Store template name in request env for middleware validation
       @req.env['rhales.template_name'] = template_name if @req && @req.respond_to?(:env)
 
-      # Phase 1: Build view composition and aggregate data
-      composition           = build_view_composition(template_name)
-      aggregator            = HydrationDataAggregator.new(@rsfc_context)
-      merged_hydration_data = aggregator.aggregate(composition)
+      begin
+        # Phase 1: Build view composition and aggregate data
+        composition           = build_view_composition(template_name)
+        aggregator            = HydrationDataAggregator.new(@rsfc_context)
+        merged_hydration_data = aggregator.aggregate(composition)
 
-      # Phase 2: Render HTML with pre-computed data
-      # Render template content
-      template_html = render_template_with_composition(composition, template_name)
+        # Phase 2: Render HTML with pre-computed data
+        # Render template content
+        template_html = render_template_with_composition(composition, template_name)
 
-      # Generate hydration HTML with merged data
-      hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
+        # Generate hydration HTML with merged data
+        hydration_html = generate_hydration_from_merged_data(merged_hydration_data)
 
-      # Set CSP header if enabled
-      set_csp_header_if_enabled
+        # Set CSP header if enabled
+        set_csp_header_if_enabled
 
-      # Smart hydration injection with mount point detection
-      inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
-    rescue StandardError => ex
-      raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
+        # Smart hydration injection with mount point detection
+        result = inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
+
+        # Log successful render
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
+        
+        structured_log(self.class.logger, :info, "View rendered",
+          template: template_name,
+          layout: composition.layout&.template_name,
+          partials: composition.partials.map(&:template_name),
+          duration_ms: duration_ms,
+          hydration_size_bytes: hydration_size
+        )
+
+        result
+      rescue StandardError => ex
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        
+        structured_log(self.class.logger, :error, "View render failed",
+          template: template_name,
+          duration_ms: duration_ms,
+          error: ex.message,
+          error_class: ex.class.name
+        )
+        
+        raise RenderError, "Failed to render template '#{template_name}': #{ex.message}"
+      end
     end
 
     # Render only the template section (without data hydration)

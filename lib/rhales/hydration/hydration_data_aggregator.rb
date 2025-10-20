@@ -18,7 +18,17 @@ module Rhales
   # The aggregator replaces the HydrationRegistry by performing all
   # data merging in a single, coordinated pass.
   class HydrationDataAggregator
+    include Rhales::Utils::LoggingHelpers
+    
     class JSONSerializationError < StandardError; end
+
+    class << self
+      attr_accessor :logger
+
+      def logger
+        @logger ||= Rhales.logger
+      end
+    end
 
     def initialize(context)
       @context = context
@@ -28,19 +38,26 @@ module Rhales
 
     # Aggregate all hydration data from the view composition
     def aggregate(composition)
-      composition.each_document_in_render_order do |template_name, parser|
-        process_template(template_name, parser)
-      end
+      log_timed_operation(self.class.logger, :debug, "Schema aggregation started", 
+                         template_count: composition.all_documents.size) do
+        composition.each_document_in_render_order do |template_name, parser|
+          process_template(template_name, parser)
+        end
 
-      @merged_data
+        @merged_data
+      end
     end
 
     private
 
-    def process_template(_template_name, parser)
+    def process_template(template_name, parser)
       # Process schema section
       if parser.schema_lang
-        process_schema_section(parser)
+        log_timed_operation(self.class.logger, :debug, "Schema validation", 
+                           template: template_name,
+                           schema_lang: parser.schema_lang) do
+          process_schema_section(parser)
+        end
       end
     end
 
@@ -48,6 +65,36 @@ module Rhales
     def process_schema_section(parser)
       window_attr = parser.schema_window || 'data'
       merge_strategy = parser.schema_merge_strategy
+
+      # Extract client data for validation
+      client_data = @context.client_data || {}
+      expected_keys = extract_expected_keys_from_schema(parser.schema_content) if parser.schema_content
+      
+      # Log schema validation details
+      if expected_keys && expected_keys.any?
+        actual_keys = client_data.keys.map(&:to_s)
+        missing_keys = expected_keys - actual_keys
+        extra_keys = actual_keys - expected_keys
+        
+        if missing_keys.any? || extra_keys.any?
+          structured_log(self.class.logger, :warn, "Hydration schema mismatch",
+            template: build_template_path_for_schema(parser),
+            window_attribute: window_attr,
+            expected_keys: expected_keys,
+            actual_keys: actual_keys,
+            missing_keys: missing_keys,
+            extra_keys: extra_keys,
+            client_data_size: client_data.size
+          )
+        else
+          structured_log(self.class.logger, :debug, "Schema validation passed",
+            template: build_template_path_for_schema(parser),
+            window_attribute: window_attr,
+            key_count: expected_keys.size,
+            client_data_size: client_data.size
+          )
+        end
+      end
 
       # Build template path for error reporting
       template_path = build_template_path_for_schema(parser)
@@ -167,6 +214,25 @@ module Rhales
       return true if data.respond_to?(:empty?) && data.empty?
 
       false
+    end
+
+    # Extract expected keys from Zod schema content (basic parsing)
+    def extract_expected_keys_from_schema(schema_content)
+      return [] unless schema_content
+      
+      # Simple regex to extract object keys from Zod schemas
+      # This is a basic implementation - could be enhanced with proper JS parsing
+      keys = []
+      schema_content.scan(/(\w+):\s*z\./) do |match|
+        keys << match[0]
+      end
+      keys
+    rescue => ex
+      structured_log(self.class.logger, :debug, "Schema key extraction failed",
+        error: ex.message,
+        schema_preview: schema_content[0..100]
+      )
+      []
     end
   end
 end

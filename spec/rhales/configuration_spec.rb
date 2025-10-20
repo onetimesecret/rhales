@@ -185,6 +185,11 @@ RSpec.describe Rhales do
   end
 
   describe '.logger' do
+    before do
+      # Reset logger before each test
+      described_class.logger = nil
+    end
+    
     it 'returns a logger instance' do
       expect(described_class.logger).to be_a(Logger)
     end

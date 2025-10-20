@@ -7,13 +7,13 @@ require_relative 'rhales/version'
 require_relative 'rhales/configuration'
 require_relative 'rhales/errors'
 
-# Security
-require_relative 'rhales/security/csp'
-
 # Load components in dependency order
 require_relative 'rhales/adapters'
 require_relative 'rhales/parsers'
 require_relative 'rhales/utils'
+
+# Security (depends on utils)
+require_relative 'rhales/security/csp'
 require_relative 'rhales/core'
 require_relative 'rhales/hydration'
 require_relative 'rhales/integrations'

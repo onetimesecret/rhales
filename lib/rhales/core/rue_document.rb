@@ -116,7 +116,6 @@ module Rhales
       schema_attributes['layout']
     end
 
-
     # Schema section accessors
     def schema_attributes
       @schema_attributes ||= {}
