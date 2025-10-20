@@ -6,6 +6,7 @@ gemspec
 group :development, :test do
   gem 'benchmark'
   gem 'rack-test'
+  gem 'reek', '~> 6.5'
   gem 'rspec', '~> 3.12'
   gem 'simplecov', '~> 0.22'
 end
