@@ -133,16 +133,16 @@ module Rhales
 
       begin
         # Load template using the provided loader
-        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        start_time = now_in_μs
         parser = @loader.call(template_name)
-        load_duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        load_duration = now_in_μs - start_time
 
         unless parser
           log_with_metadata(Rhales.logger, :error, 'Template not found',
             template: template_name,
             parent: parent_path,
             depth: depth,
-            search_duration_ms: load_duration
+            search_duration: load_duration
           )
           raise TemplateNotFoundError, "Template not found: #{template_name}"
         end
@@ -160,7 +160,7 @@ module Rhales
             partials_found: partials,
             partial_count: partials.size,
             depth: depth,
-            load_duration_ms: load_duration
+            load_duration: load_duration
           )
         end
 
@@ -186,7 +186,7 @@ module Rhales
           depth: depth,
           has_partials: partials.any?,
           has_layout: !parser.layout.nil?,
-          load_duration_ms: load_duration
+          load_duration: load_duration
         )
       ensure
         @loading.delete(template_name)

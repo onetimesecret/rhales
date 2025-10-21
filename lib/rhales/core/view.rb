@@ -74,7 +74,7 @@ module Rhales
 
     # Render RSFC template with hydration using two-pass architecture
     def render(template_name = nil)
-      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      start_time = now_in_μs
       template_name ||= self.class.default_template_name
 
       # Store template name in request env for middleware validation
@@ -100,24 +100,24 @@ module Rhales
         result = inject_hydration_with_mount_points(composition, template_name, template_html, hydration_html)
 
         # Log successful render
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        duration = now_in_μs - start_time
         hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
 
         log_with_metadata(Rhales.logger, :info, 'View rendered',
           template: template_name,
           layout: composition.layout,
           partials: composition.dependencies.values.flatten.uniq,
-          duration_ms: duration_ms,
+          duration: duration,
           hydration_size_bytes: hydration_size
         )
 
         result
       rescue StandardError => ex
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        duration = now_in_μs - start_time
 
         log_with_metadata(Rhales.logger, :error, 'View render failed',
           template: template_name,
-          duration_ms: duration_ms,
+          duration: duration,
           error: ex.message,
           error_class: ex.class.name
         )

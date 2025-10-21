@@ -4,21 +4,31 @@ module Rhales
   module Utils
     # Helper methods for consistent logging and timing instrumentation across Rhales components
     module LoggingHelpers
+      include Rhales::Utils
 
       # Log with timing for an operation
+      #
+      # @param logger [Logger] The logger instance to use
+      # @param level [Symbol] The log level (:debug, :info, :warn, :error)
+      # @param message [String] The log message
+      # @param metadata [Hash] Additional metadata to include in the log
+      # @yield The block to execute and time
+      # @return The result of the block
+      #
+      # Logs the operation with timing information in microseconds.
       def log_timed_operation(logger, level, message, **metadata, &block)
-        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        start_time = now_in_μs
         result = yield
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        duration = now_in_μs - start_time
 
-        log_with_metadata(logger, level, message, metadata.merge(duration_ms: duration_ms))
+        log_with_metadata(logger, level, message, metadata.merge(duration: duration))
 
         result
       rescue StandardError => ex
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
+        duration = now_in_μs - start_time
         log_with_metadata(logger, :error, "#{message} failed",
           metadata.merge(
-            duration_ms: duration_ms,
+            duration: duration,
             error: ex.message,
             error_class: ex.class.name
           ))
