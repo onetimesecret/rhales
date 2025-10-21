@@ -55,6 +55,30 @@ RSpec.describe 'Rhales Logging' do
         a_string_matching(/View render failed: template=test_template/)
       )
     end
+
+    it 'logs duration as integer microseconds' do
+      allow_any_instance_of(Rhales::View).to receive(:build_view_composition).and_return(
+        double('composition',
+          layout: nil,
+          template_names: [],
+          dependencies: {},
+          each_document_in_render_order: []
+        )
+      )
+      allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
+      allow_any_instance_of(Rhales::View).to receive(:generate_hydration_from_merged_data).and_return('')
+      allow_any_instance_of(Rhales::View).to receive(:set_csp_header_if_enabled)
+      allow_any_instance_of(Rhales::View).to receive(:inject_hydration_with_mount_points).and_return('<html></html>')
+      allow_any_instance_of(Rhales::HydrationDataAggregator).to receive(:aggregate).and_return({})
+
+      view = Rhales::View.new(mock_request, client: { user: 'test' })
+      view.render('test_template')
+
+      # Verify duration is logged as an integer (microseconds, not float milliseconds)
+      expect(logger).to have_received(:info).with(
+        a_string_matching(/View rendered: .*duration=\d+/)
+      )
+    end
   end
 
   describe 'Template engine logging' do
