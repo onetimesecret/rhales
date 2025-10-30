@@ -17,6 +17,8 @@ RSpec.describe Rhales::Configuration do
       expect(subject.csp_enabled).to be(true)
       expect(subject.auto_nonce).to be(true)
       expect(subject.csp_policy).to be_a(Hash)
+      expect(subject.hydration_mismatch_format).to eq(:compact)
+      expect(subject.hydration_authority).to eq(:schema)
     end
   end
 
@@ -143,6 +145,47 @@ RSpec.describe Rhales::Configuration do
       expect(policy['upgrade-insecure-requests']).to eq([])
     end
   end
+
+  describe '#hydration_mismatch_format' do
+    subject { described_class.new }
+
+    it 'sets hydration_mismatch_format to :compact by default' do
+      expect(subject.hydration_mismatch_format).to eq(:compact)
+    end
+
+    it 'allows setting hydration_mismatch_format to :compact' do
+      subject.hydration_mismatch_format = :compact
+      expect(subject.hydration_mismatch_format).to eq(:compact)
+    end
+
+    it 'allows setting hydration_mismatch_format to :multiline' do
+      subject.hydration_mismatch_format = :multiline
+      expect(subject.hydration_mismatch_format).to eq(:multiline)
+    end
+
+    it 'allows setting hydration_mismatch_format to :sidebyside' do
+      subject.hydration_mismatch_format = :sidebyside
+      expect(subject.hydration_mismatch_format).to eq(:sidebyside)
+    end
+  end
+
+  describe '#hydration_authority' do
+    subject { described_class.new }
+
+    it 'sets hydration_authority to :schema by default' do
+      expect(subject.hydration_authority).to eq(:schema)
+    end
+
+    it 'allows setting hydration_authority to :schema' do
+      subject.hydration_authority = :schema
+      expect(subject.hydration_authority).to eq(:schema)
+    end
+
+    it 'allows setting hydration_authority to :data' do
+      subject.hydration_authority = :data
+      expect(subject.hydration_authority).to eq(:data)
+    end
+  end
 end
 
 RSpec.describe Rhales do
@@ -189,13 +232,18 @@ RSpec.describe Rhales do
       # Reset logger before each test
       described_class.logger = nil
     end
-    
+
+    after do
+      # Ensure logger is reset after each test
+      described_class.logger = nil
+    end
+
     it 'returns a logger instance' do
       expect(described_class.logger).to be_a(Logger)
     end
 
     it 'allows setting a custom logger' do
-      custom_logger = double('logger')
+      custom_logger = Logger.new(STDOUT)
       described_class.logger = custom_logger
       expect(described_class.logger).to eq(custom_logger)
     end
