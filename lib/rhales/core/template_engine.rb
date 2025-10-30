@@ -158,15 +158,7 @@ module Rhales
       value = get_variable_value(name)
 
       if raw
-        # Only log unescaped variable warning if not suppressed globally and not in allowed list
-        should_warn = !Rhales.config.suppress_unescaped_warnings &&
-                      !Rhales.config.allowed_unescaped_variables.include?(name.to_s)
-
-        if should_warn
-          log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
-            variable: name, value_type: value.class.name, template_context: 'variable_expression'
-          )
-        end
+        warn_if_unescaped(name, value, 'variable_expression')
         value.to_s
       else
         escape_html(value.to_s)
@@ -232,15 +224,7 @@ module Rhales
       else # Variables
         value = get_variable_value(content)
         if raw
-          # Only log unescaped variable warning if not suppressed globally and not in allowed list
-          should_warn = !Rhales.config.suppress_unescaped_warnings &&
-                        !Rhales.config.allowed_unescaped_variables.include?(content.to_s)
-
-          if should_warn
-            log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
-              variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
-            )
-          end
+          warn_if_unescaped(content, value, 'handlebars_expression')
           value.to_s
         else
           escape_html(value.to_s)
@@ -290,6 +274,16 @@ module Rhales
       elsif @context.respond_to?(:[])
         @context[variable_name] || @context[variable_name.to_sym]
       end
+    end
+
+    # Log warning for unescaped variable usage unless whitelisted
+    def warn_if_unescaped(variable_name, value, template_context)
+      return if Rhales.config.allowed_unescaped_variables.include?(variable_name.to_s)
+
+      log_with_metadata(
+        Rhales.logger, :warn, 'Unescaped variable usage',
+        variable: variable_name, value_type: value.class.name, template_context: template_context
+      )
     end
 
     # Evaluate condition for if/unless blocks

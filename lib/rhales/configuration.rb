@@ -150,7 +150,7 @@ module Rhales
     attr_accessor :enable_json_responder, :json_responder_include_metadata
 
     # Logging settings
-    attr_accessor :suppress_unescaped_warnings, :allowed_unescaped_variables
+    attr_accessor :allowed_unescaped_variables
 
     # Hydration mismatch reporting settings
     attr_accessor :hydration_mismatch_format, :hydration_authority
@@ -183,7 +183,6 @@ module Rhales
       @json_responder_include_metadata  = false
 
       # Logging defaults
-      @suppress_unescaped_warnings      = false
       @allowed_unescaped_variables      = []
 
       # Hydration mismatch reporting defaults
