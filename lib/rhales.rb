@@ -54,6 +54,8 @@ require_relative 'rhales/middleware'
 #   view = Rhales::View.new(request)
 #   html = view.render('my_component')
 module Rhales
+  extend Utils
+
   class << self
     attr_writer :logger
 

@@ -67,6 +67,9 @@ module Rhales
       schema_content = parser.section('schema')
       expected_keys = extract_expected_keys(template_name, schema_content) if schema_content
 
+      # Build template path for error reporting
+      template_path = build_template_path_for_schema(parser)
+
       # Log schema validation details
       if expected_keys && expected_keys.any?
         actual_keys = client_data.keys.map(&:to_s)
@@ -75,7 +78,7 @@ module Rhales
 
         if missing_keys.any? || extra_keys.any?
           log_with_metadata(Rhales.logger, :warn, 'Hydration schema mismatch',
-            template: build_template_path_for_schema(parser),
+            template: Rhales.pretty_path(template_path),
             window_attribute: window_attr,
             expected_keys: expected_keys,
             actual_keys: actual_keys,
@@ -85,16 +88,13 @@ module Rhales
           )
         else
           log_with_metadata(Rhales.logger, :debug, 'Schema validation passed',
-            template: build_template_path_for_schema(parser),
+            template: Rhales.pretty_path(template_path),
             window_attribute: window_attr,
             key_count: expected_keys.size,
             client_data_size: client_data.size
           )
         end
       end
-
-      # Build template path for error reporting
-      template_path = build_template_path_for_schema(parser)
 
       # Direct serialization of client data (no template interpolation)
       processed_data = @context.client

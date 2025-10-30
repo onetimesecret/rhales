@@ -1,5 +1,7 @@
 # lib/rhales/utils.rb
 
+require 'pathname'
+
 module Rhales
   module Utils
     # Utility modules and classes
@@ -19,6 +21,14 @@ module Rhales
       Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
     end
     alias now_in_microseconds now_in_μs
+
+    # @param filepath [String, nil] The file path to prettify
+    # @return [String, nil] The expanded absolute path, or nil if input is
+    def pretty_path(filepath)
+      return nil if filepath.nil?
+
+      Pathname.new(filepath).expand_path.to_s
+    end
   end
 end
 
