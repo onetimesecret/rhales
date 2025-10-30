@@ -286,7 +286,7 @@ module Rhales
       configuration.validate!
       configuration.freeze!
 
-      # Debug log the configuration
+      # Debug log the configuration (guard against stale test mocks)
       if Rhales.logger
         require_relative 'utils/logging_helpers'
         extend Rhales::Utils::LoggingHelpers
