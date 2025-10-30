@@ -25,8 +25,8 @@ RSpec.describe 'Rhales Logging' do
           layout: nil,
           template_names: [],
           dependencies: {},
-          each_document_in_render_order: []
-        )
+          each_document_in_render_order: [],
+        ),
       )
       allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
       allow_any_instance_of(Rhales::View).to receive(:generate_hydration_from_merged_data).and_return('')
@@ -37,8 +37,8 @@ RSpec.describe 'Rhales Logging' do
       view = Rhales::View.new(mock_request, client: { user: 'test' })
       view.render('test_template')
 
-      expect(logger).to have_received(:info).with(
-        a_string_matching(/View rendered: template=test_template/)
+      expect(logger).to have_received(:debug).with(
+        a_string_matching(/View rendered: template=test_template/),
       )
     end
 
@@ -47,12 +47,12 @@ RSpec.describe 'Rhales Logging' do
 
       view = Rhales::View.new(mock_request)
 
-      expect {
+      expect do
         view.render('test_template')
-      }.to raise_error(Rhales::View::RenderError)
+      end.to raise_error(Rhales::View::RenderError)
 
       expect(logger).to have_received(:error).with(
-        a_string_matching(/View render failed: template=test_template/)
+        a_string_matching(/View render failed: template=test_template/),
       )
     end
 
@@ -62,8 +62,8 @@ RSpec.describe 'Rhales Logging' do
           layout: nil,
           template_names: [],
           dependencies: {},
-          each_document_in_render_order: []
-        )
+          each_document_in_render_order: [],
+        ),
       )
       allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
       allow_any_instance_of(Rhales::View).to receive(:generate_hydration_from_merged_data).and_return('')
@@ -75,8 +75,8 @@ RSpec.describe 'Rhales Logging' do
       view.render('test_template')
 
       # Verify duration is logged as an integer (microseconds, not float milliseconds)
-      expect(logger).to have_received(:info).with(
-        a_string_matching(/View rendered: .*duration=\d+/)
+      expect(logger).to have_received(:debug).with(
+        a_string_matching(/View rendered: .*duration=\d+/),
       )
     end
   end
@@ -94,7 +94,7 @@ RSpec.describe 'Rhales Logging' do
       engine.render
 
       expect(logger).to have_received(:debug).with(
-        a_string_matching(/Template compiled: template_type=handlebars/)
+        a_string_matching(/Template compiled: template_type=handlebars/),
       )
     end
 
@@ -106,7 +106,7 @@ RSpec.describe 'Rhales Logging' do
       engine.render
 
       expect(logger).to have_received(:warn).with(
-        a_string_matching(/Unescaped variable usage: variable=html/)
+        a_string_matching(/Unescaped variable usage: variable=html/),
       )
     end
 
@@ -116,12 +116,12 @@ RSpec.describe 'Rhales Logging' do
 
       engine = Rhales::TemplateEngine.new(template, context)
 
-      expect {
+      expect do
         engine.render
-      }.to raise_error(Rhales::TemplateEngine::RenderError)
+      end.to raise_error(Rhales::TemplateEngine::RenderError)
 
       expect(logger).to have_received(:error).with(
-        a_string_matching(/Template parse error: error="Expected/)
+        a_string_matching(/Template parse error: error="Expected/),
       )
     end
   end
@@ -138,7 +138,7 @@ RSpec.describe 'Rhales Logging' do
       Rhales::CSP.generate_nonce
 
       expect(logger).to have_received(:debug).with(
-        a_string_matching(/CSP nonce generated: nonce=\w+/)
+        a_string_matching(/CSP nonce generated: nonce=\w+/),
       )
     end
 
@@ -146,8 +146,8 @@ RSpec.describe 'Rhales Logging' do
       csp = Rhales::CSP.new(config, nonce: 'test-nonce')
       csp.build_header
 
-      expect(logger).to have_received(:info).with(
-        a_string_matching(/CSP header generated: nonce_used=true/)
+      expect(logger).to have_received(:debug).with(
+        a_string_matching(/CSP header generated: nonce_used=true/),
       )
     end
   end
@@ -166,8 +166,8 @@ RSpec.describe 'Rhales Logging' do
           layout: nil,
           template_names: [],
           dependencies: {},
-          each_document_in_render_order: []
-        )
+          each_document_in_render_order: [],
+        ),
       )
       allow_any_instance_of(Rhales::View).to receive(:render_template_with_composition).and_return('<html></html>')
       allow_any_instance_of(Rhales::View).to receive(:generate_hydration_from_merged_data).and_return('')
@@ -178,8 +178,8 @@ RSpec.describe 'Rhales Logging' do
       view = Rhales::View.new(mock_request, client: { user: 'test' })
       view.render('test_template')
 
-      expect(custom_logger).to have_received(:info).with(
-        a_string_matching(/View rendered/)
+      expect(custom_logger).to have_received(:debug).with(
+        a_string_matching(/View rendered/),
       )
     end
   end
