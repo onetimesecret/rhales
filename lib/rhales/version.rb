@@ -3,6 +3,6 @@
 module Rhales
   # Version information for the RSFC gem
   unless defined?(Rhales::VERSION)
-    VERSION = '0.5.2'
+    VERSION = '0.5.3'
   end
 end
