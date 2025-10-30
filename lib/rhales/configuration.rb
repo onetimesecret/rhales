@@ -149,6 +149,12 @@ module Rhales
     # JSON response settings
     attr_accessor :enable_json_responder, :json_responder_include_metadata
 
+    # Logging settings
+    attr_accessor :allowed_unescaped_variables
+
+    # Hydration mismatch reporting settings
+    attr_accessor :hydration_mismatch_format, :hydration_authority
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -175,6 +181,13 @@ module Rhales
       # JSON responder defaults
       @enable_json_responder            = true
       @json_responder_include_metadata  = false
+
+      # Logging defaults
+      @allowed_unescaped_variables      = []
+
+      # Hydration mismatch reporting defaults
+      @hydration_mismatch_format        = :compact  # :compact, :multiline, :sidebyside, :json
+      @hydration_authority              = :schema   # :schema or :data
 
       # Yield to block for configuration if provided
       yield(self) if block_given?
@@ -271,6 +284,20 @@ module Rhales
       yield(configuration) if block_given?
       configuration.validate!
       configuration.freeze!
+
+      # Debug log the configuration (guard against stale test mocks)
+      if Rhales.logger
+        require_relative 'utils/logging_helpers'
+        extend Rhales::Utils::LoggingHelpers
+
+        log_with_metadata(Rhales.logger, :debug, 'Rhales configured',
+          hydration_mismatch_format: configuration.hydration_mismatch_format,
+          hydration_authority: configuration.hydration_authority,
+          enable_schema_validation: configuration.enable_schema_validation,
+          fail_on_validation_error: configuration.fail_on_validation_error
+        )
+      end
+
       configuration
     end
 

@@ -48,7 +48,7 @@ module Rhales
         freeze_composition
 
         # Log resolution results
-        log_with_metadata(Rhales.logger, :info, 'Template composition resolved',
+        log_with_metadata(Rhales.logger, :debug, 'Template composition resolved',
           root_template: @root_template_name,
           total_templates: @templates.size,
           total_dependencies: @dependencies.values.sum(&:size),
@@ -155,7 +155,7 @@ module Rhales
         partials = extract_partials(parser)
 
         if partials.any?
-          log_with_metadata(Rhales.logger, :debug, 'Partial resolution',
+          log_with_metadata(Rhales.logger, :debug, 'Resolved partial',
             template: template_name,
             partials_found: partials,
             partial_count: partials.size,

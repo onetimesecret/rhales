@@ -16,7 +16,7 @@ module Rhales
       # @return The result of the block
       #
       # Logs the operation with timing information in microseconds.
-      def log_timed_operation(logger, level, message, **metadata, &block)
+      def log_timed_operation(logger, level, message, **metadata)
         start_time = now_in_μs
         result = yield
         duration = now_in_μs - start_time
@@ -30,8 +30,9 @@ module Rhales
           metadata.merge(
             duration: duration,
             error: ex.message,
-            error_class: ex.class.name
-          ))
+            error_class: ex.class.name,
+          )
+        )
         raise
       end
 
@@ -53,7 +54,16 @@ module Rhales
         when Symbol, Numeric, true, false, nil
           value.to_s
         when Array
-          "[#{value.join(', ')}]"
+          # For arrays longer than 5 items, show count + first/last items
+          if value.size > 5
+            first_three = value.first(3).join(', ')
+            last_two = value.last(2).join(', ')
+            "[#{value.size} items: #{first_three} ... #{last_two}]"
+          elsif value.empty?
+            '[]'
+          else
+            "[#{value.join(', ')}]"
+          end
         else
           value.to_s
         end

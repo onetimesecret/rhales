@@ -46,7 +46,7 @@ module Rhales
       header = policy_directives.join('; ')
 
       # Log CSP header generation for security audit
-      log_with_metadata(Rhales.logger, :info, "CSP header generated",
+      log_with_metadata(Rhales.logger, :debug, "CSP header generated",
         nonce_used: nonce_used,
         nonce: @nonce,
         directive_count: policy_directives.size,

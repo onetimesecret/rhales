@@ -103,7 +103,7 @@ module Rhales
         duration = now_in_μs - start_time
         hydration_size = merged_hydration_data.to_json.bytesize if merged_hydration_data
 
-        log_with_metadata(Rhales.logger, :info, 'View rendered',
+        log_with_metadata(Rhales.logger, :debug, 'View rendered',
           template: template_name,
           layout: composition.layout,
           partials: composition.dependencies.values.flatten.uniq,
