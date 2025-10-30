@@ -5,8 +5,6 @@ namespace :rhales do
     desc 'Generate JSON Schemas from .rue template files'
     task :generate do
       require 'rhales'
-      require 'rhales/schema_extractor'
-      require 'rhales/schema_generator'
 
       # Default to current working directory (implementing project)
       templates_dir = ENV.fetch('TEMPLATES_DIR', './templates')
@@ -164,7 +162,6 @@ namespace :rhales do
     desc 'Show statistics about schema sections'
     task :stats do
       require 'rhales'
-      require 'rhales/schema_extractor'
 
       # Default to current working directory
       templates_dir = ENV.fetch('TEMPLATES_DIR', './templates')
