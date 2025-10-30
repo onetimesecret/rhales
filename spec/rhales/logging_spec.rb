@@ -115,6 +115,98 @@ RSpec.describe 'Rhales Logging' do
       )
     end
 
+    describe 'allowed_unescaped_variables configuration' do
+      after do
+        Rhales.reset_configuration!
+      end
+
+      it 'suppresses warnings for whitelisted variables' do
+        Rhales.reset_configuration!
+        Rhales.configure do |config|
+          config.allowed_unescaped_variables = ['vite_assets_html']
+        end
+
+        template = 'Assets: {{{vite_assets_html}}}'
+        context = Rhales::Context.minimal(client: { vite_assets_html: '<script src="app.js"></script>' })
+
+        engine = Rhales::TemplateEngine.new(template, context)
+        engine.render
+
+        expect(logger).not_to have_received(:warn)
+      end
+
+      it 'still warns for non-whitelisted variables' do
+        Rhales.reset_configuration!
+        Rhales.configure do |config|
+          config.allowed_unescaped_variables = ['vite_assets_html']
+        end
+
+        template = 'Unsafe: {{{html}}}'
+        context = Rhales::Context.minimal(client: { html: '<script>alert("xss")</script>' })
+
+        engine = Rhales::TemplateEngine.new(template, context)
+        engine.render
+
+        expect(logger).to have_received(:warn).with(
+          a_string_matching(/Unescaped variable usage: variable=html/),
+        )
+      end
+
+      it 'works with multiple whitelisted variables' do
+        Rhales.reset_configuration!
+        Rhales.configure do |config|
+          config.allowed_unescaped_variables = ['vite_assets_html', 'safe_html', 'trusted_content']
+        end
+
+        template = '{{{vite_assets_html}}} {{{safe_html}}} {{{trusted_content}}}'
+        context = Rhales::Context.minimal(
+          client: {
+            vite_assets_html: '<script src="app.js"></script>',
+            safe_html: '<div>Content</div>',
+            trusted_content: '<p>Safe</p>',
+          },
+        )
+
+        engine = Rhales::TemplateEngine.new(template, context)
+        engine.render
+
+        expect(logger).not_to have_received(:warn)
+      end
+
+      it 'handles both handlebars {{{ }}} and variable expressions' do
+        Rhales.reset_configuration!
+        Rhales.configure do |config|
+          config.allowed_unescaped_variables = ['safe_var']
+        end
+
+        # Test both syntax forms
+        template = '{{{safe_var}}} and also {{{safe_var}}}'
+        context = Rhales::Context.minimal(client: { safe_var: '<div>Safe</div>' })
+
+        engine = Rhales::TemplateEngine.new(template, context)
+        engine.render
+
+        expect(logger).not_to have_received(:warn)
+      end
+
+      it 'warns by default when allowed list is empty' do
+        Rhales.reset_configuration!
+        Rhales.configure do |config|
+          config.allowed_unescaped_variables = []
+        end
+
+        template = '{{{html}}}'
+        context = Rhales::Context.minimal(client: { html: '<script>xss</script>' })
+
+        engine = Rhales::TemplateEngine.new(template, context)
+        engine.render
+
+        expect(logger).to have_received(:warn).with(
+          a_string_matching(/Unescaped variable usage: variable=html/),
+        )
+      end
+    end
+
     it 'logs parse errors with location context' do
       template = '{{unclosed'
       context = Rhales::Context.minimal(client: {})
