@@ -149,6 +149,9 @@ module Rhales
     # JSON response settings
     attr_accessor :enable_json_responder, :json_responder_include_metadata
 
+    # Logging settings
+    attr_accessor :suppress_unescaped_warnings, :allowed_unescaped_variables
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -175,6 +178,10 @@ module Rhales
       # JSON responder defaults
       @enable_json_responder            = true
       @json_responder_include_metadata  = false
+
+      # Logging defaults
+      @suppress_unescaped_warnings      = false
+      @allowed_unescaped_variables      = []
 
       # Yield to block for configuration if provided
       yield(self) if block_given?

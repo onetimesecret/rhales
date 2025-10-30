@@ -158,9 +158,15 @@ module Rhales
       value = get_variable_value(name)
 
       if raw
-        log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
-          variable: name, value_type: value.class.name, template_context: 'variable_expression'
-        )
+        # Only log unescaped variable warning if not suppressed globally and not in allowed list
+        should_warn = !Rhales.config.suppress_unescaped_warnings &&
+                      !Rhales.config.allowed_unescaped_variables.include?(name.to_s)
+
+        if should_warn
+          log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
+            variable: name, value_type: value.class.name, template_context: 'variable_expression'
+          )
+        end
         value.to_s
       else
         escape_html(value.to_s)
@@ -226,9 +232,15 @@ module Rhales
       else # Variables
         value = get_variable_value(content)
         if raw
-          log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
-            variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
-          )
+          # Only log unescaped variable warning if not suppressed globally and not in allowed list
+          should_warn = !Rhales.config.suppress_unescaped_warnings &&
+                        !Rhales.config.allowed_unescaped_variables.include?(content.to_s)
+
+          if should_warn
+            log_with_metadata(Rhales.logger, :warn, 'Unescaped variable usage',
+              variable: content, value_type: value.class.name, template_context: 'handlebars_expression'
+            )
+          end
           value.to_s
         else
           escape_html(value.to_s)
