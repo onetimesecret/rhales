@@ -24,9 +24,19 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
+  # Silence Rhales debug logs during test suite
+  config.before(:suite) do
+    Rhales.logger.level = Logger::WARN
+  end
+
   # Reset Rhales configuration between tests
   config.before do
+    # Clear any instance variables that might hold stale mocks
+    Rhales.instance_variable_set(:@logger, nil) if Rhales.instance_variable_defined?(:@logger)
+
+    # Reset configuration BEFORE configuring to avoid frozen configuration errors
     Rhales.reset_configuration!
+
     Rhales.configure do |rhales_config|
       rhales_config.default_locale      = 'en'
       rhales_config.app_environment     = 'test'
