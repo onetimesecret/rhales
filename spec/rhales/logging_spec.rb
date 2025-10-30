@@ -5,6 +5,7 @@ require_relative '../spec_helper'
 RSpec.describe 'Rhales Logging' do
   let(:logger) { double('logger') }
   let(:mock_request) { double('request', env: {}) }
+  let(:original_logger) { Rhales.logger }
 
   before do
     # Mock logger calls to avoid noise in test output
@@ -12,6 +13,10 @@ RSpec.describe 'Rhales Logging' do
     allow(logger).to receive(:info)
     allow(logger).to receive(:warn)
     allow(logger).to receive(:error)
+  end
+
+  after do
+    Rhales.logger = original_logger
   end
 
   describe 'View rendering logging' do
