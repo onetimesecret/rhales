@@ -167,6 +167,11 @@ RSpec.describe Rhales::Configuration do
       subject.hydration_mismatch_format = :sidebyside
       expect(subject.hydration_mismatch_format).to eq(:sidebyside)
     end
+
+    it 'allows setting hydration_mismatch_format to :json' do
+      subject.hydration_mismatch_format = :json
+      expect(subject.hydration_mismatch_format).to eq(:json)
+    end
   end
 
   describe '#hydration_authority' do
