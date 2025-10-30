@@ -19,8 +19,14 @@ RSpec.describe 'rhales:schema rake tasks' do
     Rake::Task.define_task(:environment)
   end
 
-  before(:each) do
+  around(:each) do |example|
+    # Save original ENV to prevent test pollution
+    original_env = ENV.to_h
     @rake.tasks.each(&:reenable)
+    example.run
+  ensure
+    # Restore ENV even if test fails
+    ENV.replace(original_env)
   end
 
   let(:temp_dir) { Dir.mktmpdir('rhales_schema_test') }
