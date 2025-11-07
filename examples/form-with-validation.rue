@@ -90,47 +90,50 @@ const schema = z.object({
       <button type="submit">Send Message</button>
     </form>
 
-    <!-- Client-side validation -->
+    <!-- Client-side validation using Zod -->
     <script nonce="{{request.nonce}}">
       const form = document.getElementById('contact-form');
       const config = window.formData.formConfig;
       const messages = window.formData.validationMessages;
 
+      // Define Zod schema for form validation
+      const formSchema = z.object({
+        name: z.string()
+          .min(1, messages.required)
+          .max(config.maxLength, messages.maxLength.replace('{max}', config.maxLength)),
+        email: z.string()
+          .min(1, messages.required)
+          .email(messages.email),
+        message: z.string()
+          .min(1, messages.required)
+          .max(config.maxLength, messages.maxLength.replace('{max}', config.maxLength))
+      });
+
       form.addEventListener('submit', (e) => {
         // Clear previous errors
         document.querySelectorAll('.error').forEach(el => el.textContent = '');
 
-        let hasErrors = false;
+        // Collect form data
+        const formData = {
+          name: form.elements['name'].value,
+          email: form.elements['email'].value,
+          message: form.elements['message'].value
+        };
 
-        // Validate required fields
-        config.required.forEach(fieldName => {
-          const field = form.elements[fieldName];
-          if (!field.value.trim()) {
-            document.getElementById(fieldName + '-error').textContent = messages.required;
-            hasErrors = true;
-          }
-        });
+        // Validate using Zod
+        const result = formSchema.safeParse(formData);
 
-        // Validate email format
-        const emailField = form.elements['email'];
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (emailField.value && !emailRegex.test(emailField.value)) {
-          document.getElementById('email-error').textContent = messages.email;
-          hasErrors = true;
-        }
-
-        // Validate max length
-        ['name', 'message'].forEach(fieldName => {
-          const field = form.elements[fieldName];
-          if (field.value.length > config.maxLength) {
-            document.getElementById(fieldName + '-error').textContent =
-              messages.maxLength.replace('{max}', config.maxLength);
-            hasErrors = true;
-          }
-        });
-
-        if (hasErrors) {
+        if (!result.success) {
           e.preventDefault();
+
+          // Display validation errors
+          result.error.issues.forEach(issue => {
+            const fieldName = issue.path[0];
+            const errorElement = document.getElementById(fieldName + '-error');
+            if (errorElement) {
+              errorElement.textContent = issue.message;
+            }
+          });
         }
       });
     </script>

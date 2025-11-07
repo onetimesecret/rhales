@@ -1,5 +1,4 @@
 # lib/rhales/middleware/schema_validator.rb
-#
 # frozen_string_literal: true
 
 require 'json_schemer'

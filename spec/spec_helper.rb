@@ -1,5 +1,4 @@
 # spec/spec_helper.rb
-#
 # frozen_string_literal: true
 
 require 'bundler/setup'

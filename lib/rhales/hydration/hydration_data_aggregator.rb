@@ -1,5 +1,4 @@
 # lib/rhales/hydration_data_aggregator.rb
-#
 # frozen_string_literal: true
 
 require 'json'

@@ -1,5 +1,4 @@
 # lib/rhales/adapters/base_request.rb
-#
 # frozen_string_literal: true
 
 module Rhales

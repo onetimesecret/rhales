@@ -1,5 +1,4 @@
 # lib/rhales/view.rb
-#
 # frozen_string_literal: true
 
 require 'securerandom'

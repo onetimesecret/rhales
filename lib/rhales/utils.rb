@@ -1,5 +1,4 @@
 # lib/rhales/utils.rb
-#
 # frozen_string_literal: true
 
 require 'pathname'

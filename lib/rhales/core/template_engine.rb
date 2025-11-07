@@ -1,5 +1,4 @@
 # lib/rhales/template_engine.rb
-#
 # frozen_string_literal: true
 
 require 'erb'

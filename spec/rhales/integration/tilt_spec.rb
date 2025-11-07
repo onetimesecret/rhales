@@ -1,5 +1,4 @@
 # spec/rhales/integration/tilt_spec.rb
-#
 # frozen_string_literal: true
 
 require 'spec_helper'

@@ -1,5 +1,4 @@
 # lib/rhales/errors/hydration_collision_error.rb
-#
 # frozen_string_literal: true
 
 module Rhales

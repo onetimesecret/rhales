@@ -1,5 +1,4 @@
 # spec/rhales/errors/hydration_collision_error_spec.rb
-#
 # frozen_string_literal: true
 
 require 'spec_helper'
