@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# spec/rhales/json_serializer_spec.rb
 
 require 'spec_helper'
 

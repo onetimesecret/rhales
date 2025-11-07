@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# spec/rhales/middleware/json_responder_spec.rb
 
 require 'spec_helper'
 require 'rhales/middleware/json_responder'

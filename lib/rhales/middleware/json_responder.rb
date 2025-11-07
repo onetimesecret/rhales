@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# lib/rhales/middleware/json_responder.rb
 
 require_relative '../utils/json_serializer'
 

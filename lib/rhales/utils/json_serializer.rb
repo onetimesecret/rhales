@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# lib/rhales/utils/json_serializer.rb
 
 module Rhales
   # Centralized JSON serialization with optional Oj support

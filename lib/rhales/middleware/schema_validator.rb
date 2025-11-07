@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# lib/rhales/middleware/schema_validator.rb
 
 require 'json_schemer'
 require_relative '../utils/json_serializer'
