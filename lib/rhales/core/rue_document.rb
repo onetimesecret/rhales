@@ -1,4 +1,6 @@
 # lib/rhales/rue_document.rb
+#
+# frozen_string_literal: true
 
 require_relative '../parsers/rue_format_parser'
 

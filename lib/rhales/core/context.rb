@@ -1,4 +1,6 @@
 # lib/rhales/context.rb
+#
+# frozen_string_literal: true
 
 require_relative '../configuration'
 require_relative '../adapters/base_auth'

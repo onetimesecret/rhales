@@ -1,4 +1,6 @@
 # lib/rhales/hydration_registry.rb
+#
+# frozen_string_literal: true
 
 module Rhales
   # Registry to track window attributes used in hydration blocks

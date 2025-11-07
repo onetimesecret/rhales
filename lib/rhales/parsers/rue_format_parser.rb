@@ -1,4 +1,6 @@
 # lib/rhales/parsers/rue_format_parser.rb
+#
+# frozen_string_literal: true
 
 require 'strscan'
 require_relative 'handlebars_parser'

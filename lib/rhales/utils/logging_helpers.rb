@@ -1,4 +1,6 @@
 # lib/rhales/utils/logging_helpers.rb
+#
+# frozen_string_literal: true
 
 module Rhales
   module Utils
