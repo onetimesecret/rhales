@@ -1,4 +1,5 @@
 # spec/rhales/integration/vue_spa_schema_spec.rb
+#
 # frozen_string_literal: true
 
 require 'spec_helper'

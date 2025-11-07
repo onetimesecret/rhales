@@ -1,4 +1,5 @@
 # spec/rhales/middleware/schema_validator_spec.rb
+#
 # frozen_string_literal: true
 
 require 'spec_helper'

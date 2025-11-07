@@ -1,4 +1,5 @@
 # lib/rhales/parsers/handlebars_parser.rb
+#
 # frozen_string_literal: true
 
 module Rhales

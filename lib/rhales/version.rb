@@ -1,4 +1,5 @@
 # lib/rhales/version.rb
+#
 # frozen_string_literal: true
 
 module Rhales

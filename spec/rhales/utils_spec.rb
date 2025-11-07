@@ -1,4 +1,5 @@
 # spec/rhales/utils_spec.rb
+#
 # frozen_string_literal: true
 
 require_relative '../spec_helper'

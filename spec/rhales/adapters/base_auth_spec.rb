@@ -1,4 +1,5 @@
 # spec/rhales/adapters/base_auth_spec.rb
+#
 # frozen_string_literal: true
 
 require 'spec_helper'

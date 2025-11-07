@@ -1,4 +1,5 @@
 # lib/rhales/parsers.rb
+#
 # frozen_string_literal: true
 
 # Dependencies

@@ -1,4 +1,5 @@
 # spec/rhales/integration/schema_hydration_spec.rb
+#
 # frozen_string_literal: true
 
 require 'spec_helper'
