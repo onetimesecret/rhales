@@ -5,46 +5,132 @@
 
   This demonstrates Rhales' core strength: seamless server-to-SPA handoff.
 
-  The <schema> section defines a zod v3 schema in plain Javascript  exactly what your Vue app receives via window.onetime,
-  while the <template> provides SEO-friendly server-rendered HTML that Vue can
-  mount onto for client-side functionality.
+  The <schema> section defines a Zod v4 schema in plain JavaScript that specifies
+  exactly what your Vue app receives. The window variable name is configurable via
+  the window="..." attribute (e.g., window="appState" → window.appState).
+
+  The <template> provides SEO-friendly server-rendered HTML that Vue can mount onto
+  for client-side functionality.
 
   Key features demonstrated:
-  - Schema validation with TypeScript definitions
+  - Schema validation with Zod v4
   - Automatic JSON hydration script generation
   - Conditional asset loading (dev vs production)
   - CSP-compliant nonce handling
+  - Three-layer context access (request, server, client)
 -->
 
-<schema>
-{{onetime_window}}
+<schema lang="js-zod" window="__ONETIME_STATE__">
+const schema = z.object({
+  ui: z.object({
+    theme: z.string(),
+    locale: z.string()
+  }),
+  authentication: z.object({
+    authenticated: z.boolean(),
+    userId: z.string().nullable()
+  }),
+  user: z.object({
+    name: z.string(),
+    email: z.string(),
+    accountSince: z.number().nullable()
+  }).nullable(),
+  features: z.object({
+    darkMode: z.boolean(),
+    notifications: z.boolean()
+  }),
+  apiBaseUrl: z.string().url()
+});
 </schema>
 
 <template>
-  <!doctype html>
-  <html lang="{{locale}}" class="{{theme_class}}">
-    <head>
-      {{> colourmode}}
-      {{> head}}
-    </head>
+<!doctype html>
+<html lang="{{client.ui.locale}}" class="{{client.ui.theme}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{server.pageTitle}}</title>
 
-    <body class="font-serif bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div id="app">
-        <!-- Server-rendered content for SEO/initial load -->
-        {{> placeholder}}
-      </div>
+    <!-- Dark mode detection (runs before page render to prevent FOUC) -->
+    <script nonce="{{request.nonce}}">
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
 
-      <!-- Client hydration data is automatically injected by RSFC hydrator -->
-      <!-- The data section above will be converted to: -->
-      <!-- <script id="onetime-script" type="application/json">{...}</script> -->
-      <!-- <script>window.onetime = JSON.parse(document.getElementById('onetime-script').textContent);</script> -->
+    {{#if server.viteAssetsHtml}}
+      {{{server.viteAssetsHtml}}}
+    {{/if}}
+  </head>
 
-      <!-- Vue application bootstrap -->
-      {{#if frontend_host}}
-      <script nonce="{{nonce}}" type="module" src="{{frontend_host}}/src/main.ts"></script>
+  <body class="font-serif bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div id="app">
+      <!-- Server-rendered placeholder for SEO/initial load -->
+      {{#if client.authentication.authenticated}}
+        <div class="loading-state">
+          <p>Welcome back, {{client.user.name}}!</p>
+          <p>Loading your dashboard...</p>
+        </div>
       {{else}}
-      <script nonce="{{nonce}}" type="module" src="/assets/main.js"></script>
+        <div class="landing-page">
+          <h1>Welcome to Our App</h1>
+          <p>Please log in to continue</p>
+        </div>
       {{/if}}
-    </body>
-  </html>
+    </div>
+
+    <!-- Client hydration data is automatically injected by Rhales hydrator -->
+    <!-- Result: window.__ONETIME_STATE__ = { ui: {...}, authentication: {...}, ... } -->
+
+    <!-- Vue application bootstrap -->
+    {{#if server.frontendHost}}
+      <!-- Development: Vite dev server -->
+      <script nonce="{{request.nonce}}" type="module" src="{{server.frontendHost}}/src/main.ts"></script>
+    {{else}}
+      <!-- Production: Built assets -->
+      <script nonce="{{request.nonce}}" type="module" src="/assets/main.js"></script>
+    {{/if}}
+  </body>
+</html>
 </template>
+
+<logic>
+# Vue.js SPA Integration Example
+#
+# Backend Usage (Ruby):
+#
+# view = Rhales::View.new(
+#   request,
+#   client: {
+#     ui: { theme: user.theme || 'light', locale: I18n.locale },
+#     authentication: { authenticated: logged_in?, userId: current_user&.id },
+#     user: current_user&.to_client_data,
+#     features: { darkMode: true, notifications: true },
+#     apiBaseUrl: ENV['API_BASE_URL']
+#   },
+#   server: {
+#     pageTitle: 'My App',
+#     viteAssetsHtml: vite_javascript_tag('application'),
+#     frontendHost: ENV['VITE_DEV_SERVER_URL'] # nil in production
+#   }
+# )
+#
+# html = view.render('vue')
+#
+# Frontend Usage (Vue 3):
+#
+# // src/main.ts
+# import { createApp } from 'vue'
+# import App from './App.vue'
+#
+# // Access hydrated state (window variable name matches <schema window="...">)
+# const state = window.__ONETIME_STATE__
+#
+# const app = createApp(App, {
+#   initialState: state
+# })
+#
+# app.mount('#app')
+</logic>

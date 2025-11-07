@@ -1,4 +1,6 @@
 # lib/rhales.rb
+#
+# frozen_string_literal: true
 
 require 'logger'
 

@@ -1,4 +1,6 @@
 # lib/rhales/csp.rb
+#
+# frozen_string_literal: true
 
 module Rhales
   # Content Security Policy (CSP) header generation and management

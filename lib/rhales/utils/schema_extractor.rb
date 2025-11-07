@@ -1,4 +1,6 @@
 # lib/rhales/schema_extractor.rb
+#
+# frozen_string_literal: true
 
 require 'pathname'
 require_relative '../core/rue_document'

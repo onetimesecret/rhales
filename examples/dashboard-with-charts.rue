@@ -1,0 +1,271 @@
+<!-- examples/dashboard-with-charts.rue -->
+
+<!--
+  Example: Dashboard with Complex Data Hydration
+
+  This demonstrates:
+  - Complex nested data structures with Zod v4 schema
+  - Arrays and objects for chart data
+  - Conditional rendering based on data availability
+  - Integration with client-side charting libraries
+  - Proper separation of client vs server data
+-->
+
+<schema lang="js-zod" window="dashboardData">
+const schema = z.object({
+  user: z.object({
+    id: z.number(),
+    name: z.string(),
+    role: z.enum(['admin', 'user', 'guest'])
+  }),
+  stats: z.object({
+    totalUsers: z.number(),
+    activeUsers: z.number(),
+    revenue: z.number(),
+    growth: z.number()
+  }),
+  chartData: z.object({
+    labels: z.array(z.string()),
+    datasets: z.array(z.object({
+      label: z.string(),
+      data: z.array(z.number()),
+      backgroundColor: z.string().optional(),
+      borderColor: z.string().optional()
+    }))
+  }),
+  recentActivity: z.array(z.object({
+    id: z.number(),
+    user: z.string(),
+    action: z.string(),
+    timestamp: z.number()
+  })),
+  permissions: z.object({
+    canEdit: z.boolean(),
+    canDelete: z.boolean(),
+    canExport: z.boolean()
+  })
+});
+</schema>
+
+<template>
+<!DOCTYPE html>
+<html lang="{{request.locale}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{server.pageTitle}}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .stat-value { font-size: 2rem; font-weight: bold; color: #0066cc; }
+    .stat-label { color: #666; margin-top: 0.5rem; }
+    .chart-container { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    .activity-list { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .activity-item { padding: 1rem; border-bottom: 1px solid #eee; }
+    .activity-item:last-child { border-bottom: none; }
+    .actions { display: flex; gap: 0.5rem; }
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }
+    .btn-primary { background: #0066cc; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+  <!-- Chart.js for visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>{{server.pageTitle}}</h1>
+      <p>Welcome back, {{client.user.name}} ({{client.user.role}})</p>
+    </div>
+    <div class="actions">
+      {{#if client.permissions.canExport}}
+        <button class="btn btn-primary" onclick="exportData()">Export Data</button>
+      {{/if}}
+    </div>
+  </div>
+
+  <!-- Stats Overview -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{client.stats.totalUsers}}</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{client.stats.activeUsers}}</div>
+      <div class="stat-label">Active Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${{client.stats.revenue}}</div>
+      <div class="stat-label">Revenue</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{client.stats.growth}}%</div>
+      <div class="stat-label">Growth</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-container">
+    <h2>Activity Over Time</h2>
+    <canvas id="activityChart"></canvas>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="activity-list">
+    <h2>Recent Activity</h2>
+    {{#if client.recentActivity}}
+      {{#each client.recentActivity}}
+        <div class="activity-item">
+          <strong>{{user}}</strong> {{action}}
+          <span style="color: #666; font-size: 0.875rem;">
+            ({{@index}} items ago)
+          </span>
+          {{#if ../client.permissions.canDelete}}
+            <button class="btn btn-danger" onclick="deleteActivity({{id}})">Delete</button>
+          {{/if}}
+        </div>
+      {{/each}}
+    {{else}}
+      <p>No recent activity</p>
+    {{/if}}
+  </div>
+
+  <!-- Client-side JavaScript -->
+  <script nonce="{{request.nonce}}">
+    // Access hydrated dashboard data
+    const data = window.dashboardData;
+
+    // Initialize chart with hydrated data
+    const ctx = document.getElementById('activityChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.chartData.labels,
+        datasets: data.chartData.datasets
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Export function (only available if user has permission)
+    function exportData() {
+      const csv = generateCSV(data.recentActivity);
+      downloadCSV(csv, 'dashboard-export.csv');
+      console.log('Data exported by user:', data.user.name);
+    }
+
+    function generateCSV(activities) {
+      const headers = ['ID', 'User', 'Action', 'Timestamp'];
+      const rows = activities.map(a => [a.id, a.user, a.action, a.timestamp]);
+      return [headers, ...rows].map(row => row.join(',')).join('\n');
+    }
+
+    function downloadCSV(csv, filename) {
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Delete function (only available if user has permission)
+    function deleteActivity(id) {
+      if (!data.permissions.canDelete) {
+        alert('You do not have permission to delete activities');
+        return;
+      }
+
+      if (confirm('Are you sure you want to delete this activity?')) {
+        fetch(`/api/activities/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': '{{request.csrf_token}}'
+          }
+        })
+        .then(r => r.json())
+        .then(result => {
+          console.log('Activity deleted:', id);
+          location.reload();
+        })
+        .catch(err => console.error('Delete failed:', err));
+      }
+    }
+  </script>
+</body>
+</html>
+</template>
+
+<logic>
+# Dashboard with Charts Example
+#
+# Backend Usage (Ruby):
+#
+# view = Rhales::View.new(
+#   request,
+#   client: {
+#     user: {
+#       id: current_user.id,
+#       name: current_user.name,
+#       role: current_user.role
+#     },
+#     stats: {
+#       totalUsers: User.count,
+#       activeUsers: User.active.count,
+#       revenue: Order.total_revenue,
+#       growth: Analytics.growth_percentage
+#     },
+#     chartData: {
+#       labels: last_7_days.map(&:to_s),
+#       datasets: [
+#         {
+#           label: 'Active Users',
+#           data: last_7_days.map { |date| User.active_on(date).count },
+#           backgroundColor: 'rgba(54, 162, 235, 0.2)',
+#           borderColor: 'rgba(54, 162, 235, 1)'
+#         }
+#       ]
+#     },
+#     recentActivity: Activity.recent(10).map { |a|
+#       {
+#         id: a.id,
+#         user: a.user.name,
+#         action: a.action_description,
+#         timestamp: a.created_at.to_i
+#       }
+#     },
+#     permissions: {
+#       canEdit: current_user.can?(:edit),
+#       canDelete: current_user.can?(:delete),
+#       canExport: current_user.can?(:export)
+#     }
+#   },
+#   server: {
+#     pageTitle: 'Admin Dashboard',
+#     # Server-only data (not sent to client)
+#     internalNotes: 'Premium customer - handle with care',
+#     auditLog: AuditLog.for_user(current_user)
+#   }
+# )
+#
+# html = view.render('dashboard-with-charts')
+#
+# Key Features:
+# - Complex nested data validated with Zod schema
+# - Permission-based UI rendering (buttons only shown if allowed)
+# - Client-side chart initialization with hydrated data
+# - CSRF protection for DELETE requests
+# - Clear separation: sensitive audit logs stay in server layer
+</logic>

@@ -1,4 +1,6 @@
 # lib/rhales/template_engine.rb
+#
+# frozen_string_literal: true
 
 require 'erb'
 require_relative '../parsers/rue_format_parser'

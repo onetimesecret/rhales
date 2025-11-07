@@ -1,4 +1,6 @@
 # lib/rhales/configuration.rb
+#
+# frozen_string_literal: true
 
 module Rhales
   # Hydration-specific configuration settings
