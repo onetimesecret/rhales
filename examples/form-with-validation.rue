@@ -1,0 +1,177 @@
+<!-- examples/form-with-validation.rue -->
+
+<!--
+  Example: Form with CSRF Protection and Client-Side Validation
+
+  This demonstrates:
+  - CSRF token handling for secure form submissions
+  - Schema validation for form configuration
+  - Conditional rendering based on authentication
+  - Client-side validation with hydrated data
+-->
+
+<schema lang="js-zod" window="formData">
+const schema = z.object({
+  formConfig: z.object({
+    action: z.string().url(),
+    method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
+    maxLength: z.number(),
+    required: z.array(z.string())
+  }),
+  user: z.object({
+    name: z.string(),
+    email: z.string().email()
+  }).nullable(),
+  validationMessages: z.object({
+    required: z.string(),
+    email: z.string(),
+    maxLength: z.string()
+  })
+});
+</schema>
+
+<template>
+<!DOCTYPE html>
+<html lang="{{request.locale}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{server.pageTitle}}</title>
+  <style>
+    .form-group { margin-bottom: 1rem; }
+    .error { color: red; font-size: 0.875rem; }
+    label { display: block; margin-bottom: 0.25rem; font-weight: bold; }
+    input, textarea { width: 100%; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; background: #0066cc; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0052a3; }
+  </style>
+</head>
+<body>
+  <h1>{{server.pageTitle}}</h1>
+
+  {{#if request.authenticated?}}
+    <form id="contact-form" action="{{client.formConfig.action}}" method="{{client.formConfig.method}}">
+      <!-- CSRF protection -->
+      <input type="hidden" name="_csrf" value="{{request.csrf_token}}">
+
+      <div class="form-group">
+        <label for="name">Name *</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value="{{client.user.name}}"
+          required
+          maxlength="{{client.formConfig.maxLength}}">
+        <span class="error" id="name-error"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value="{{client.user.email}}"
+          required>
+        <span class="error" id="email-error"></span>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message *</label>
+        <textarea
+          id="message"
+          name="message"
+          rows="5"
+          required
+          maxlength="{{client.formConfig.maxLength}}"></textarea>
+        <span class="error" id="message-error"></span>
+      </div>
+
+      <button type="submit">Send Message</button>
+    </form>
+
+    <!-- Client-side validation -->
+    <script nonce="{{request.nonce}}">
+      const form = document.getElementById('contact-form');
+      const config = window.formData.formConfig;
+      const messages = window.formData.validationMessages;
+
+      form.addEventListener('submit', (e) => {
+        // Clear previous errors
+        document.querySelectorAll('.error').forEach(el => el.textContent = '');
+
+        let hasErrors = false;
+
+        // Validate required fields
+        config.required.forEach(fieldName => {
+          const field = form.elements[fieldName];
+          if (!field.value.trim()) {
+            document.getElementById(fieldName + '-error').textContent = messages.required;
+            hasErrors = true;
+          }
+        });
+
+        // Validate email format
+        const emailField = form.elements['email'];
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailField.value && !emailRegex.test(emailField.value)) {
+          document.getElementById('email-error').textContent = messages.email;
+          hasErrors = true;
+        }
+
+        // Validate max length
+        ['name', 'message'].forEach(fieldName => {
+          const field = form.elements[fieldName];
+          if (field.value.length > config.maxLength) {
+            document.getElementById(fieldName + '-error').textContent =
+              messages.maxLength.replace('{max}', config.maxLength);
+            hasErrors = true;
+          }
+        });
+
+        if (hasErrors) {
+          e.preventDefault();
+        }
+      });
+    </script>
+  {{else}}
+    <p>Please <a href="/login">log in</a> to submit the form.</p>
+  {{/if}}
+</body>
+</html>
+</template>
+
+<logic>
+# Form with Validation Example
+#
+# Backend Usage (Ruby):
+#
+# view = Rhales::View.new(
+#   request,
+#   client: {
+#     formConfig: {
+#       action: '/api/contact',
+#       method: 'POST',
+#       maxLength: 500,
+#       required: ['name', 'email', 'message']
+#     },
+#     user: current_user ? { name: current_user.name, email: current_user.email } : nil,
+#     validationMessages: {
+#       required: 'This field is required',
+#       email: 'Please enter a valid email address',
+#       maxLength: 'Maximum length is {max} characters'
+#     }
+#   },
+#   server: {
+#     pageTitle: 'Contact Us'
+#   }
+# )
+#
+# html = view.render('form-with-validation')
+#
+# Key Security Features:
+# - CSRF token automatically provided via request.csrf_token
+# - CSP nonce for inline scripts via request.nonce
+# - Schema validation ensures form config matches expected structure
+# - Only safe, public user data (name, email) is sent to client
+</logic>

@@ -1,0 +1,61 @@
+<!-- examples/simple-page.rue -->
+
+<!--
+  Example: Simple Page - Minimal Rhales Example
+
+  This is the simplest possible Rhales template demonstrating:
+  - Basic schema definition with Zod v4
+  - Simple template with variable interpolation
+  - Three-layer context access (request, server, client)
+
+  Perfect for beginners learning Rhales fundamentals.
+-->
+
+<schema lang="js-zod" window="pageData">
+const schema = z.object({
+  message: z.string(),
+  count: z.number()
+});
+</schema>
+
+<template>
+<!DOCTYPE html>
+<html lang="{{request.locale}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{server.pageTitle}}</title>
+</head>
+<body>
+  <h1>{{client.message}}</h1>
+  <p>Count: {{client.count}}</p>
+
+  <!-- Access hydrated data in client-side JavaScript -->
+  <script nonce="{{request.nonce}}">
+    console.log('Message:', window.pageData.message);
+    console.log('Count:', window.pageData.count);
+  </script>
+</body>
+</html>
+</template>
+
+<logic>
+# Simple Page Example
+#
+# Backend Usage (Ruby):
+#
+# view = Rhales::View.new(
+#   request,
+#   client: {
+#     message: 'Hello, Rhales!',
+#     count: 42
+#   },
+#   server: {
+#     pageTitle: 'Simple Page Example'
+#   }
+# )
+#
+# html = view.render('simple-page')
+#
+# The client data is automatically validated against the schema
+# and serialized to window.pageData for client-side JavaScript access.
+</logic>

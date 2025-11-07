@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **Early Development Release** - Rhales is in active development (v0.5). The API underwent breaking changes from v0.4. While functional and tested, it's recommended for experimental use and contributions. Please report issues and provide feedback through GitHub.
 
-Rhales is a **type-safe contract enforcement framework** for server-rendered pages with client-side data hydration. It uses `.rue` files (Ruby Single File Components) that combine Zod schemas, Handlebars templates, and documentation into a single contract-first format.
+Rhales is a **type-safe contract enforcement framework** for server-rendered pages with client-side data hydration. It uses `.rue` files (Ruby Single File Components) that combine Zod v4 schemas, Handlebars templates, and documentation into a single contract-first format.
 
 **About the name:** It all started with a simple mustache template many years ago. Mustache's successor, "Handlebars," is a visual analog for a mustache. "Two Whales Kissing" is another visual analog for a mustache, and since we're working with Ruby, we call it "Rhales" (Ruby + Whales). It's a perfect name with absolutely no ambiguity or risk of confusion.
 
@@ -16,7 +16,7 @@ Rhales is a **type-safe contract enforcement framework** for server-rendered pag
 - ✅ **Schema Tooling**: Rake tasks for schema generation and validation
 - ✅ **100% Migration**: All demo templates use schemas
 
-**Breaking changes from v0.4:** See [Migration Guide](#migration-from-v1x-to-v20) below.
+**Breaking changes from v0.4:** See [Migration Guide](#migration-from-v04-to-v05) below.
 
 ## Features
 
