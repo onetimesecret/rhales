@@ -1,4 +1,6 @@
 # demo/rhales-roda-demo/db/migrate/001_create_rodauth_tables.rb
+#
+# frozen_string_literal: true
 
 Sequel.migration do
   up do

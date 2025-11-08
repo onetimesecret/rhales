@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_partials_with_windows.rue -->
+
 <schema lang="js-zod" window="mainData">
 const schema = z.object({
   page_title: z.string(),

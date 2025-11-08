@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/schema_test/nested_schema.rue -->
+
 <schema lang="js-zod" window="appData">
 const schema = z.object({
   user: z.object({

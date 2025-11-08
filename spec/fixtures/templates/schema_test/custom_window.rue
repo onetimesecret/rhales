@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/schema_test/custom_window.rue -->
+
 <schema lang="js-zod" window="myCustomData">
 const schema = z.object({
   message: z.string()

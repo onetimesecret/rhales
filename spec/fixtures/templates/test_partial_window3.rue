@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_partial_window3.rue -->
+
 <schema lang="js-zod" window="partial3Data">
 const schema = z.object({
   partial3_message: z.string()

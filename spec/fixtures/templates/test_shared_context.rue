@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_shared_context.rue -->
+
 <schema lang="js-zod">
 const schema = z.object({
   message: z.string(),

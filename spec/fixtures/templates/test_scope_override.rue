@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_scope_override.rue -->
+
 <schema lang="js-zod">
 const schema = z.object({
   override_test: z.string(),

@@ -1,4 +1,6 @@
-# demo/rhales-roda-demo/db/migrate/001_create_rodauth_password_tables.rb
+# demo/rhales-roda-demo/db/migrate/002_create_rodauth_password_tables.rb
+#
+# frozen_string_literal: true
 
 require 'rodauth/migrations'
 

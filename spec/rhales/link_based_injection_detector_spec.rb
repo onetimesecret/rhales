@@ -1,3 +1,7 @@
+# spec/rhales/link_based_injection_detector_spec.rb
+#
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 RSpec.describe Rhales::LinkBasedInjectionDetector do

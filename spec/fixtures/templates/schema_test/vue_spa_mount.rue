@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/schema_test/vue_spa_mount.rue -->
+
 <schema lang="js-zod" window="__ONETIME_STATE__">
 const schema = z.object({
   ui: z.object({

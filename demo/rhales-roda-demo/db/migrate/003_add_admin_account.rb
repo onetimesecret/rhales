@@ -1,3 +1,7 @@
+# demo/rhales-roda-demo/db/migrate/003_add_admin_account.rb
+#
+# frozen_string_literal: true
+
 require 'bcrypt'
 
 Sequel.migration do

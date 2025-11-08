@@ -1,3 +1,7 @@
+# demo/rhales-roda-demo/app.rb
+#
+# frozen_string_literal: true
+
 require 'logger'
 require 'roda'
 require 'sequel'
