@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/schema_test/both_sections.rue -->
+
 <schema lang="js-zod" window="schemaData">
 const schema = z.object({
   value: z.string()

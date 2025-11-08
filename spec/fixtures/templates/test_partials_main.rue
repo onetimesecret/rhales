@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_partials_main.rue -->
+
 <schema lang="js-zod">
 const schema = z.object({
   page_title: z.string(),

@@ -1,3 +1,7 @@
+# lib/rhales/hydration/hydration_injector.rb
+#
+# frozen_string_literal: true
+
 require_relative 'earliest_injection_detector'
 require_relative 'link_based_injection_detector'
 

@@ -1,3 +1,7 @@
+# spec/rhales/hydration_strategies_integration_spec.rb
+#
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 RSpec.describe 'Hydration Strategies Integration' do

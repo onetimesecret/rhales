@@ -1,3 +1,7 @@
+# lib/rhales/hydration/hydration_endpoint.rb
+#
+# frozen_string_literal: true
+
 require 'digest'
 require_relative '../utils/json_serializer'
 

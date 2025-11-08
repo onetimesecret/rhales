@@ -1,3 +1,7 @@
+# lib/rhales/hydration/safe_injection_validator.rb
+#
+# frozen_string_literal: true
+
 require 'strscan'
 
 module Rhales

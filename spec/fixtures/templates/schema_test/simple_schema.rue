@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/schema_test/simple_schema.rue -->
+
 <schema lang="js-zod" window="testData">
 const schema = z.object({
   title: z.string(),

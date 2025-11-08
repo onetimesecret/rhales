@@ -1,3 +1,7 @@
+# spec/rhales/earliest_injection_detector_spec.rb
+#
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 RSpec.describe Rhales::EarliestInjectionDetector do

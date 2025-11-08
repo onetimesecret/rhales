@@ -1,3 +1,5 @@
+<!-- spec/fixtures/templates/test_partials_with_object_expansion_in_parent.rue -->
+
 <schema lang="js-zod" window="mainData">
 const schema = z.object({
   key1_from_hash_object: z.string(),

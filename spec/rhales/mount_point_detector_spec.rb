@@ -1,3 +1,7 @@
+# spec/rhales/mount_point_detector_spec.rb
+#
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 RSpec.describe Rhales::MountPointDetector do

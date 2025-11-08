@@ -1,3 +1,7 @@
+# lib/rhales/hydration/earliest_injection_detector.rb
+#
+# frozen_string_literal: true
+
 require 'strscan'
 require_relative 'safe_injection_validator'
 
