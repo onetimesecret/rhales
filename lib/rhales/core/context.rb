@@ -111,11 +111,13 @@ module Rhales
       #
       # @return [Hash, AnonymousSession] Rack session hash or anonymous session
       def sess
-        return Adapters::AnonymousSession.new unless req&.respond_to?(:session)
+        return Adapters::AnonymousSession.new unless req.respond_to?(:session)
 
         session = req.session
-        # If session is a plain hash, wrap it in AnonymousSession
-        return Adapters::AnonymousSession.new if session.is_a?(Hash) && !session.respond_to?(:authenticated?)
+        # If session doesn't have authenticated? method, wrap it in AnonymousSession
+        # This handles both Hash and Rack::Session hash-like objects after hot reload
+        return Adapters::AnonymousSession.new unless session.respond_to?(:authenticated?)
+
         session
       end
 
@@ -127,6 +129,7 @@ module Rhales
       # @return [Object, AnonymousAuth] User object or anonymous auth
       def user
         return Adapters::AnonymousAuth.new unless req&.respond_to?(:user)
+
         req.user
       end
 

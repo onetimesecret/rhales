@@ -296,6 +296,225 @@ RSpec.describe Rhales::Context do
     end
   end
 
+  describe '#sess' do
+    context 'with request that has no session method' do
+      let(:request_without_session) { double('request', env: {}) }
+      subject { described_class.new(request_without_session) }
+
+      it 'returns AnonymousSession' do
+        expect(subject.sess).to be_a(Rhales::Adapters::AnonymousSession)
+        expect(subject.sess.authenticated?).to be(false)
+      end
+    end
+
+    context 'with session that has authenticated? method' do
+      let(:authenticated_session) do
+        Rhales::Adapters::AuthenticatedSession.new(id: 'session123', created_at: Time.now)
+      end
+      let(:request_with_auth_session) do
+        session_instance = authenticated_session
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { session_instance }
+        req
+      end
+      subject { described_class.new(request_with_auth_session) }
+
+      it 'returns the session object directly' do
+        expect(subject.sess).to eq(authenticated_session)
+        expect(subject.sess.authenticated?).to be(true)
+      end
+    end
+
+    context 'with plain Hash session (no authenticated? method)' do
+      let(:plain_hash_session) { { 'user_id' => 123, 'created_at' => Time.now } }
+      let(:request_with_hash_session) do
+        session_instance = plain_hash_session
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { session_instance }
+        req
+      end
+      subject { described_class.new(request_with_hash_session) }
+
+      it 'wraps plain Hash in AnonymousSession' do
+        expect(subject.sess).to be_a(Rhales::Adapters::AnonymousSession)
+        expect(subject.sess.authenticated?).to be(false)
+      end
+
+      it 'does not raise NoMethodError when calling authenticated?' do
+        expect { subject.sess.authenticated? }.not_to raise_error
+      end
+    end
+
+    context 'with Rack::Session-like object (no authenticated? method)' do
+      # Simulate Rack::Session::Abstract::PersistedSecure::SecureSessionHash
+      # This is the actual scenario that occurs after hot reload
+      let(:rack_session_like) do
+        # Create a hash-like object that behaves like Rack::Session but lacks authenticated?
+        session_data = { 'user_id' => 456, 'email' => 'user@example.com' }
+
+        # Define a class that mimics Rack::Session behavior
+        Class.new do
+          def initialize(data)
+            @data = data
+          end
+
+          def [](key)
+            @data[key]
+          end
+
+          def []=(key, value)
+            @data[key] = value
+          end
+
+          def key?(key)
+            @data.key?(key)
+          end
+
+          def keys
+            @data.keys
+          end
+
+          # Notably MISSING: authenticated? method
+          # This simulates the hot reload scenario
+        end.new(session_data)
+      end
+
+      let(:request_with_rack_session) do
+        session_instance = rack_session_like
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { session_instance }
+        req
+      end
+      subject { described_class.new(request_with_rack_session) }
+
+      it 'wraps Rack::Session-like object in AnonymousSession' do
+        expect(subject.sess).to be_a(Rhales::Adapters::AnonymousSession)
+        expect(subject.sess.authenticated?).to be(false)
+      end
+
+      it 'does not raise NoMethodError when calling authenticated?' do
+        expect { subject.sess.authenticated? }.not_to raise_error
+      end
+
+      it 'prevents accessing session data directly (security)' do
+        # The wrapped AnonymousSession doesn't expose the underlying data
+        expect(subject.sess).not_to respond_to(:'[]')
+      end
+    end
+
+    context 'with custom session object that has authenticated? method' do
+      let(:custom_session) do
+        Class.new do
+          def authenticated?
+            true
+          end
+
+          def user_id
+            789
+          end
+        end.new
+      end
+
+      let(:request_with_custom_session) do
+        session_instance = custom_session
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { session_instance }
+        req
+      end
+      subject { described_class.new(request_with_custom_session) }
+
+      it 'returns the custom session object directly' do
+        expect(subject.sess).to eq(custom_session)
+        expect(subject.sess.authenticated?).to be(true)
+        expect(subject.sess.user_id).to eq(789)
+      end
+    end
+
+    context 'with nil session' do
+      let(:request_with_nil_session) do
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { nil }
+        req
+      end
+      subject { described_class.new(request_with_nil_session) }
+
+      it 'returns AnonymousSession' do
+        expect(subject.sess).to be_a(Rhales::Adapters::AnonymousSession)
+        expect(subject.sess.authenticated?).to be(false)
+      end
+    end
+
+    context 'hot reload simulation' do
+      # This test simulates what happens during development with hot reload:
+      # 1. Session object is created and has authenticated? method
+      # 2. Code reloads, module/class definitions change
+      # 3. Old session object in memory no longer has the new methods
+
+      let(:session_after_reload) do
+        # Simulate a session object after hot reload that has lost its authenticated? method
+        # This mimics what happens when Rack::Session object is still in memory
+        # but the module that mixed in authenticated? has been reloaded
+        Class.new do
+          def initialize
+            @data = { 'user_id' => 123, 'authenticated' => true }
+          end
+
+          def [](key)
+            @data[key]
+          end
+
+          def []=(key, value)
+            @data[key] = value
+          end
+
+          def key?(key)
+            @data.key?(key)
+          end
+
+          # Notably MISSING: authenticated? method
+          # This is the key issue - after hot reload, the session object
+          # exists but no longer has methods from reloaded modules
+        end.new
+      end
+
+      let(:request_after_reload) do
+        session_instance = session_after_reload
+        req = double('request', env: {})
+        req.define_singleton_method(:session) { session_instance }
+        req
+      end
+
+      it 'wraps session without authenticated? in AnonymousSession' do
+        context = described_class.new(request_after_reload)
+        expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
+      end
+
+      it 'does not raise NoMethodError' do
+        context = described_class.new(request_after_reload)
+        expect { context.sess.authenticated? }.not_to raise_error
+        expect(context.sess.authenticated?).to be(false)
+      end
+
+      it 'handles authenticated? calls gracefully throughout Context lifecycle' do
+        # This test verifies the full lifecycle that was failing:
+        # 1. Context is created with session that lacks authenticated?
+        # 2. build_app_data calls authenticated?
+        # 3. authenticated? calls sess.authenticated?
+        # 4. No NoMethodError is raised
+
+        context = described_class.new(request_after_reload)
+
+        # These are the calls that were failing in the original error:
+        expect { context.get('authenticated') }.not_to raise_error
+        expect(context.get('authenticated')).to be(false)
+
+        # Verify the session is properly wrapped
+        expect(context.sess).to be_a(Rhales::Adapters::AnonymousSession)
+        expect(context.sess.authenticated?).to be(false)
+      end
+    end
+  end
+
   describe 'CSP nonce generation' do
     context 'with existing nonce in request env' do
       let(:mock_request_with_nonce) {
