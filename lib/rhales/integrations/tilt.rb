@@ -3,7 +3,6 @@
 # frozen_string_literal: true
 
 require 'tilt'
-require 'rhales'
 require_relative '../adapters/base_request'
 
 module Rhales
