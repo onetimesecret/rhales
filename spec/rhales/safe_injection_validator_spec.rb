@@ -236,4 +236,84 @@ RSpec.describe Rhales::SafeInjectionValidator do
       expect(validator.safe_injection_point?(whitespace_pos)).to be true
     end
   end
+
+  describe 'UTF-8 multibyte character handling' do
+    it 'correctly handles multibyte UTF-8 characters in title tags' do
+      html = '<head><title>日本語タイトル</title></head><body>Content</body>'
+      validator = described_class.new(html)
+
+      # The bug: StringScanner.pos returns byte position, but String#[] uses char position
+      # "日本語タイトル" is 7 characters but 21 bytes (3 bytes per character)
+      # When scanner is positioned after </title>, it returns byte position
+      # but String#[] indexing uses character positions
+
+      # Position after </title> tag should be safe
+      title_close_pos = html.index('</title>') + 8  # Character position
+      expect(validator.safe_injection_point?(title_close_pos)).to be true
+
+      # Position inside title should be unsafe (CDATA-like content)
+      # Actually, title tags are not in UNSAFE_CONTEXTS, so this should be safe
+      title_start_pos = html.index('日本語')
+      expect(validator.safe_injection_point?(title_start_pos)).to be true
+
+      # Position after </head> should definitely be safe
+      head_close_pos = html.index('</head>') + 7
+      expect(validator.safe_injection_point?(head_close_pos)).to be true
+
+      # Position at <body> tag should be safe
+      body_pos = html.index('<body>')
+      expect(validator.safe_injection_point?(body_pos)).to be true
+    end
+
+    it 'correctly handles multibyte UTF-8 characters with script tags' do
+      html = '<head><title>日本語</title></head><script>var x = 1;</script><body>コンテンツ</body>'
+      validator = described_class.new(html)
+
+      # Position inside script should be unsafe
+      script_inside = html.index('var x')
+      expect(validator.safe_injection_point?(script_inside)).to be false
+
+      # Position after script should be safe
+      # Bug manifests here: if byte positions used, this could point to wrong location
+      body_tag = html.index('<body>')
+      expect(validator.safe_injection_point?(body_tag)).to be true
+    end
+
+    it 'correctly calculates unsafe ranges with multibyte characters before script' do
+      html = '<div>日本語テキスト</div><script>alert("test");</script><div>After</div>'
+      validator = described_class.new(html)
+
+      # Inside script should be unsafe
+      alert_pos = html.index('alert')
+      expect(validator.safe_injection_point?(alert_pos)).to be false
+
+      # After script should be safe
+      after_div = html.index('<div>After</div>')
+      expect(validator.safe_injection_point?(after_div)).to be true
+
+      # Before script should be safe
+      japanese_div = html.index('<div>日本語')
+      expect(validator.safe_injection_point?(japanese_div)).to be true
+    end
+
+    it 'correctly finds nearest safe point with multibyte characters' do
+      html = '<div>テスト</div><script>unsafe</script><div>安全</div>'
+      validator = described_class.new(html)
+
+      # From inside script, find safe point before
+      unsafe_pos = html.index('unsafe')
+      safe_before = validator.nearest_safe_point_before(unsafe_pos)
+      expect(safe_before).not_to be_nil
+      expect(validator.safe_injection_point?(safe_before)).to be true
+
+      # From inside script, find safe point after
+      safe_after = validator.nearest_safe_point_after(unsafe_pos)
+      expect(safe_after).not_to be_nil
+      expect(validator.safe_injection_point?(safe_after)).to be true
+
+      # Verify the safe points are actually at correct positions
+      # safe_after should be after </script>
+      expect(safe_after).to be > html.index('</script>')
+    end
+  end
 end
