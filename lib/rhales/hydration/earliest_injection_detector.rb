@@ -68,7 +68,9 @@ module Rhales
 
       # Find opening <body> tag
       if scanner.scan_until(/<body\b[^>]*>/i)
-        body_start = scanner.pos - scanner.matched.length
+        # Convert byte position to character position
+        byte_body_start = scanner.pos - scanner.matched.length
+        body_start = template_html.byteslice(0, byte_body_start).length
         safe_position = find_safe_injection_position(validator, body_start)
         return safe_position if safe_position
       end
@@ -81,11 +83,15 @@ module Rhales
 
       # Find opening <head> tag
       return nil unless scanner.scan_until(/<head\b[^>]*>/i)
-      head_start = scanner.pos
+      # Convert byte position to character position
+      byte_head_start = scanner.pos
+      head_start = template_html.byteslice(0, byte_head_start).length
 
       # Find closing </head> tag
       return nil unless scanner.scan_until(/<\/head>/i)
-      head_end = scanner.pos - scanner.matched.length
+      # Convert byte position to character position
+      byte_head_end = scanner.pos - scanner.matched.length
+      head_end = template_html.byteslice(0, byte_head_end).length
 
       [head_start, head_end]
     end
@@ -96,7 +102,10 @@ module Rhales
       last_link_end = nil
 
       while scanner.scan_until(/<link\b[^>]*\/?>/i)
-        last_link_end = scanner.pos
+        # scanner.pos is byte position within head_content
+        byte_pos = scanner.pos
+        # Convert to character position within head_content
+        last_link_end = head_content.byteslice(0, byte_pos).length
       end
 
       last_link_end ? head_start + last_link_end : nil
@@ -108,7 +117,10 @@ module Rhales
       last_meta_end = nil
 
       while scanner.scan_until(/<meta\b[^>]*\/?>/i)
-        last_meta_end = scanner.pos
+        # scanner.pos is byte position within head_content
+        byte_pos = scanner.pos
+        # Convert to character position within head_content
+        last_meta_end = head_content.byteslice(0, byte_pos).length
       end
 
       last_meta_end ? head_start + last_meta_end : nil
@@ -120,11 +132,14 @@ module Rhales
 
       # Find first script opening tag
       if scanner.scan_until(/<script\b[^>]*>/i)
-        script_start = scanner.pos - scanner.matched.length
+        # We don't need script_start for this method, so we can skip it
 
         # Find corresponding closing tag
         if scanner.scan_until(/<\/script>/i)
-          first_script_end = scanner.pos
+          # scanner.pos is byte position within head_content
+          byte_script_end = scanner.pos
+          # Convert to character position within head_content
+          first_script_end = head_content.byteslice(0, byte_script_end).length
           return head_start + first_script_end
         end
       end

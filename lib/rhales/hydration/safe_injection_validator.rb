@@ -60,11 +60,15 @@ module Rhales
         scanner.pos = 0
 
         while scanner.scan_until(context[:start])
-          start_pos = scanner.pos - scanner.matched.length
+          # Convert byte position to character position
+          byte_start_pos = scanner.pos - scanner.matched.length
+          start_pos = @html.byteslice(0, byte_start_pos).length
 
           # Find the corresponding end tag
           if scanner.scan_until(context[:end])
-            end_pos = scanner.pos
+            # Convert byte position to character position
+            byte_end_pos = scanner.pos
+            end_pos = @html.byteslice(0, byte_end_pos).length
             ranges << (start_pos...end_pos)
           else
             # If no closing tag found, consider rest of document unsafe
