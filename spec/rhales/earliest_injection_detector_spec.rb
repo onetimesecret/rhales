@@ -297,5 +297,119 @@ RSpec.describe Rhales::EarliestInjectionDetector do
         expect(end_time - start_time).to be < 0.1  # Should complete within 100ms
       end
     end
+
+    context 'with UTF-8 multibyte characters' do
+      it 'correctly handles multibyte characters in title' do
+        html = <<~HTML
+          <html>
+          <head>
+            <title>日本語タイトル</title>
+            <link rel="stylesheet" href="style.css">
+            <meta name="description" content="テスト">
+          </head>
+          <body>
+            <div id="app">コンテンツ</div>
+          </body>
+          </html>
+        HTML
+
+        position = detector.detect(html)
+        expect(position).not_to be_nil
+        # Should inject after the link tag
+        expect(position).to be > html.index('<link rel="stylesheet" href="style.css">')
+      end
+
+      it 'correctly handles multibyte characters before script tag' do
+        html = <<~HTML
+          <html>
+          <head>
+            <title>日本語</title>
+            <link rel="stylesheet" href="style.css">
+            <script>var x = 1;</script>
+          </head>
+          <body>
+            <div id="app">安全</div>
+          </body>
+          </html>
+        HTML
+
+        position = detector.detect(html)
+        expect(position).not_to be_nil
+        # Should inject after link, not inside script
+        link_end = html.index('style.css">') + 11
+        script_start = html.index('<script>')
+        expect(position).to be >= link_end
+        expect(position).to be < script_start
+      end
+
+      it 'correctly handles multibyte characters in meta tags' do
+        html = <<~HTML
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="description" content="これはテストです">
+            <meta name="keywords" content="日本語,キーワード">
+          </head>
+          <body>
+            <div id="app"></div>
+          </body>
+          </html>
+        HTML
+
+        position = detector.detect(html)
+        expect(position).not_to be_nil
+        # Should inject after the last meta tag
+        last_meta_end = html.index('content="日本語,キーワード">') + 'content="日本語,キーワード">'.length
+        expect(position).to be >= last_meta_end
+      end
+
+      it 'correctly calculates position with multibyte before body tag' do
+        html = <<~HTML
+          <html>
+          <head>
+            <title>テスト</title>
+          </head>
+          <body class="日本語-class">
+            <div id="app">コンテンツ</div>
+          </body>
+          </html>
+        HTML
+
+        position = detector.detect(html)
+        expect(position).not_to be_nil
+        # Should find a position in the head section
+        expect(position).to be < html.index('<body')
+      end
+
+      it 'handles complex multibyte scenarios with all tag types' do
+        html = <<~HTML
+          <html>
+          <head>
+            <title>日本語アプリケーション</title>
+            <link rel="stylesheet" href="スタイル.css">
+            <meta name="description" content="これは日本語のメタ情報です">
+            <script>
+            // 日本語のコメント
+            var greeting = "こんにちは";
+            </script>
+          </head>
+          <body>
+            <div id="app">アプリケーション本体</div>
+          </body>
+          </html>
+        HTML
+
+        position = detector.detect(html)
+        expect(position).not_to be_nil
+        # Should find safe injection point after link tag
+        link_end = html.index('スタイル.css">') + 'スタイル.css">'.length
+        expect(position).to be >= link_end
+
+        # Verify the position is actually safe (not inside script)
+        script_start = html.index('<script>')
+        script_end = html.index('</script>') + 9
+        expect(position).not_to be_between(script_start + 1, script_end - 1)
+      end
+    end
   end
 end
