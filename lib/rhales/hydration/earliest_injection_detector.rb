@@ -137,7 +137,7 @@ module Rhales
 
       # Find first script opening tag
       if scanner.scan_until(/<script\b[^>]*>/i)
-        # We don't need script_start for this method, so we can skip it
+        # Only the script end position is needed for this method, not the start position
 
         # Find corresponding closing tag
         if scanner.scan_until(/<\/script>/i)
