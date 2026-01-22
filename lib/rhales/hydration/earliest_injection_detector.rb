@@ -26,6 +26,8 @@ module Rhales
     def detect(template_html)
       scanner = StringScanner.new(template_html)
       validator = SafeInjectionValidator.new(template_html)
+      # Build byte-to-char map once for the entire template
+      @byte_to_char_map = build_byte_to_char_map(template_html)
 
       # Try head section injection points first
       head_injection_point = detect_head_injection_point(scanner, validator, template_html)
@@ -68,9 +70,9 @@ module Rhales
 
       # Find opening <body> tag
       if scanner.scan_until(/<body\b[^>]*>/i)
-        # Convert byte position to character position
+        # Convert byte position to character position using pre-built map
         byte_body_start = scanner.pos - scanner.matched.length
-        body_start = template_html.byteslice(0, byte_body_start).length
+        body_start = @byte_to_char_map[byte_body_start]
         safe_position = find_safe_injection_position(validator, body_start)
         return safe_position if safe_position
       end
@@ -83,15 +85,15 @@ module Rhales
 
       # Find opening <head> tag
       return nil unless scanner.scan_until(/<head\b[^>]*>/i)
-      # Convert byte position to character position
+      # Convert byte position to character position using pre-built map
       byte_head_start = scanner.pos
-      head_start = template_html.byteslice(0, byte_head_start).length
+      head_start = @byte_to_char_map[byte_head_start]
 
       # Find closing </head> tag
       return nil unless scanner.scan_until(/<\/head>/i)
-      # Convert byte position to character position
+      # Convert byte position to character position using pre-built map
       byte_head_end = scanner.pos - scanner.matched.length
-      head_end = template_html.byteslice(0, byte_head_end).length
+      head_end = @byte_to_char_map[byte_head_end]
 
       [head_start, head_end]
     end
@@ -100,12 +102,13 @@ module Rhales
       head_content = template_html[head_start...head_end]
       scanner = StringScanner.new(head_content)
       last_link_end = nil
+      byte_to_char_map = build_byte_to_char_map(head_content)
 
       while scanner.scan_until(/<link\b[^>]*\/?>/i)
         # scanner.pos is byte position within head_content
         byte_pos = scanner.pos
-        # Convert to character position within head_content
-        last_link_end = head_content.byteslice(0, byte_pos).length
+        # Convert to character position using pre-built map
+        last_link_end = byte_to_char_map[byte_pos]
       end
 
       last_link_end ? head_start + last_link_end : nil
@@ -115,12 +118,13 @@ module Rhales
       head_content = template_html[head_start...head_end]
       scanner = StringScanner.new(head_content)
       last_meta_end = nil
+      byte_to_char_map = build_byte_to_char_map(head_content)
 
       while scanner.scan_until(/<meta\b[^>]*\/?>/i)
         # scanner.pos is byte position within head_content
         byte_pos = scanner.pos
-        # Convert to character position within head_content
-        last_meta_end = head_content.byteslice(0, byte_pos).length
+        # Convert to character position using pre-built map
+        last_meta_end = byte_to_char_map[byte_pos]
       end
 
       last_meta_end ? head_start + last_meta_end : nil
@@ -129,6 +133,7 @@ module Rhales
     def find_after_first_script(template_html, head_start, head_end)
       head_content = template_html[head_start...head_end]
       scanner = StringScanner.new(head_content)
+      byte_to_char_map = build_byte_to_char_map(head_content)
 
       # Find first script opening tag
       if scanner.scan_until(/<script\b[^>]*>/i)
@@ -138,8 +143,8 @@ module Rhales
         if scanner.scan_until(/<\/script>/i)
           # scanner.pos is byte position within head_content
           byte_script_end = scanner.pos
-          # Convert to character position within head_content
-          first_script_end = head_content.byteslice(0, byte_script_end).length
+          # Convert to character position using pre-built map
+          first_script_end = byte_to_char_map[byte_script_end]
           return head_start + first_script_end
         end
       end
@@ -163,6 +168,44 @@ module Rhales
 
       # No safe position found
       nil
+    end
+
+    # Builds a mapping from byte positions to character positions for efficient
+    # conversion when processing UTF-8 strings with StringScanner.
+    #
+    # This method creates a hash where keys are byte positions and values are
+    # the corresponding character positions. For multibyte UTF-8 characters,
+    # only the starting byte position has an entry in the map.
+    #
+    # @param str [String] The UTF-8 encoded string to map
+    # @return [Hash<Integer, Integer>] A hash mapping byte positions to character positions
+    #
+    # @example ASCII string
+    #   build_byte_to_char_map("Hello")
+    #   # => {0=>0, 1=>1, 2=>2, 3=>3, 4=>4, 5=>5}
+    #
+    # @example UTF-8 with multibyte characters
+    #   build_byte_to_char_map("café")  # é is 2 bytes
+    #   # => {0=>0, 1=>1, 2=>2, 3=>3, 5=>4}  # Note: byte 4 is continuation byte
+    #
+    def build_byte_to_char_map(str)
+      map = {}
+      char_pos = 0
+      byte_pos = 0
+
+      # Iterate through each character (not byte) in the string
+      str.each_char do |char|
+        # Map the starting byte position of this character
+        map[byte_pos] = char_pos
+
+        # Advance byte position by the byte size of this character
+        byte_pos += char.bytesize
+        char_pos += 1
+      end
+
+      # Add final mapping for the end of the string
+      map[byte_pos] = char_pos
+      map
     end
   end
 end

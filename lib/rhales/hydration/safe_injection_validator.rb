@@ -55,20 +55,21 @@ module Rhales
     def calculate_unsafe_ranges
       ranges = []
       scanner = StringScanner.new(@html)
+      byte_to_char_map = build_byte_to_char_map(@html)
 
       UNSAFE_CONTEXTS.each do |context|
         scanner.pos = 0
 
         while scanner.scan_until(context[:start])
-          # Convert byte position to character position
+          # Convert byte position to character position using pre-built map
           byte_start_pos = scanner.pos - scanner.matched.length
-          start_pos = @html.byteslice(0, byte_start_pos).length
+          start_pos = byte_to_char_map[byte_start_pos]
 
           # Find the corresponding end tag
           if scanner.scan_until(context[:end])
-            # Convert byte position to character position
+            # Convert byte position to character position using pre-built map
             byte_end_pos = scanner.pos
-            end_pos = @html.byteslice(0, byte_end_pos).length
+            end_pos = byte_to_char_map[byte_end_pos]
             ranges << (start_pos...end_pos)
           else
             # If no closing tag found, consider rest of document unsafe
@@ -102,6 +103,44 @@ module Rhales
       end
 
       pos < @html.length && @html[pos] == '<'
+    end
+
+    # Builds a mapping from byte positions to character positions for efficient
+    # conversion when processing UTF-8 strings with StringScanner.
+    #
+    # This method creates a hash where keys are byte positions and values are
+    # the corresponding character positions. For multibyte UTF-8 characters,
+    # only the starting byte position has an entry in the map.
+    #
+    # @param str [String] The UTF-8 encoded string to map
+    # @return [Hash<Integer, Integer>] A hash mapping byte positions to character positions
+    #
+    # @example ASCII string
+    #   build_byte_to_char_map("Hello")
+    #   # => {0=>0, 1=>1, 2=>2, 3=>3, 4=>4, 5=>5}
+    #
+    # @example UTF-8 with multibyte characters
+    #   build_byte_to_char_map("café")  # é is 2 bytes
+    #   # => {0=>0, 1=>1, 2=>2, 3=>3, 5=>4}  # Note: byte 4 is continuation byte
+    #
+    def build_byte_to_char_map(str)
+      map = {}
+      char_pos = 0
+      byte_pos = 0
+
+      # Iterate through each character (not byte) in the string
+      str.each_char do |char|
+        # Map the starting byte position of this character
+        map[byte_pos] = char_pos
+
+        # Advance byte position by the byte size of this character
+        byte_pos += char.bytesize
+        char_pos += 1
+      end
+
+      # Add final mapping for the end of the string
+      map[byte_pos] = char_pos
+      map
     end
   end
 end
