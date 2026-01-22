@@ -402,7 +402,6 @@ RSpec.describe Rhales::EarliestInjectionDetector do
         position = detector.detect(html)
         expect(position).not_to be_nil
         # Should find safe injection point after link tag
-        link_tag = html.index('<link rel="stylesheet"')
         link_end = html.index('スタイル.css">') + 'スタイル.css">'.length
         expect(position).to be >= link_end
 
