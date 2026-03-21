@@ -3,6 +3,7 @@
 # frozen_string_literal: true
 
 require 'open3'
+require 'securerandom'
 require 'tempfile'
 require 'fileutils'
 require_relative 'schema_extractor'
@@ -154,8 +155,13 @@ module Rhales
     def execute_tsx(script_path)
       tsconfig_path = Rhales.configuration.schema_tsconfig_path
 
-      if tsconfig_path && File.exist?(tsconfig_path)
-        Open3.capture3('pnpm', 'exec', 'tsx', '--tsconfig', tsconfig_path, script_path)
+      if tsconfig_path
+        if File.exist?(tsconfig_path)
+          Open3.capture3('pnpm', 'exec', 'tsx', '--tsconfig', tsconfig_path, script_path)
+        else
+          warn "[Rhales] Warning: schema_tsconfig_path '#{tsconfig_path}' does not exist, ignoring"
+          Open3.capture3('pnpm', 'exec', 'tsx', script_path)
+        end
       else
         Open3.capture3('pnpm', 'exec', 'tsx', script_path)
       end
@@ -178,13 +184,16 @@ module Rhales
       schema_path = schema_info[:resolved_path]
 
       # Bundle external schema with esbuild to temp file - resolves all imports
+      # Use SecureRandom for uniqueness across concurrent invocations
       temp_dir = File.join(Dir.pwd, 'tmp')
       FileUtils.mkdir_p(temp_dir) unless Dir.exist?(temp_dir)
-      bundled_file = File.join(temp_dir, "bundled_#{File.basename(schema_path, '.*')}_#{Process.pid}.mjs")
+      unique_suffix = "#{Process.pid}_#{SecureRandom.hex(4)}"
+      bundled_file = File.join(temp_dir, "bundled_#{File.basename(schema_path, '.*')}_#{unique_suffix}.mjs")
 
       stdout, stderr, status = Open3.capture3(
         'pnpm', 'exec', 'esbuild', schema_path,
         '--bundle', '--format=esm', '--platform=node',
+        '--external:zod',
         "--outfile=#{bundled_file}"
       )
 
@@ -192,11 +201,14 @@ module Rhales
         raise GenerationError, "esbuild bundling failed for #{schema_path}: #{stderr}"
       end
 
+      # Convert to file:// URL for cross-platform ESM import compatibility
+      bundled_file_url = path_to_file_url(bundled_file)
+
       script = <<~TYPESCRIPT
         // Auto-generated schema generator for #{safe_name}
         // Source: #{schema_info[:src]} (bundled via esbuild)
         import { z } from 'zod/v4';
-        import schema from '#{bundled_file}';
+        import schema from '#{bundled_file_url}';
 
         // Generate JSON Schema
         try {
@@ -308,6 +320,22 @@ module Rhales
 
     def ensure_output_directory!
       FileUtils.mkdir_p(@output_dir) unless File.directory?(@output_dir)
+    end
+
+    # Convert absolute path to file:// URL for cross-platform ESM imports
+    #
+    # On Windows, paths like C:\foo\bar need to become file:///C:/foo/bar
+    # On Unix, paths like /foo/bar become file:///foo/bar
+    #
+    # @param path [String] Absolute file path
+    # @return [String] file:// URL
+    def path_to_file_url(path)
+      normalized = path.tr('\\', '/')
+      if normalized.match?(%r{^[A-Za-z]:}) # Windows drive letter
+        "file:///#{normalized}"
+      else
+        "file://#{normalized}"
+      end
     end
   end
 end

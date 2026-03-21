@@ -277,6 +277,7 @@ module Rhales
     def freeze!
       @features.freeze
       @template_paths.freeze
+      @schema_search_paths.freeze
       freeze
     end
 

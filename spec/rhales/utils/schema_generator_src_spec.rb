@@ -203,13 +203,14 @@ RSpec.describe Rhales::SchemaGenerator do
       end
 
       describe '#build_typescript_import_script (private method via send)' do
-        let(:bundled_file_pattern) { %r{tmp/bundled_external\.schema_\d+\.mjs$} }
+        let(:bundled_file_pattern) { %r{tmp/bundled_external\.schema_\d+_[a-f0-9]+\.mjs$} }
 
         # Helper to mock esbuild bundling that writes to outfile
         def mock_esbuild_bundle_success
           allow(Open3).to receive(:capture3)
             .with('pnpm', 'exec', 'esbuild', schema_file_path,
                   '--bundle', '--format=esm', '--platform=node',
+                  '--external:zod',
                   satisfy { |arg| arg.to_s.start_with?('--outfile=') }) do |*args|
               outfile_path = args.last.sub('--outfile=', '')
               FileUtils.mkdir_p(File.dirname(outfile_path))
@@ -245,12 +246,13 @@ RSpec.describe Rhales::SchemaGenerator do
           expect(bundled_path).to match(bundled_file_pattern)
         end
 
-        it 'generates script that imports from bundled file' do
+        it 'generates script that imports from bundled file URL' do
           mock_esbuild_bundle_success
 
           script, bundled_path = generator.send(:build_typescript_import_script, external_schema_with_path)
 
-          expect(script).to include("import schema from '#{bundled_path}'")
+          # Script uses file:// URL for cross-platform compatibility
+          expect(script).to include("import schema from 'file://#{bundled_path}'")
           expect(script).to include('// Source: schemas/external.schema.ts (bundled via esbuild)')
         end
 
@@ -266,6 +268,7 @@ RSpec.describe Rhales::SchemaGenerator do
           allow(Open3).to receive(:capture3)
             .with('pnpm', 'exec', 'esbuild', schema_file_path,
                   '--bundle', '--format=esm', '--platform=node',
+                  '--external:zod',
                   satisfy { |arg| arg.to_s.start_with?('--outfile=') })
             .and_return(['', 'Syntax error in schema', double(success?: false)])
 
