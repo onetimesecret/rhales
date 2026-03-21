@@ -129,7 +129,14 @@ RSpec.describe Rhales::SchemaExtractor do
 
           expect {
             extractor.extract_from_file(File.join(templates_dir, 'not_found.rue'))
-          }.to raise_error(Rhales::SchemaExtractor::ExtractionError, /not found/i)
+          }.to raise_error(Rhales::SchemaExtractor::ExtractionError) do |error|
+            expect(error.message).to include('not found')
+            expect(error.message).to include('Searched:')
+            # Verify all search locations are listed
+            expect(error.message).to include(templates_dir)
+            expect(error.message).to include(shared_schemas_dir)
+            expect(error.message).to include(lib_schemas_dir)
+          end
         end
       end
 
