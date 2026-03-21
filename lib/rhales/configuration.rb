@@ -157,6 +157,9 @@ module Rhales
     # Hydration mismatch reporting settings
     attr_accessor :hydration_mismatch_format, :hydration_authority
 
+    # External schema settings
+    attr_accessor :schema_search_paths, :schema_tsconfig_path, :schema_use_tsx_import
+
     def initialize
       # Set sensible defaults
       @default_locale         = 'en'
@@ -190,6 +193,11 @@ module Rhales
       # Hydration mismatch reporting defaults
       @hydration_mismatch_format        = :compact  # :compact, :multiline, :sidebyside, :json
       @hydration_authority              = :schema   # :schema or :data
+
+      # External schema defaults
+      @schema_search_paths              = []        # Additional paths to search for external schemas
+      @schema_tsconfig_path             = nil       # Path to tsconfig.json for tsx import execution
+      @schema_use_tsx_import            = false     # Use tsx import (runs through project tsconfig)
 
       # Yield to block for configuration if provided
       yield(self) if block_given?
