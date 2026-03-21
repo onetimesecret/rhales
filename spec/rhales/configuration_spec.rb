@@ -193,6 +193,45 @@ RSpec.describe Rhales::Configuration do
       expect(subject.hydration_authority).to eq(:data)
     end
   end
+
+  describe '#schema_search_paths' do
+    subject { described_class.new }
+
+    it 'defaults to empty array' do
+      expect(subject.schema_search_paths).to eq([])
+    end
+
+    it 'allows setting schema_search_paths to an array of paths' do
+      subject.schema_search_paths = ['./apps/web/core/templates', './src/schemas']
+      expect(subject.schema_search_paths).to eq(['./apps/web/core/templates', './src/schemas'])
+    end
+  end
+
+  describe '#schema_tsconfig_path' do
+    subject { described_class.new }
+
+    it 'defaults to nil' do
+      expect(subject.schema_tsconfig_path).to be_nil
+    end
+
+    it 'allows setting schema_tsconfig_path' do
+      subject.schema_tsconfig_path = './tsconfig.json'
+      expect(subject.schema_tsconfig_path).to eq('./tsconfig.json')
+    end
+  end
+
+  describe '#schema_use_tsx_import' do
+    subject { described_class.new }
+
+    it 'defaults to false' do
+      expect(subject.schema_use_tsx_import).to be(false)
+    end
+
+    it 'allows enabling schema_use_tsx_import' do
+      subject.schema_use_tsx_import = true
+      expect(subject.schema_use_tsx_import).to be(true)
+    end
+  end
 end
 
 RSpec.describe Rhales do

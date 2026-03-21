@@ -39,7 +39,7 @@ module Rhales
     ALL_SECTIONS = KNOWN_SECTIONS.freeze
 
     # Known schema section attributes
-    KNOWN_SCHEMA_ATTRIBUTES = %w[lang version envelope window merge layout extends].freeze
+    KNOWN_SCHEMA_ATTRIBUTES = %w[lang version envelope window merge layout extends src].freeze
 
     attr_reader :content, :file_path, :grammar, :ast
 
@@ -149,6 +149,12 @@ module Rhales
 
     def schema_extends
       schema_attributes['extends']
+    end
+
+    # External schema file reference (optional)
+    # When present, schema code is loaded from this path instead of inline content
+    def schema_src
+      schema_attributes['src']
     end
 
     def section?(name)

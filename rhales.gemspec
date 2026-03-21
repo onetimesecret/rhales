@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
 
   spec.homepage              = 'https://github.com/onetimesecret/rhales'
   spec.license               = 'MIT'
-  spec.required_ruby_version = '>= 3.3.4'
+  spec.required_ruby_version = '>= 3.4'
 
   spec.metadata['source_code_uri']       = 'https://github.com/onetimesecret/rhales'
   spec.metadata['changelog_uri']         = 'https://github.com/onetimesecret/rhales/blob/main/CHANGELOG.md'
@@ -41,13 +41,10 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'json_schemer', '~> 2.3'  # JSON Schema validation in middleware
+
+  spec.add_dependency 'json_schemer', '~> 2'    # JSON Schema validation in middleware
   spec.add_dependency 'logger'                  # Standard library logger for logging support
   spec.add_dependency 'tilt', '~> 2'            # Templating engine for rendering RSFCs
-
-  # Optional dependencies for performance optimization
-  # Install oj for 10-20x faster JSON parsing and 5-10x faster generation
-  # spec.add_dependency 'oj', '~> 3.13'
 
   # Development dependencies should be specified in Gemfile instead of gemspec
   # See: https://bundler.io/guides/creating_gem.html#testing-our-gem

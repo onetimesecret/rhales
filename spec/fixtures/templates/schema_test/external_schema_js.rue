@@ -1,0 +1,6 @@
+<schema src="schemas/user.schema.js" lang="js-zod" window="__USER__">
+</schema>
+
+<template>
+  <div>{{name}}</div>
+</template>

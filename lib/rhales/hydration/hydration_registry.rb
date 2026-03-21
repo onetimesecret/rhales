@@ -27,10 +27,6 @@ module Rhales
         }
       end
 
-      def clear!
-        Thread.current[:rhales_hydration_registry] = {}
-      end
-
       # Expose registry for testing purposes
       def registry
         thread_local_registry
