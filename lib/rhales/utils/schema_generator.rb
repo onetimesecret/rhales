@@ -76,7 +76,8 @@ module Rhales
         rescue => e
           results[:failed] += 1
           results[:success] = false
-          error_msg = "Failed to generate schema for #{schema_info[:template_name]}: #{e.message}"
+          source_info = schema_info[:src] ? " (from #{schema_info[:src]})" : ""
+          error_msg = "Failed to generate schema for #{schema_info[:template_name]}#{source_info}: #{e.message}"
           results[:errors] << error_msg
           warn error_msg
         end
@@ -125,9 +126,15 @@ module Rhales
     def build_typescript_script(schema_info)
       # Escape single quotes in template name for TypeScript string
       safe_name = schema_info[:template_name].gsub("'", "\\'")
+      source_comment = if schema_info[:src]
+        "// Source: #{schema_info[:src]} (external)"
+      else
+        "// Source: inline schema"
+      end
 
       <<~TYPESCRIPT
         // Auto-generated schema generator for #{safe_name}
+        #{source_comment}
         import { z } from 'zod/v4';
 
         // Schema code from .rue template

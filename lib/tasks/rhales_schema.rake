@@ -45,7 +45,8 @@ namespace :rhales do
 
       puts "Found #{schemas.size} schema section(s):"
       schemas.each do |schema|
-        puts "  - #{schema[:template_name]} (#{schema[:lang]})"
+        source_type = schema[:src] ? "external: #{schema[:src]}" : "inline"
+        puts "  - #{schema[:template_name]} (#{schema[:lang]}, #{source_type})"
       end
       puts
 
@@ -185,6 +186,13 @@ namespace :rhales do
       puts "Files with <schema>: #{stats[:files_with_schemas]}"
       puts "Files without <schema>: #{stats[:files_without_schemas]}"
       puts
+
+      if stats[:files_with_schemas] > 0
+        puts "Schema sources:"
+        puts "  External (src attribute): #{stats[:external_schemas]}"
+        puts "  Inline: #{stats[:inline_schemas]}"
+        puts
+      end
 
       if stats[:schemas_by_lang].any?
         puts "By language:"
