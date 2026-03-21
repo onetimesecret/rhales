@@ -61,6 +61,16 @@ RSpec.describe Rhales::SchemaGenerator do
         described_class.new(templates_dir: templates_dir, output_dir: output_dir)
       end
 
+      before do
+        # Mock Open3.capture3 for validation checks
+        allow(Open3).to receive(:capture3)
+          .with('pnpm', '--version')
+          .and_return(['8.0.0', '', double(success?: true)])
+        allow(Open3).to receive(:capture3)
+          .with('pnpm', 'exec', 'tsx', '--version')
+          .and_return(['4.0.0', '', double(success?: true)])
+      end
+
       it 'includes inline source comment for inline schemas' do
         script = generator.send(:build_typescript_script, inline_schema_info)
 
