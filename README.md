@@ -134,6 +134,40 @@ const schema = z.object({
 | `version` | No | Schema version | `"2"` |
 | `envelope` | No | Response wrapper type | `"SuccessEnvelope"` |
 | `layout` | No | Layout template reference | `"layouts/main"` |
+| `src` | No | External schema file path | `"schemas/user.schema.ts"` |
+
+### External Schema References
+
+Instead of defining schemas inline, you can reference external TypeScript/JavaScript files. This enables single-source-of-truth patterns where the same schema file drives both frontend TypeScript types (via `z.infer<>`) and Rhales validation.
+
+```xml
+<!-- templates/dashboard.rue -->
+<schema src="schemas/dashboard.schema.ts" lang="js-zod" window="__DASHBOARD__">
+</schema>
+
+<template>
+  <div>{{user.name}}</div>
+</template>
+```
+
+```typescript
+// templates/schemas/dashboard.schema.ts
+import { z } from 'zod';
+
+const schema = z.object({
+  user: z.object({
+    name: z.string(),
+    email: z.string().email()
+  }),
+  items: z.array(z.string())
+});
+
+export default schema;
+
+// TypeScript frontend can import and use: z.infer<typeof schema>
+```
+
+The `src` path is resolved relative to the template file. Security checks prevent path traversal outside the templates directory.
 
 ### Zod Schema Examples
 

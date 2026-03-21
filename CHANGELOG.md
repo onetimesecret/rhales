@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **External Schema References**: Schema definitions can now reference external TypeScript/JavaScript files via the `src` attribute
+  - Enables single-source-of-truth patterns where TypeScript schemas drive both frontend types and Rhales validation
+  - Path resolution relative to template file with security checks to prevent path traversal
+  - Rake task output now shows inline vs external schema sources
+  - Example: `<schema src="schemas/user.schema.ts" lang="js-zod" window="__USER__">`
 - **Production Logging**: Structured logging via `Rhales.logger=` for security auditing and debugging
   - View rendering events with template details, timing, and hydration size
   - Schema validation warnings for production debugging (missing/extra keys)
