@@ -1,0 +1,6 @@
+<schema src="../../../etc/passwd" lang="js-zod" window="__DATA__">
+</schema>
+
+<template>
+  <div>Test</div>
+</template>

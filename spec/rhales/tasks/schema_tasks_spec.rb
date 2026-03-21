@@ -115,7 +115,7 @@ RSpec.describe 'rhales:schema rake tasks' do
 
         expect(output).to include('Schema Generation')
         expect(output).to include('Found 1 schema section(s)')
-        expect(output).to include('test_template (js-zod)')
+        expect(output).to include('test_template (js-zod, inline)')
         expect(output).to include('Successfully generated 1 schema(s)')
 
         # Verify output file exists

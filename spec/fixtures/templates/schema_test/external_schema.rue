@@ -1,0 +1,6 @@
+<schema src="schemas/bootstrap.schema.ts" lang="js-zod" window="__BOOTSTRAP__">
+</schema>
+
+<template>
+  <div>{{appName}}</div>
+</template>

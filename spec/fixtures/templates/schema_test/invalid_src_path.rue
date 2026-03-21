@@ -1,0 +1,6 @@
+<schema src="nonexistent/schema.ts" lang="js-zod" window="__DATA__">
+</schema>
+
+<template>
+  <div>Test</div>
+</template>
