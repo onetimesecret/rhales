@@ -330,6 +330,33 @@ RSpec.describe Rhales::SchemaGenerator do
           generator.send(:execute_tsx, script_path)
         end
       end
+
+      describe '#path_to_file_url (private method via send)' do
+        it 'converts Unix absolute paths to file:// URLs' do
+          result = generator.send(:path_to_file_url, '/home/user/schemas/test.mjs')
+          expect(result).to eq('file:///home/user/schemas/test.mjs')
+        end
+
+        it 'converts Windows paths with drive letters to file:// URLs' do
+          result = generator.send(:path_to_file_url, 'C:\\Users\\dev\\schemas\\test.mjs')
+          expect(result).to eq('file:///C:/Users/dev/schemas/test.mjs')
+        end
+
+        it 'converts Windows paths with forward slashes to file:// URLs' do
+          result = generator.send(:path_to_file_url, 'C:/Users/dev/schemas/test.mjs')
+          expect(result).to eq('file:///C:/Users/dev/schemas/test.mjs')
+        end
+
+        it 'handles lowercase drive letters' do
+          result = generator.send(:path_to_file_url, 'd:\\Projects\\schemas\\test.mjs')
+          expect(result).to eq('file:///d:/Projects/schemas/test.mjs')
+        end
+
+        it 'handles mixed separators in Windows paths' do
+          result = generator.send(:path_to_file_url, 'D:\\Projects/mixed\\path/test.mjs')
+          expect(result).to eq('file:///D:/Projects/mixed/path/test.mjs')
+        end
+      end
     end
   end
 end

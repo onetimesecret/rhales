@@ -265,6 +265,13 @@ module Rhales
         end
       end
 
+      # Validate schema search paths exist if specified
+      @schema_search_paths.each do |path|
+        unless Dir.exist?(path)
+          errors << "Schema search path does not exist: #{path}"
+        end
+      end
+
       # Validate cache TTL
       if @cache_ttl && @cache_ttl <= 0
         errors << 'cache_ttl must be positive'

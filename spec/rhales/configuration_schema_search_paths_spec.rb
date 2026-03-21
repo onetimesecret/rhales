@@ -3,6 +3,8 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
 
 RSpec.describe Rhales::Configuration do
   describe '#schema_search_paths' do
@@ -37,38 +39,62 @@ RSpec.describe Rhales::Configuration do
     end
 
     describe 'configuration block' do
-      before { Rhales.reset_configuration! }
+      let(:temp_dirs) { [] }
+
+      before do
+        Rhales.reset_configuration!
+      end
+
+      after do
+        temp_dirs.each { |d| FileUtils.rm_rf(d) if Dir.exist?(d) }
+      end
 
       it 'can be configured via Rhales.configure' do
+        dir1 = Dir.mktmpdir('custom_schemas')
+        dir2 = Dir.mktmpdir('shared_schemas')
+        temp_dirs.push(dir1, dir2)
+
         Rhales.configure do |config|
-          config.schema_search_paths = ['/custom/schemas', '/shared/schemas']
+          config.schema_search_paths = [dir1, dir2]
         end
 
-        expect(Rhales.config.schema_search_paths).to eq(['/custom/schemas', '/shared/schemas'])
+        expect(Rhales.config.schema_search_paths).to eq([dir1, dir2])
       end
 
       it 'preserves paths through freeze' do
+        dir = Dir.mktmpdir('frozen_path')
+        temp_dirs.push(dir)
+
         Rhales.configure do |config|
-          config.schema_search_paths = ['/frozen/path']
+          config.schema_search_paths = [dir]
         end
 
-        expect(Rhales.config.schema_search_paths).to eq(['/frozen/path'])
+        expect(Rhales.config.schema_search_paths).to eq([dir])
         expect(Rhales.config).to be_frozen
       end
     end
 
     describe 'validation' do
-      # schema_search_paths validation is minimal - paths are validated at resolution time
-      # This matches the pattern used by template_paths
-
-      it 'does not raise on non-existent paths (validation is deferred)' do
+      it 'raises on non-existent paths during validate!' do
         subject.schema_search_paths = ['/nonexistent/path']
+        expect { subject.validate! }.to raise_error(
+          Rhales::Configuration::ConfigurationError,
+          /Schema search path does not exist/
+        )
+      end
+
+      it 'accepts relative paths that exist' do
+        # Use current directory which always exists
+        subject.schema_search_paths = ['.']
         expect { subject.validate! }.not_to raise_error
       end
 
-      it 'accepts relative paths' do
-        subject.schema_search_paths = ['./schemas', '../shared/schemas']
-        expect(subject.schema_search_paths).to eq(['./schemas', '../shared/schemas'])
+      it 'validates all paths and reports all errors' do
+        subject.schema_search_paths = ['/nonexistent/path1', '/nonexistent/path2']
+        expect { subject.validate! }.to raise_error(
+          Rhales::Configuration::ConfigurationError,
+          /path1.*path2|path2.*path1/
+        )
       end
     end
   end

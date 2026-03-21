@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test coverage for collision detection and merge strategies
 
 ### Changed
-- **Ruby 3.4+ required** (was 3.3.4)
+- **Ruby 3.4+ required** (was 3.3.4) - aligns with current LTS ecosystem; no Ruby 3.3 features relied upon, but 3.4 is recommended for YJIT improvements and json_schemer performance
 - Updated zod to 4.3.6
 - Relaxed json_schemer dependency from ~> 2.3 to ~> 2
 - Replaced `json-schema` gem with `json_schemer` for better JSON Schema Draft 2020-12 support
