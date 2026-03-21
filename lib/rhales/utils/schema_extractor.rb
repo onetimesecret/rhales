@@ -147,7 +147,11 @@ module Rhales
       relative_path.to_s.sub(/\.rue$/, '')
     end
 
-    # Resolve external schema src path relative to template file
+    # Resolve external schema src path
+    #
+    # Resolution order:
+    # 1. Relative to template file directory
+    # 2. Search through configured schema_search_paths
     #
     # @param template_path [String] Absolute path to the .rue template
     # @param src [String] The src attribute value from the schema tag
@@ -157,13 +161,49 @@ module Rhales
       template_dir = File.dirname(template_path)
       resolved = File.expand_path(src, template_dir)
 
-      # Security: Ensure resolved path is within templates directory
-      unless path_within_directory?(resolved, @templates_dir)
+      # First, check if the path exists relative to template
+      if File.exist?(resolved) && path_within_allowed_directories?(resolved)
+        return resolved
+      end
+
+      # If the relative path does not exist or is not allowed,
+      # search through configured schema_search_paths
+      search_paths = Rhales.configuration.schema_search_paths || []
+      search_paths.each do |search_path|
+        expanded_search_path = File.expand_path(search_path)
+        candidate = File.join(expanded_search_path, src)
+
+        if File.exist?(candidate) && path_within_allowed_directories?(candidate)
+          return candidate
+        end
+      end
+
+      # If we get here, the path was resolved relative to template but may not exist yet
+      # (e.g., during validation). Apply security check to the original resolution.
+      unless path_within_allowed_directories?(resolved)
         raise ExtractionError,
-              "Schema src path traversal not allowed: '#{src}' resolves outside templates directory"
+              "Schema src path traversal not allowed: '#{src}' resolves outside allowed directories"
       end
 
       resolved
+    end
+
+    # Check if a path is within any allowed directory
+    #
+    # Allowed directories include:
+    # - The templates directory
+    # - Any configured schema_search_paths
+    #
+    # @param path [String] Path to check
+    # @return [Boolean] True if path is within an allowed directory
+    def path_within_allowed_directories?(path)
+      return true if path_within_directory?(path, @templates_dir)
+
+      search_paths = Rhales.configuration.schema_search_paths || []
+      search_paths.any? do |search_path|
+        expanded_search_path = File.expand_path(search_path)
+        path_within_directory?(path, expanded_search_path)
+      end
     end
 
     # Read schema content from external file

@@ -308,5 +308,128 @@ RSpec.describe Rhales::SchemaExtractor do
         expect(stats[:inline_schemas]).to eq(1)
       end
     end
+
+    describe 'schema_search_paths configuration' do
+      let(:external_schema_content) do
+        "const schema = z.object({ name: z.string() });"
+      end
+
+      # Separate directory outside of templates for shared schemas
+      let(:shared_schemas_dir) { File.join(temp_dir, 'shared_schemas') }
+
+      before do
+        FileUtils.mkdir_p(shared_schemas_dir)
+        Rhales.reset_configuration!
+      end
+
+      after do
+        Rhales.reset_configuration!
+      end
+
+      it 'finds schema in configured search paths when not in template directory' do
+        # Create schema file in shared_schemas_dir (not in templates)
+        create_file(File.join(shared_schemas_dir, 'common.schema.ts'), external_schema_content)
+
+        # Template references schema that only exists in shared_schemas_dir
+        create_file(File.join(templates_dir, 'using_shared.rue'), <<~RUE)
+          <schema src="common.schema.ts" lang="js-zod" window="__DATA__">
+          </schema>
+
+          <template>
+          <div>Test</div>
+          </template>
+        RUE
+
+        # Configure search paths
+        Rhales.configure do |config|
+          config.schema_search_paths = [shared_schemas_dir]
+        end
+
+        extractor = described_class.new(templates_dir)
+        result = extractor.extract_from_file(File.join(templates_dir, 'using_shared.rue'))
+
+        expect(result[:src]).to eq('common.schema.ts')
+        expect(result[:resolved_path]).to eq(File.join(shared_schemas_dir, 'common.schema.ts'))
+        expect(result[:schema_code]).to include("z.object")
+      end
+
+      it 'prefers template-relative path over search paths' do
+        # Create schema in both locations with different content
+        create_file(File.join(templates_dir, 'schemas', 'priority.schema.ts'), "const schema = z.object({ local: z.boolean() });")
+        create_file(File.join(shared_schemas_dir, 'schemas', 'priority.schema.ts'), "const schema = z.object({ shared: z.boolean() });")
+
+        create_file(File.join(templates_dir, 'priority_test.rue'), <<~RUE)
+          <schema src="schemas/priority.schema.ts" lang="js-zod" window="__DATA__">
+          </schema>
+
+          <template>
+          <div>Test</div>
+          </template>
+        RUE
+
+        Rhales.configure do |config|
+          config.schema_search_paths = [shared_schemas_dir]
+        end
+
+        extractor = described_class.new(templates_dir)
+        result = extractor.extract_from_file(File.join(templates_dir, 'priority_test.rue'))
+
+        # Should use the local template-relative path, not the search path
+        expect(result[:resolved_path]).to eq(File.join(templates_dir, 'schemas', 'priority.schema.ts'))
+        expect(result[:schema_code]).to include("local")
+      end
+
+      it 'searches multiple paths in order' do
+        second_search_dir = File.join(temp_dir, 'second_search')
+        FileUtils.mkdir_p(second_search_dir)
+
+        # Only create in second search dir
+        create_file(File.join(second_search_dir, 'only_in_second.schema.ts'), external_schema_content)
+
+        create_file(File.join(templates_dir, 'multi_search.rue'), <<~RUE)
+          <schema src="only_in_second.schema.ts" lang="js-zod" window="__DATA__">
+          </schema>
+
+          <template>
+          <div>Test</div>
+          </template>
+        RUE
+
+        Rhales.configure do |config|
+          config.schema_search_paths = [shared_schemas_dir, second_search_dir]
+        end
+
+        extractor = described_class.new(templates_dir)
+        result = extractor.extract_from_file(File.join(templates_dir, 'multi_search.rue'))
+
+        expect(result[:resolved_path]).to eq(File.join(second_search_dir, 'only_in_second.schema.ts'))
+      end
+
+      it 'blocks path traversal outside of search paths' do
+        # Configure a search path
+        Rhales.configure do |config|
+          config.schema_search_paths = [shared_schemas_dir]
+        end
+
+        # Try to access file outside both templates_dir and search paths
+        outside_file = File.join(temp_dir, 'secret.txt')
+        create_file(outside_file, 'SECRET DATA')
+
+        create_file(File.join(templates_dir, 'traversal_attack.rue'), <<~RUE)
+          <schema src="../secret.txt" lang="js-zod" window="__DATA__">
+          </schema>
+
+          <template>
+          <div>Test</div>
+          </template>
+        RUE
+
+        extractor = described_class.new(templates_dir)
+
+        expect {
+          extractor.extract_from_file(File.join(templates_dir, 'traversal_attack.rue'))
+        }.to raise_error(Rhales::SchemaExtractor::ExtractionError, /path traversal|outside.*directory|not allowed/i)
+      end
+    end
   end
 end
