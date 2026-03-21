@@ -1,20 +1,20 @@
 # Rhales - Ruby Single File Components
 
 > [!CAUTION]
-> **Early Development Release** - Rhales is in active development (v0.5). The API underwent breaking changes from v0.4. While functional and tested, it's recommended for experimental use and contributions. Please report issues and provide feedback through GitHub.
+> **Early Development Release** - Rhales is in active development (v0.6). The API underwent breaking changes from v0.4. While functional and tested, it's recommended for experimental use and contributions. Please report issues and provide feedback through GitHub.
 
 Rhales is a **type-safe contract enforcement framework** for server-rendered pages with client-side data hydration. It uses `.rue` files (Ruby Single File Components) that combine Zod v4 schemas, Handlebars templates, and documentation into a single contract-first format.
 
 **About the name:** It all started with a simple mustache template many years ago. Mustache's successor, "Handlebars," is a visual analog for a mustache. "Two Whales Kissing" is another visual analog for a mustache, and since we're working with Ruby, we call it "Rhales" (Ruby + Whales). It's a perfect name with absolutely no ambiguity or risk of confusion.
 
-## What's New in v0.5
+## What's New in v0.6
 
-- ✅ **Schema-First Design**: Replaced `<data>` sections with Zod v4 `<schema>` sections
-- ✅ **Type Safety**: Contract enforcement between backend and frontend
-- ✅ **Simplified API**: Removed deprecated parameters (`sess`, `cust`, `props:`, `app_data:`)
-- ✅ **Clear Context Layers**: Renamed `app` → `request` for clarity
-- ✅ **Schema Tooling**: Rake tasks for schema generation and validation
-- ✅ **100% Migration**: All demo templates use schemas
+- ✅ **External Schema References**: Reference TypeScript schema files via `src` attribute for single-source-of-truth patterns
+- ✅ **Multi-directory Search**: Configure `schema_search_paths` to search multiple directories for shared schemas
+- ✅ **tsx Import Mode**: Bundle external schemas with imports via esbuild (`schema_use_tsx_import`)
+- ✅ **Ruby 3.4+ Required**: Updated minimum Ruby version
+
+**v0.5 features:** Schema-first design, type safety, simplified API, clear context layers, schema tooling.
 
 **Breaking changes from v0.4:** See [Migration Guide](#migration-from-v04-to-v05) below.
 
@@ -168,6 +168,31 @@ export default schema;
 ```
 
 The `src` path is resolved relative to the template file. Security checks prevent path traversal outside the templates directory.
+
+#### Multi-directory Search
+
+Configure additional directories to search for shared schema files:
+
+```ruby
+Rhales.configure do |config|
+  config.schema_search_paths = ['./shared/schemas', './lib/schemas']
+end
+```
+
+Resolution order: template-relative first, then search paths in order.
+
+#### tsx Import Mode
+
+For external schemas that import other modules, enable esbuild bundling:
+
+```ruby
+Rhales.configure do |config|
+  config.schema_use_tsx_import = true
+  config.schema_tsconfig_path = './tsconfig.json'  # optional
+end
+```
+
+This bundles the schema with all its imports while externalizing zod to prevent dual-instance issues.
 
 ### Zod Schema Examples
 

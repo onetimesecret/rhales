@@ -7,12 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-21
+
 ### Added
 - **External Schema References**: Schema definitions can now reference external TypeScript/JavaScript files via the `src` attribute
   - Enables single-source-of-truth patterns where TypeScript schemas drive both frontend types and Rhales validation
   - Path resolution relative to template file with security checks to prevent path traversal
   - Rake task output now shows inline vs external schema sources
   - Example: `<schema src="schemas/user.schema.ts" lang="js-zod" window="__USER__">`
+- **Multi-directory Schema Search**: New `schema_search_paths` configuration option
+  - Allows searching multiple directories for external schema files
+  - Resolution order: template-relative first, then search paths in order
+  - Security checks apply to all configured paths
+- **tsx Import Mode**: New bundling mode for external schemas with imports
+  - `schema_use_tsx_import = true` enables esbuild bundling
+  - `schema_tsconfig_path` allows custom TypeScript configuration
+  - Externalizes zod to prevent dual-instance issues
+  - Cross-platform file:// URL support for Windows ESM compatibility
+
+### Changed
+- **Ruby 3.4+ required** (was 3.3.4)
+- Updated zod to 4.3.6
+- Relaxed json_schemer dependency from ~> 2.3 to ~> 2
+
+### Removed
+- Unused `HydrationRegistry.clear!` method
 - **Production Logging**: Structured logging via `Rhales.logger=` for security auditing and debugging
   - View rendering events with template details, timing, and hydration size
   - Schema validation warnings for production debugging (missing/extra keys)
@@ -37,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All merge operations happen client-side after server-side interpolation and JSON serialization
 - Request-scoped registry prevents cross-request data leakage
 
-## [0.1.0] - 2024-01-XX
+## [0.1.0] - 2025-07-21
 
 ### Added
 - Initial release of Rhales
