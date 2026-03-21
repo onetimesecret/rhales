@@ -24,14 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `schema_tsconfig_path` allows custom TypeScript configuration
   - Externalizes zod to prevent dual-instance issues
   - Cross-platform file:// URL support for Windows ESM compatibility
-
-### Changed
-- **Ruby 3.4+ required** (was 3.3.4)
-- Updated zod to 4.3.6
-- Relaxed json_schemer dependency from ~> 2.3 to ~> 2
-
-### Removed
-- Unused `HydrationRegistry.clear!` method
 - **Production Logging**: Structured logging via `Rhales.logger=` for security auditing and debugging
   - View rendering events with template details, timing, and hydration size
   - Schema validation warnings for production debugging (missing/extra keys)
@@ -47,9 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test coverage for collision detection and merge strategies
 
 ### Changed
+- **Ruby 3.4+ required** (was 3.3.4)
+- Updated zod to 4.3.6
+- Relaxed json_schemer dependency from ~> 2.3 to ~> 2
 - Replaced `json-schema` gem with `json_schemer` for better JSON Schema Draft 2020-12 support
 - Improved validation error messages with more structured output from json_schemer
 - Validation performance improved to <0.05ms average (was ~2ms with json-schema)
+
+### Removed
+- Unused `HydrationRegistry.clear!` method
 
 ### Security
 - Window collision detection prevents accidental data exposure by making overwrites explicit

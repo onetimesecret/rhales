@@ -160,6 +160,7 @@ module Rhales
     def resolve_schema_src_path(template_path, src)
       template_dir = File.dirname(template_path)
       resolved = File.expand_path(src, template_dir)
+      searched_paths = [resolved]
 
       # First, check if the path exists relative to template
       if File.exist?(resolved) && path_within_allowed_directories?(resolved)
@@ -172,20 +173,22 @@ module Rhales
       search_paths.each do |search_path|
         expanded_search_path = File.expand_path(search_path)
         candidate = File.join(expanded_search_path, src)
+        searched_paths << candidate
 
         if File.exist?(candidate) && path_within_allowed_directories?(candidate)
           return candidate
         end
       end
 
-      # If we get here, the path was resolved relative to template but may not exist yet
-      # (e.g., during validation). Apply security check to the original resolution.
+      # Security check on the template-relative path
       unless path_within_allowed_directories?(resolved)
         raise ExtractionError,
               "Schema src path traversal not allowed: '#{src}' resolves outside allowed directories"
       end
 
-      resolved
+      # File not found in any location - raise helpful error listing all searched paths
+      raise ExtractionError,
+            "Schema file not found: '#{src}'. Searched:\n  - #{searched_paths.join("\n  - ")}"
     end
 
     # Check if a path is within any allowed directory
