@@ -343,7 +343,7 @@ module Rhales
     end
 
     # Preprocess content to strip XML/HTML comments outside of sections
-    # Uses Ruby 3.4+ pattern matching for robust, secure parsing
+    # Uses Ruby 3.2+ pattern matching for robust, secure parsing
     def preprocess_content(content)
       tokens = tokenize_content(content)
 
