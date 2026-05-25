@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Token-cycling loader example** (`examples/token-loader.rue`): a self-contained
-  server-rendered loading animation that mimics token generation - five monospaced
-  cells scrolling through randomized hex glyphs and locking in left-to-right. CSS
-  handles all motion; randomness comes from `SecureRandom.hex` in a Ruby view
-  model. Includes `prefers-reduced-motion` fallback and accessible
-  `role="status"` markup. (#49)
+- **Server-rendered random tokens example** (`examples/token-loader.rue`):
+  pattern-teaching example showing how to generate per-request data with
+  `SecureRandom.hex` in a Ruby view model, validate a nested
+  `z.array(z.object(...))` shape, and walk it with nested `{{#each}}` blocks
+  that fall through to the current outer item without explicit bindings. The
+  original loader-animation use case is documented as a CSS-only follow-on in
+  the `<logic>` block. (#49)
 
 ### Changed
 - **Minimum Ruby version lowered from 3.4 to 3.2** - broader compatibility with stable Ruby releases; CI now exercises 3.2, 3.3, 3.4, and 3.5
