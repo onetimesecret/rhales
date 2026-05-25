@@ -132,7 +132,10 @@ jobs:
         uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           bundler-cache: true
-          ruby-version: ruby   # latest stable Ruby installed by setup-ruby
+          # Pinned to a Ruby version exercised by .github/workflows/ci.yml so
+          # releases are built with a known-good interpreter. Bump in step with
+          # the CI matrix.
+          ruby-version: '3.4'
 
       - name: Verify release tag matches Rhales::VERSION
         env:
