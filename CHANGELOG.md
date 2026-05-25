@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-05-25
+
 ### Added
 - **Server-rendered random tokens example** (`examples/token-loader.rue`):
   pattern-teaching example showing how to generate per-request data with
