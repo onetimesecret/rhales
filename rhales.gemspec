@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
 
   spec.homepage              = 'https://github.com/onetimesecret/rhales'
   spec.license               = 'MIT'
-  spec.required_ruby_version = '>= 3.4'
+  spec.required_ruby_version = '>= 3.2'
 
   spec.metadata['source_code_uri']       = 'https://github.com/onetimesecret/rhales'
   spec.metadata['changelog_uri']         = 'https://github.com/onetimesecret/rhales/blob/main/CHANGELOG.md'

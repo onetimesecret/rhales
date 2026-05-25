@@ -12,7 +12,7 @@ Rhales is a **type-safe contract enforcement framework** for server-rendered pag
 - ✅ **External Schema References**: Reference TypeScript schema files via `src` attribute for single-source-of-truth patterns
 - ✅ **Multi-directory Search**: Configure `schema_search_paths` to search multiple directories for shared schemas
 - ✅ **tsx Import Mode**: Bundle external schemas with imports via esbuild (`schema_use_tsx_import`)
-- ✅ **Ruby 3.4+ Required**: Updated minimum Ruby version
+- ✅ **Ruby 3.2+ Supported**: Minimum Ruby version
 
 **v0.5 features:** Schema-first design, type safety, simplified API, clear context layers, schema tooling.
 
