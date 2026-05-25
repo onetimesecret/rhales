@@ -1,0 +1,119 @@
+<!-- examples/token-loader.rue -->
+
+<!--
+  Example: Server-Rendered Random Tokens with Nested Iteration
+
+  Demonstrates four rhales patterns in one small template:
+
+  1. Generating per-request random data on the server (SecureRandom.hex)
+     and passing it to the template via the client: context, instead of
+     relying on client JavaScript to fill the page in.
+
+  2. Validating a nested-array-of-objects shape with
+     z.array(z.object(...)) in the <schema> block.
+
+  3. Iterating with {{#each}} over a top-level array.
+
+  4. Iterating again inside the outer block to walk a nested array.
+     The inner {{#each}} resolves its variable name against the current
+     outer item first, so no explicit binding (`as |cell|`) or path
+     prefix (`this.glyphs`) is needed.
+
+  Each render produces a different output. The most common use case is
+  a pre-boot loader animated with CSS (see the "Use as a loader" note
+  below), but the same shape applies anywhere you want server-generated
+  per-request decorative data: identicons, correlation IDs displayed on
+  error pages, example IDs in onboarding flows, etc.
+-->
+
+<schema lang="js-zod" window="loaderTokens">
+const schema = z.object({
+  cells: z.array(z.object({
+    glyphs: z.array(z.string().length(1)).length(17)
+  })).length(5)
+});
+</schema>
+
+<template>
+<style nonce="{{nonce}}">
+  .tokens {
+    display: inline-flex;
+    gap: .3rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.05em;
+  }
+</style>
+
+<div class="tokens">
+  {{#each cells}}<span class="cell">{{#each glyphs}}{{.}}{{/each}}</span>{{/each}}
+</div>
+</template>
+
+<logic>
+# Server-Rendered Random Tokens
+#
+# Backend Usage (Ruby):
+#
+# require 'securerandom'
+#
+# cells = Array.new(5) {
+#   { glyphs: Array.new(17) { SecureRandom.hex(1)[0] } }
+# }
+#
+# view = Rhales::View.new(
+#   request,
+#   client: { cells: cells },
+#   server: { pageTitle: 'Loading...' }
+# )
+#
+# html = view.render('token-loader')
+#
+# Why these patterns:
+#
+# 1. Randomness lives in the view model, not the template. Rhales
+#    templates don't expose Random.new or SecureRandom directly --
+#    generate the data in Ruby and hand it to the template via the
+#    client: context. Templates stay pure-render and the data flow
+#    is explicit.
+#
+# 2. CSPRNG over Kernel#rand. Even for decorative output, SecureRandom
+#    signals intent and avoids questions later about why a templating
+#    layer is pulling from a seeded RNG.
+#
+# 3. Fresh data per cell, not a shared pool. Generating 5 x 17 = 85
+#    fresh glyphs (vs. 17 glyphs shuffled five ways) avoids visible
+#    rhyming between adjacent columns.
+#
+# 4. Nested {{#each}} resolves against the current outer item. Inside
+#    {{#each cells}}, the inner {{#each glyphs}} looks up "glyphs" on
+#    each cell hash automatically -- no need to write {{#each
+#    this.glyphs}} or pass an explicit binding. See
+#    lib/rhales/core/template_engine.rb EachContext#get for the
+#    fallthrough order (current item -> parent context).
+#
+# 5. Cache layer caveat. If a fragment cache wraps the response, the
+#    "fresh on every render" guarantee becomes "fresh per cache miss."
+#    Worst case is the same tokens until the cache TTL expires, which
+#    matches the behavior of a fully static template. For anything
+#    where per-request uniqueness actually matters, exclude this block
+#    from the cache.
+#
+# Use as a loader:
+#
+# The original motivation for this template was a pre-boot SPA loader
+# that "looks like" something is being computed. To wire that up, wrap
+# the output in role="status" with a visually-hidden label so screen
+# readers announce it correctly, and add CSS that scrolls each cell's
+# glyphs vertically before locking onto a final character. The 17
+# glyphs per cell are sized for a 16-step CSS animation with one
+# resting frame:
+#
+#   <div class="tokens" role="status" aria-label="Loading">
+#     ... iteration ...
+#     <span class="visually-hidden">Loading</span>
+#   </div>
+#
+# The animation itself is just CSS keyframes on the iterated spans and
+# is independent of rhales -- the rhales-specific work ends at
+# rendering the markup with fresh random characters per request.
+</logic>

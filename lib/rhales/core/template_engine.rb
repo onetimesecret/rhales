@@ -202,9 +202,11 @@ module Rhales
       items = get_variable_value(items_var)
 
       if items.respond_to?(:each)
-        items.map.with_index do |item, index|
+        items_array = items.to_a
+        total       = items_array.size
+        items_array.map.with_index do |item, index|
           # Create context for each iteration
-          item_context = create_each_context(item, index, items_var)
+          item_context = create_each_context(item, index, items_var, total)
           engine       = self.class.new('', item_context, partial_resolver: @partial_resolver)
           engine.send(:render_content_nodes, block_content)
         end.join
@@ -312,8 +314,8 @@ module Rhales
     end
 
     # Create context for each iteration
-    def create_each_context(item, index, items_var)
-      EachContext.new(@context, item, index, items_var)
+    def create_each_context(item, index, items_var, total = nil)
+      EachContext.new(@context, item, index, items_var, total)
     end
 
     # HTML escape for XSS protection
@@ -323,13 +325,14 @@ module Rhales
 
     # Context wrapper for {{#each}} iterations
     class EachContext
-      attr_reader :parent_context, :current_item, :current_index, :items_var
+      attr_reader :parent_context, :current_item, :current_index, :items_var, :total
 
-      def initialize(parent_context, current_item, current_index, items_var)
+      def initialize(parent_context, current_item, current_index, items_var, total = nil)
         @parent_context = parent_context
         @current_item   = current_item
         @current_index  = current_index
         @items_var      = items_var
+        @total          = total
       end
 
       def get(variable_name)
@@ -342,8 +345,7 @@ module Rhales
         when '@first'
           return @current_index == 0
         when '@last'
-          # We'd need to know the total length for this
-          return false
+          return @total ? @current_index == @total - 1 : false
         end
 
         # Check if it's a property of the current item

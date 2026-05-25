@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Server-rendered random tokens example** (`examples/token-loader.rue`):
+  pattern-teaching example showing how to generate per-request data with
+  `SecureRandom.hex` in a Ruby view model, validate a nested
+  `z.array(z.object(...))` shape, and walk it with nested `{{#each}}` blocks
+  that fall through to the current outer item without explicit bindings. The
+  original loader-animation use case is documented as a CSS-only follow-on in
+  the `<logic>` block. (#49)
+
 ### Changed
 - **Minimum Ruby version lowered from 3.4 to 3.2** - broader compatibility with stable Ruby releases; CI now exercises 3.2, 3.3, 3.4, and 3.5
+
+### Fixed
+- `{{#each}}` block variable `@last` now correctly returns `true` for the final
+  iteration instead of always `false`. Enables comma-separated output via
+  `{{#unless @last}},{{/unless}}` and similar patterns. `EachContext` now
+  accepts and stores the collection's total length.
 
 ## [0.6.0] - 2026-03-21
 
