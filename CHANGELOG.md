@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-05-25
+
+### Added
+- **Automated gem release workflow** (`.github/workflows/release-gem.yml`):
+  builds and publishes the gem to RubyGems.org via Trusted Publishing
+  (OIDC) whenever a GitHub Release is published with a `vMAJOR.MINOR.PATCH`
+  tag. Verifies the tag matches `Rhales::VERSION` before pushing.
+
+### Changed
+- **Dependencies**: bumped `unicode-emoji` from 4.0.4 to 4.2.0 and
+  `unicode-display_width` from 3.1.4 to 3.2.0. The previous
+  `unicode-emoji` cap of `< Ruby 4.0` broke `bundle install` on Ruby 4.x;
+  4.2.0 lifts that cap.
+- **Gemfile.lock**: platform list normalized via
+  `bundle lock --normalize-platforms` so platform-specific gems no longer
+  trigger setup-ruby warnings on CI.
+
 ## [0.6.1] - 2026-05-25
 
 ### Added
