@@ -1,0 +1,153 @@
+<!-- examples/token-loader.rue -->
+
+<!--
+  Example: Server-Rendered Token-Cycling Loader (O6)
+
+  A pre-boot loading animation that mimics token generation: five monospaced
+  cells, each scrolling vertically through a randomized sequence of hex
+  glyphs, locking in left-to-right onto a final character. Every page load
+  produces a unique, plausible-looking token in the loader without any
+  client JS.
+
+  Designed for the gap between the server-rendered HTML hitting the browser
+  and a SPA (Vue/React) booting -- replacing a static "Loading..." text.
+
+  Demonstrated patterns:
+  - Server-side randomness baked into the markup (SecureRandom.hex)
+  - Iteration over pre-generated arrays with {{#each}}
+  - Inline <style> with CSP nonce
+  - Accessibility: role="status" + visually-hidden label
+  - prefers-reduced-motion fallback that still shows the unique tokens
+-->
+
+<schema lang="js-zod" window="loaderTokens">
+const schema = z.object({
+  cells: z.array(z.object({
+    reel: z.array(z.string().length(1)).length(17)
+  })).length(5)
+});
+</schema>
+
+<template>
+<style nonce="{{nonce}}">
+  .ots-hash {
+    display: flex;
+    gap: .3rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 1.15rem;
+    line-height: 1;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+  }
+  .ots-hash .cell {
+    width: 1ch;
+    height: 1em;
+    overflow: hidden;
+    position: relative;
+    display: inline-block;
+    color: var(--muted);
+    animation: cellLock 3.6s ease-out infinite;
+  }
+  .ots-hash .reel {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    text-align: center;
+    animation: reelLock 3.6s infinite;
+    animation-timing-function: steps(16, end);
+  }
+  .ots-hash .reel span {
+    display: block;
+    height: 1em;
+  }
+  /* Staggered lock-in: cells settle left-to-right. */
+  .ots-hash .cell:nth-child(1),
+  .ots-hash .cell:nth-child(1) .reel { animation-delay: 0s; }
+  .ots-hash .cell:nth-child(2),
+  .ots-hash .cell:nth-child(2) .reel { animation-delay: .18s; }
+  .ots-hash .cell:nth-child(3),
+  .ots-hash .cell:nth-child(3) .reel { animation-delay: .36s; }
+  .ots-hash .cell:nth-child(4),
+  .ots-hash .cell:nth-child(4) .reel { animation-delay: .54s; }
+  .ots-hash .cell:nth-child(5),
+  .ots-hash .cell:nth-child(5) .reel { animation-delay: .72s; }
+
+  /* Scroll past 16 glyphs in the first half, hold on the 17th (the "final"). */
+  @keyframes reelLock {
+    0%   { transform: translateY(0); }
+    50%  { transform: translateY(-16em); }
+    100% { transform: translateY(-16em); }
+  }
+  /* Color flips from muted to accent the moment the cell settles. */
+  @keyframes cellLock {
+    0%, 49%   { color: var(--muted); }
+    50%, 100% { color: var(--accent); }
+  }
+
+  .ots-hash .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ots-hash * { animation: none !important; }
+    .ots-hash .reel { transform: translateY(-16em); }  /* show final glyphs */
+    .ots-hash .cell { color: var(--accent); }
+  }
+</style>
+
+<div class="ots-hash" role="status" aria-label="Loading">
+  {{#each cells}}<span class="cell"><span class="reel">{{#each reel}}<span>{{.}}</span>{{/each}}</span></span>{{/each}}
+  <span class="visually-hidden">Loading</span>
+</div>
+</template>
+
+<logic>
+# Server-Rendered Token-Cycling Loader
+#
+# Backend Usage (Ruby):
+#
+# require 'securerandom'
+#
+# cells = Array.new(5) {
+#   { reel: Array.new(17) { SecureRandom.hex(1)[0] } }
+# }
+#
+# view = Rhales::View.new(
+#   request,
+#   client: { cells: cells },
+#   server: { pageTitle: 'Loading...' }
+# )
+#
+# html = view.render('token-loader')
+#
+# Things to get right:
+#
+# 1. Use a CSPRNG (SecureRandom), not Kernel#rand. The animation is decorative
+#    so it doesn't matter cryptographically, but SecureRandom signals intent
+#    and avoids questions about why a loader is seeded from Random.new.
+#
+# 2. Generate 5x17 = 85 fresh glyphs, don't reuse one pool across cells.
+#    Sharing chars means columns visibly rhyme, which kills the "five
+#    independent cells" effect.
+#
+# 3. Watch the cache layer. If the pre-boot shell is cached at the CDN or
+#    browser, "per-load randomness" becomes "per-cache-hit randomness."
+#    For a loader this is fine -- worst case is the same five tokens for
+#    the cache TTL, identical to a static "Loading..." string. But if a
+#    fragment cache wraps this template, exclude the .ots-hash block.
+#
+# 4. Reduced motion. The @media (prefers-reduced-motion: reduce) rule
+#    shows the final glyphs in the accent color immediately. Still server-
+#    randomized, still unique per load, just no scroll.
+#
+# 5. Accessibility. role="status" plus a visually-hidden "Loading" label
+#    means screen readers announce the state correctly without reading
+#    out 85 glyph spans.
+</logic>
