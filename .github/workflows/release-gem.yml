@@ -1,0 +1,121 @@
+# Release Gem Workflow
+#
+# Automatically builds and publishes the rhales gem to RubyGems.org when a
+# GitHub release is created with a semantic version tag (e.g. v0.6.1, v1.2.3).
+#
+# ============================================================================
+# SETUP INSTRUCTIONS
+# ============================================================================
+#
+# This workflow uses RubyGems Trusted Publishing (OIDC) - no long-lived API
+# keys required. It's the recommended approach by RubyGems.
+#
+# ----------------------------------------------------------------------------
+# 1. Configure RubyGems Trusted Publisher
+# ----------------------------------------------------------------------------
+#
+#   a. Sign in to https://rubygems.org and enable MFA on your account
+#      (required for trusted publishing).
+#
+#   b. Navigate to your gem's page:
+#        https://rubygems.org/gems/rhales
+#      Or, if this is the first publish, use the pending publisher flow:
+#        https://rubygems.org/profile/oidc/pending_trusted_publishers/new
+#
+#   c. Click "Trusted Publishers" -> "Create" and fill in:
+#        Publisher type:        GitHub Actions
+#        Repository owner:      onetimesecret
+#        Repository name:       rhales
+#        Workflow filename:     release-gem.yml
+#        Environment (opt):     rubygems   (matches `environment:` below)
+#
+#   d. Save. RubyGems will now accept OIDC tokens from this workflow.
+#
+#   Docs: https://guides.rubygems.org/trusted-publishing/
+#
+# ----------------------------------------------------------------------------
+# 2. Configure GitHub Repository
+# ----------------------------------------------------------------------------
+#
+#   a. Go to: Settings -> Environments -> New environment
+#      Name it: `rubygems`  (must match `environment:` value below)
+#
+#   b. (Recommended) Under "Deployment branches and tags", restrict the
+#      environment to tags matching: v*.*.*
+#
+#   c. (Optional) Add required reviewers for an approval gate before publish.
+#
+#   No GitHub secrets are needed - OIDC handles authentication.
+#
+# ----------------------------------------------------------------------------
+# 3. Publishing a Release
+# ----------------------------------------------------------------------------
+#
+#   a. Bump `Rhales::VERSION` in lib/rhales/version.rb (semver: vMAJOR.MINOR.PATCH).
+#   b. Update CHANGELOG.md, commit, and push to main.
+#   c. Create a GitHub Release with tag `vX.Y.Z` matching the version constant.
+#   d. This workflow runs automatically, verifies the tag matches the gemspec
+#      version, builds the gem, and pushes it to RubyGems.
+#
+# ----------------------------------------------------------------------------
+# Fallback: API Key (only if you can't use Trusted Publishing)
+# ----------------------------------------------------------------------------
+#
+#   1. Generate an API key at https://rubygems.org/profile/api_keys with
+#      scope "Push rubygem" limited to the `rhales` gem.
+#   2. Add it as a GitHub secret named `RUBYGEMS_API_KEY`.
+#   3. Replace the `rubygems/release-gem` action step with:
+#
+#        - name: Publish to RubyGems
+#          env:
+#            GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+#          run: gem push rhales-*.gem
+#
+#      And remove the `id-token: write` permission and `environment:` block.
+#
+# ============================================================================
+
+name: Release Gem
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and Push Gem
+    runs-on: ubuntu-latest
+    environment: rubygems
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Verify tag matches gemspec version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          tag_version="${tag#v}"
+          gem_version="$(ruby -r ./lib/rhales/version.rb -e 'print Rhales::VERSION')"
+          if [ "${tag_version}" != "${gem_version}" ]; then
+            echo "Tag ${tag} (version ${tag_version}) does not match Rhales::VERSION (${gem_version})" >&2
+            exit 1
+          fi
+          echo "Releasing rhales ${gem_version} from tag ${tag}"
+
+      - name: Build gem
+        run: gem build rhales.gemspec
+
+      - name: Publish to RubyGems
+        uses: rubygems/release-gem@v1
