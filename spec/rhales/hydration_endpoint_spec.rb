@@ -331,6 +331,15 @@ RSpec.describe Rhales::HydrationEndpoint do
           .to raise_error(ArgumentError, /Invalid callback/)
       end
 
+      it 'rejects malformed dotted member paths' do
+        # Each dotted segment must be its own valid JS identifier; these pass a
+        # naive character-class check but produce unusable JSONP like foo.(...).
+        ['foo.', 'foo..bar', 'foo.1bar', '.foo', 'foo.bar.'].each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }
+            .to raise_error(ArgumentError, /Invalid callback/), "expected #{name.inspect} to be rejected"
+        end
+      end
+
       it 'does not process template data when the callback is invalid' do
         expect(endpoint).not_to receive(:process_template_data)
         expect { endpoint.render_jsonp(template_name, 'alert(1)//') }

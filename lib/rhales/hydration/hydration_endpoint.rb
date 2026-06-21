@@ -43,9 +43,12 @@ module Rhales
   # ```
   class HydrationEndpoint
     # Valid JSONP callback names: a JS identifier or dotted member path
-    # (e.g. "handleData", "app.callbacks.handleData"). Anything outside this
-    # set could break out of the callback invocation and inject script.
-    CALLBACK_NAME_PATTERN = /\A[a-zA-Z_$][a-zA-Z0-9_$.]*\z/
+    # (e.g. "handleData", "app.callbacks.handleData"). Each dotted segment must
+    # be its own valid identifier, so malformed paths like "foo.", "foo..bar"
+    # or "foo.1bar" are rejected rather than producing unusable JSONP. Anything
+    # outside this set could break out of the callback invocation and inject
+    # script.
+    CALLBACK_NAME_PATTERN = /\A[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*\z/
 
     def initialize(config, context = nil)
       @config = config
