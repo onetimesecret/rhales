@@ -265,6 +265,63 @@ RSpec.describe Rhales::HydrationEndpoint do
 
       endpoint.render_jsonp(template_name, callback_name, additional_context)
     end
+
+    context 'callback name validation (XSS protection)' do
+      it 'accepts a simple function name' do
+        expect { endpoint.render_jsonp(template_name, 'handleData') }.not_to raise_error
+      end
+
+      it 'accepts a namespaced callback' do
+        result = endpoint.render_jsonp(template_name, 'app.callbacks.handleData')
+        expect(result[:content]).to start_with('app.callbacks.handleData(')
+      end
+
+      it 'accepts callbacks containing $, underscores and digits' do
+        ['jQuery_12345', '_private', '$callback', 'cb1'].each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }.not_to raise_error
+        end
+      end
+
+      it 'rejects a callback that injects arbitrary JavaScript' do
+        expect { endpoint.render_jsonp(template_name, 'alert(1)//') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'rejects callbacks containing dangerous characters' do
+        malicious = [
+          'alert(document.cookie)',
+          'foo;bar',
+          'foo bar',
+          'foo()',
+          '<script>alert(1)</script>',
+          "foo\nbar",
+          'foo-bar',
+          'foo[0]',
+          'foo+bar'
+        ]
+
+        malicious.each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }
+            .to raise_error(ArgumentError, /Invalid callback/), "expected #{name.inspect} to be rejected"
+        end
+      end
+
+      it 'rejects an empty callback name' do
+        expect { endpoint.render_jsonp(template_name, '') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'rejects a callback beginning with a digit' do
+        expect { endpoint.render_jsonp(template_name, '1callback') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'does not process template data when the callback is invalid' do
+        expect(endpoint).not_to receive(:process_template_data)
+        expect { endpoint.render_jsonp(template_name, 'alert(1)//') }
+          .to raise_error(ArgumentError)
+      end
+    end
   end
 
   describe '#data_changed?' do
