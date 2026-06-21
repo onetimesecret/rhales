@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   such as `alert(1)//`. Callback names are now validated against a JavaScript
   identifier / dotted member-path pattern and an invalid name raises
   `ArgumentError` before any template data is processed.
+- **JSON-in-HTML/JS escaping** (`Rhales::JSONSerializer.dump_html_safe`): standard
+  JSON generation does not escape `<`, `>`, `&`, U+2028 or U+2029, so hydration
+  data containing `</script>` could break out of the surrounding script context
+  and inject markup/JavaScript (XSS). The new `dump_html_safe` escapes those
+  characters as `\uXXXX` (equivalent JSON that round-trips identically) and is now
+  used for the HTML hydration `<script type="application/json">` data block
+  (`View`) and the ES module / JSONP endpoint bodies (`HydrationEndpoint`).
 
 ## [0.6.2] - 2026-05-25
 

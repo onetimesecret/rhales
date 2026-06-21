@@ -65,15 +65,15 @@ RSpec.describe Rhales::JSONSerializer do
 
       expect(result).not_to include('</script>')
       expect(result).not_to include('<script>')
-      expect(result).to include('<')
-      expect(result).to include('>')
+      expect(result).to include('\u003c')
+      expect(result).to include('\u003e')
     end
 
     it 'escapes ampersands' do
       result = described_class.dump_html_safe({ 'x' => 'a & b' })
 
       expect(result).not_to include('&')
-      expect(result).to include('&')
+      expect(result).to include('\u0026')
     end
 
     it 'escapes the U+2028 and U+2029 line separators' do

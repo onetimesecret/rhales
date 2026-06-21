@@ -98,7 +98,7 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "export default #{JSONSerializer.dump(merged_data)};",
+        content: "export default #{JSONSerializer.dump_html_safe(merged_data)};",
         content_type: 'text/javascript',
         headers: module_headers(merged_data)
       }
@@ -117,7 +117,7 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "#{callback_name}(#{JSONSerializer.dump(merged_data)});",
+        content: "#{callback_name}(#{JSONSerializer.dump_html_safe(merged_data)});",
         content_type: 'application/javascript',
         headers: jsonp_headers(merged_data),
       }
