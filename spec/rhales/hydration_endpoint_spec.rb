@@ -228,6 +228,19 @@ RSpec.describe Rhales::HydrationEndpoint do
 
       endpoint.render_module(template_name, additional_context)
     end
+
+    it 'escapes characters that could break out of the script context' do
+      allow(endpoint).to receive(:process_template_data)
+        .and_return({ 'x' => '</script><script>alert(1)</script>' })
+
+      result = endpoint.render_module(template_name)
+
+      expect(result[:content]).not_to include('</script>')
+      expect(result[:content]).not_to include('<script>')
+      # Data still round-trips to the original value
+      json = result[:content].sub(/\Aexport default /, '').sub(/;\z/, '')
+      expect(JSON.parse(json)['x']).to eq('</script><script>alert(1)</script>')
+    end
   end
 
   describe '#render_jsonp' do
@@ -323,6 +336,19 @@ RSpec.describe Rhales::HydrationEndpoint do
         expect { endpoint.render_jsonp(template_name, 'alert(1)//') }
           .to raise_error(ArgumentError)
       end
+    end
+
+    it 'escapes characters in data that could break out of the script context' do
+      allow(endpoint).to receive(:process_template_data)
+        .and_return({ 'x' => '</script><script>alert(1)</script>' })
+
+      result = endpoint.render_jsonp(template_name, callback_name)
+
+      expect(result[:content]).not_to include('</script>')
+      expect(result[:content]).not_to include('<script>')
+      # Data still round-trips to the original value
+      json = result[:content].sub(/\A#{callback_name}\(/, '').sub(/\);\z/, '')
+      expect(JSON.parse(json)['x']).to eq('</script><script>alert(1)</script>')
     end
   end
 

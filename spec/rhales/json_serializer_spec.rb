@@ -58,6 +58,47 @@ RSpec.describe Rhales::JSONSerializer do
     end
   end
 
+  describe '.dump_html_safe' do
+    it 'escapes characters that can break out of an HTML <script> element' do
+      data = { 'x' => '</script><script>alert(1)</script>' }
+      result = described_class.dump_html_safe(data)
+
+      expect(result).not_to include('</script>')
+      expect(result).not_to include('<script>')
+      expect(result).to include('<')
+      expect(result).to include('>')
+    end
+
+    it 'escapes ampersands' do
+      result = described_class.dump_html_safe({ 'x' => 'a & b' })
+
+      expect(result).not_to include('&')
+      expect(result).to include('&')
+    end
+
+    it 'escapes the U+2028 and U+2029 line separators' do
+      data = { 'x' => "a b c" }
+      result = described_class.dump_html_safe(data)
+
+      expect(result).not_to include(" ")
+      expect(result).not_to include(" ")
+      expect(result).to include('\u2028')
+      expect(result).to include('\u2029')
+    end
+
+    it 'round-trips: escaped output parses back to the original data' do
+      data = { 'x' => '</script>', 'amp' => 'a & b', 'sep' => "a b c" }
+      result = described_class.dump_html_safe(data)
+
+      expect(described_class.parse(result)).to eq(data)
+    end
+
+    it 'leaves data without dangerous characters identical to .dump' do
+      data = { 'user' => 'Alice', 'count' => 42, 'nested' => { 'a' => [1, 2] } }
+      expect(described_class.dump_html_safe(data)).to eq(described_class.dump(data))
+    end
+  end
+
   describe '.pretty_dump' do
     it 'serializes with pretty formatting' do
       data = { 'user' => 'Alice', 'count' => 42 }
