@@ -32,6 +32,19 @@ module Rhales
   #   # => :oj (if available) or :json (stdlib)
   #
   module JSONSerializer
+    # Characters that can terminate an HTML <script> element or, in legacy
+    # JavaScript engines, a string literal. They are escaped as \uXXXX, which
+    # is equivalent JSON/JS and round-trips identically through any parser.
+    HTML_ESCAPE = {
+      '<' => '\u003c',
+      '>' => '\u003e',
+      '&' => '\u0026',
+      "\u2028" => '\u2028',
+      "\u2029" => '\u2029',
+    }.freeze
+
+    HTML_ESCAPE_PATTERN = /[<>&  ]/
+
     class << self
       # Serialize Ruby object to JSON string
       #
@@ -42,6 +55,22 @@ module Rhales
       # @raise [TypeError] if object contains non-serializable types
       def dump(obj)
         @json_dumper.call(obj)
+      end
+
+      # Serialize Ruby object to a JSON string safe to embed in an HTML
+      # <script> element or a JavaScript resource body.
+      #
+      # Standard JSON generation does not escape <, >, & or the U+2028/U+2029
+      # line separators, so a value containing "</script>" would break out of
+      # the surrounding script context and allow markup/JavaScript injection
+      # (XSS). This method escapes those characters as \uXXXX. The result is
+      # still valid JSON and parses back to the identical value.
+      #
+      # @param obj [Object] Ruby object to serialize
+      # @return [String] HTML/JS-context-safe JSON string
+      # @raise [TypeError] if object contains non-serializable types
+      def dump_html_safe(obj)
+        dump(obj).gsub(HTML_ESCAPE_PATTERN, HTML_ESCAPE)
       end
 
       # Serialize Ruby object to pretty-printed JSON string

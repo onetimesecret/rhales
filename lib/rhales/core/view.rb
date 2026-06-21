@@ -390,7 +390,7 @@ module Rhales
         # Create JSON script tag with optional reflection attributes
         json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ''
         json_script = <<~HTML.strip
-          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSONSerializer.dump(data)}</script>
+          <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSONSerializer.dump_html_safe(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes

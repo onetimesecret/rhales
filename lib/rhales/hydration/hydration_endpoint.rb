@@ -42,6 +42,14 @@ module Rhales
   # module_response = endpoint.render_module('template_name')
   # ```
   class HydrationEndpoint
+    # Valid JSONP callback names: a JS identifier or dotted member path
+    # (e.g. "handleData", "app.callbacks.handleData"). Each dotted segment must
+    # be its own valid identifier, so malformed paths like "foo.", "foo..bar"
+    # or "foo.1bar" are rejected rather than producing unusable JSONP. Anything
+    # outside this set could break out of the callback invocation and inject
+    # script.
+    CALLBACK_NAME_PATTERN = /\A[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*\z/
+
     def initialize(config, context = nil)
       @config = config
       @context = context
@@ -93,18 +101,26 @@ module Rhales
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "export default #{JSONSerializer.dump(merged_data)};",
+        content: "export default #{JSONSerializer.dump_html_safe(merged_data)};",
         content_type: 'text/javascript',
         headers: module_headers(merged_data)
       }
     end
 
     # Render JSONP response with callback
+    #
+    # The callback name is reflected directly into the executable response
+    # body, so it must be validated before use. Without validation a caller
+    # supplying something like "alert(1)//" would inject arbitrary JavaScript.
     def render_jsonp(template_name, callback_name, additional_context = {})
+      unless callback_name.is_a?(String) && callback_name.match?(CALLBACK_NAME_PATTERN)
+        raise ArgumentError, "Invalid callback: #{callback_name.inspect}"
+      end
+
       merged_data = process_template_data(template_name, additional_context)
 
       {
-        content: "#{callback_name}(#{JSONSerializer.dump(merged_data)});",
+        content: "#{callback_name}(#{JSONSerializer.dump_html_safe(merged_data)});",
         content_type: 'application/javascript',
         headers: jsonp_headers(merged_data),
       }

@@ -228,6 +228,19 @@ RSpec.describe Rhales::HydrationEndpoint do
 
       endpoint.render_module(template_name, additional_context)
     end
+
+    it 'escapes characters that could break out of the script context' do
+      allow(endpoint).to receive(:process_template_data)
+        .and_return({ 'x' => '</script><script>alert(1)</script>' })
+
+      result = endpoint.render_module(template_name)
+
+      expect(result[:content]).not_to include('</script>')
+      expect(result[:content]).not_to include('<script>')
+      # Data still round-trips to the original value
+      json = result[:content].sub(/\Aexport default /, '').sub(/;\z/, '')
+      expect(JSON.parse(json)['x']).to eq('</script><script>alert(1)</script>')
+    end
   end
 
   describe '#render_jsonp' do
@@ -264,6 +277,87 @@ RSpec.describe Rhales::HydrationEndpoint do
         .and_return(mock_data)
 
       endpoint.render_jsonp(template_name, callback_name, additional_context)
+    end
+
+    context 'callback name validation (XSS protection)' do
+      it 'accepts a simple function name' do
+        expect { endpoint.render_jsonp(template_name, 'handleData') }.not_to raise_error
+      end
+
+      it 'accepts a namespaced callback' do
+        result = endpoint.render_jsonp(template_name, 'app.callbacks.handleData')
+        expect(result[:content]).to start_with('app.callbacks.handleData(')
+      end
+
+      it 'accepts callbacks containing $, underscores and digits' do
+        ['jQuery_12345', '_private', '$callback', 'cb1'].each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }.not_to raise_error
+        end
+      end
+
+      it 'rejects a callback that injects arbitrary JavaScript' do
+        expect { endpoint.render_jsonp(template_name, 'alert(1)//') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'rejects callbacks containing dangerous characters' do
+        malicious = [
+          'alert(document.cookie)',
+          'foo;bar',
+          'foo bar',
+          'foo()',
+          '<script>alert(1)</script>',
+          "foo\nbar",
+          "foo\r\nbar",
+          "foo\0bar",
+          'foo-bar',
+          'foo[0]',
+          'foo+bar'
+        ]
+
+        malicious.each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }
+            .to raise_error(ArgumentError, /Invalid callback/), "expected #{name.inspect} to be rejected"
+        end
+      end
+
+      it 'rejects an empty callback name' do
+        expect { endpoint.render_jsonp(template_name, '') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'rejects a callback beginning with a digit' do
+        expect { endpoint.render_jsonp(template_name, '1callback') }
+          .to raise_error(ArgumentError, /Invalid callback/)
+      end
+
+      it 'rejects malformed dotted member paths' do
+        # Each dotted segment must be its own valid JS identifier; these pass a
+        # naive character-class check but produce unusable JSONP like foo.(...).
+        ['foo.', 'foo..bar', 'foo.1bar', '.foo', 'foo.bar.'].each do |name|
+          expect { endpoint.render_jsonp(template_name, name) }
+            .to raise_error(ArgumentError, /Invalid callback/), "expected #{name.inspect} to be rejected"
+        end
+      end
+
+      it 'does not process template data when the callback is invalid' do
+        expect(endpoint).not_to receive(:process_template_data)
+        expect { endpoint.render_jsonp(template_name, 'alert(1)//') }
+          .to raise_error(ArgumentError)
+      end
+    end
+
+    it 'escapes characters in data that could break out of the script context' do
+      allow(endpoint).to receive(:process_template_data)
+        .and_return({ 'x' => '</script><script>alert(1)</script>' })
+
+      result = endpoint.render_jsonp(template_name, callback_name)
+
+      expect(result[:content]).not_to include('</script>')
+      expect(result[:content]).not_to include('<script>')
+      # Data still round-trips to the original value
+      json = result[:content].sub(/\A#{callback_name}\(/, '').sub(/\);\z/, '')
+      expect(JSON.parse(json)['x']).to eq('</script><script>alert(1)</script>')
     end
   end
 
