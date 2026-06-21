@@ -10,19 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.7.0] - 2026-06-21
 
 ### Security
-- **JSONP callback name validation** (`Rhales::HydrationEndpoint#render_jsonp`):
-  the caller-supplied callback name was reflected verbatim into the executable
-  response body, allowing arbitrary JavaScript injection (XSS) via a payload
-  such as `alert(1)//`. Callback names are now validated against a JavaScript
-  identifier / dotted member-path pattern and an invalid name raises
-  `ArgumentError` before any template data is processed.
-- **JSON-in-HTML/JS escaping** (`Rhales::JSONSerializer.dump_html_safe`): standard
-  JSON generation does not escape `<`, `>`, `&`, U+2028 or U+2029, so hydration
-  data containing `</script>` could break out of the surrounding script context
-  and inject markup/JavaScript (XSS). The new `dump_html_safe` escapes those
-  characters as `\uXXXX` (equivalent JSON that round-trips identically) and is now
-  used for the HTML hydration `<script type="application/json">` data block
-  (`View`) and the ES module / JSONP endpoint bodies (`HydrationEndpoint`).
+- Validate JSONP callback names against a JS identifier / dotted-path pattern to
+  block reflected XSS; invalid names raise `ArgumentError` (`HydrationEndpoint#render_jsonp`).
+- Escape `<`, `>`, `&`, U+2028, and U+2029 in hydration JSON so payloads like
+  `</script>` can't break out of the script context (`JSONSerializer.dump_html_safe`,
+  used by `View` and `HydrationEndpoint`).
 
 ## [0.6.2] - 2026-05-25
 
