@@ -295,6 +295,8 @@ RSpec.describe Rhales::HydrationEndpoint do
           'foo()',
           '<script>alert(1)</script>',
           "foo\nbar",
+          "foo\r\nbar",
+          "foo\0bar",
           'foo-bar',
           'foo[0]',
           'foo+bar'
