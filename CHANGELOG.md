@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **JSONP callback name validation** (`Rhales::HydrationEndpoint#render_jsonp`):
+  the caller-supplied callback name was reflected verbatim into the executable
+  response body, allowing arbitrary JavaScript injection (XSS) via a payload
+  such as `alert(1)//`. Callback names are now validated against a JavaScript
+  identifier / dotted member-path pattern and an invalid name raises
+  `ArgumentError` before any template data is processed.
+
 ## [0.6.2] - 2026-05-25
 
 ### Added
