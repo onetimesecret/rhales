@@ -90,21 +90,17 @@ For complex features requiring parallel work:
 
 ## Resuming work
 
-Returning after a break? Re-orient with **Map → Mail → Mess**:
+Re-orient with **Map → Mail → Mess**:
 
-1. **Map — what's planned.** Read the first `todo` in the active RFD
-   (`docs/rfd/`), the `Status:` of any `docs/adr/`, and `CHANGELOG.md`
-   `[Unreleased]`.
-2. **Mail — what's waiting on me.** Open PRs: red CI, unresolved review threads,
-   and each PR description's `## Next` section. Note what merged while you were
-   away.
-3. **Mess — what's half-done locally.** `git fetch`, then
-   `git branch --show-current`, `git status`, `git stash list`, and
-   `git log --oneline -10`.
+1. **Map — the plan.** First `todo` in the active RFD (`docs/rfd/`), any
+   `docs/adr/` `Status:`, and `CHANGELOG.md` `[Unreleased]`.
+2. **Mail — what's waiting.** Open PRs: red CI, unresolved review threads, each
+   PR's `## Next`. Note what merged or closed since.
+3. **Mess — local state.** `git fetch`, then `git branch --show-current`,
+   `git status`, `git stash list`, `git log --oneline -10`.
 
-Pick the next step as the first that fires: a PR waiting on you → a roadmap
-`todo` → reconciling local half-finished work.
+Next step is the first that fires: a PR waiting on you → a roadmap `todo` →
+local half-finished work.
 
-**Before you stop**, leave a breadcrumb so the next session is reading, not
-reconstructing: flip a step's status in the RFD, update the PR's `## Next`
-section, or add a `TODO(next):` note in the final commit.
+Before stopping, leave a breadcrumb: flip a step's `Status:` in the RFD, update
+the PR's `## Next`, or add a `TODO(next):` to the final commit.
