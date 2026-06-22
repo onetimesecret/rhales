@@ -26,18 +26,20 @@ jobs:
       actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Fall back to a current model when the action's default model id is
-          # unavailable (the previous default 404s: "model: claude-sonnet-4-20250514")
+          # Pin the primary model to a current id; the action's frozen default
+          # 404s ("model: claude-sonnet-4-20250514"). Fall back to Sonnet if the
+          # primary model is unavailable or overloaded.
+          model: "claude-opus-4-6"
           fallback_model: "claude-sonnet-4-6"
 
           # This is an optional setting that allows Claude to read CI results on PRs
