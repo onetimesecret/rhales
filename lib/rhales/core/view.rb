@@ -387,26 +387,31 @@ module Rhales
         unique_id = "rsfc-data-#{SecureRandom.hex(8)}"
         nonce_attr = nonce_attribute
 
+        # Escape the window name for its two output contexts (issue #57). Parse-time
+        # validation already restricts it to a JS identifier; this is defense in depth.
+        window_attr_html = ERB::Util.html_escape(window_attr)
+        window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+
         # Create JSON script tag with optional reflection attributes
-        json_attrs = reflection_enabled? ? " data-window=\"#{window_attr}\"" : ''
+        json_attrs = reflection_enabled? ? " data-window=\"#{window_attr_html}\"" : ''
         json_script = <<~HTML.strip
           <script#{nonce_attr} id="#{unique_id}" type="application/json"#{json_attrs}>#{JSONSerializer.dump_html_safe(data)}</script>
         HTML
 
         # Create hydration script with optional reflection attributes
-        hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr}\"" : ''
+        hydration_attrs = reflection_enabled? ? " data-hydration-target=\"#{window_attr_html}\"" : ''
         hydration_script = if reflection_enabled?
           <<~HTML.strip
             <script#{nonce_attr}#{hydration_attrs}>
             var dataScript = document.getElementById('#{unique_id}');
-            var targetName = dataScript.getAttribute('data-window') || '#{window_attr}';
+            var targetName = dataScript.getAttribute('data-window') || #{window_attr_js};
             window[targetName] = JSON.parse(dataScript.textContent);
             </script>
           HTML
         else
           <<~HTML.strip
             <script#{nonce_attr}#{hydration_attrs}>
-            window['#{window_attr}'] = JSON.parse(document.getElementById('#{unique_id}').textContent);
+            window[#{window_attr_js}] = JSON.parse(document.getElementById('#{unique_id}').textContent);
             </script>
           HTML
         end

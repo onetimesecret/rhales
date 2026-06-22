@@ -65,7 +65,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
         expect(result).to include('fetch(\'/api/hydration/test_template\')')
-        expect(result).to include("window['myData'] = data")
+        expect(result).to include('window["myData"] = data')
         expect(result).to include('rhales:hydrated')
       end
 
@@ -85,7 +85,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
         expect(result).to include('import data from \'/api/hydration/test_template.js\'')
-        expect(result).to include("window['myData'] = data")
+        expect(result).to include('window["myData"] = data')
         expect(result).to include('rhales:hydrated')
       end
 
@@ -174,14 +174,14 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         result = detector.generate_for_strategy(:preload, template_name, 'userData', nonce)
 
         expect(result).to include('data-hydration-target="userData"')
-        expect(result).to include("window['userData'] = data")
+        expect(result).to include('window["userData"] = data')
       end
 
       it 'handles snake_case window attributes' do
         result = detector.generate_for_strategy(:preload, template_name, 'user_data', nonce)
 
         expect(result).to include('data-hydration-target="user_data"')
-        expect(result).to include("window['user_data'] = data")
+        expect(result).to include('window["user_data"] = data')
       end
     end
 
@@ -197,7 +197,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
           result = detector.generate_for_strategy(strategy, template_name, window_attr, nonce)
 
           expect(result).to include('window.dispatchEvent(new CustomEvent(\'rhales:hydrated\'')
-          expect(result).to include('detail: { target: \'myData\', data: data }')
+          expect(result).to include('detail: { target: "myData", data: data }')
         end
       end
 
@@ -216,8 +216,11 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
           malicious_window_attr = "userData; alert('XSS')"
           result = detector.generate_for_strategy(:preload, template_name, malicious_window_attr, nonce)
 
-          # Should use bracket notation, not dot notation
-          expect(result).to include("window['#{malicious_window_attr}']")
+          # Window name is JSON-encoded (double-quoted), so the injected single
+          # quote cannot break out of the string literal.
+          encoded = Rhales::JSONSerializer.dump_html_safe(malicious_window_attr)
+          expect(result).to include("window[#{encoded}]")
+          expect(result).not_to include("window['#{malicious_window_attr}']")
           expect(result).not_to include("window.#{malicious_window_attr}")
         end
 
@@ -235,7 +238,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
             result = detector.generate_for_strategy(strategy, template_name, 'testAttr', nonce)
 
             # These strategies should use bracket notation for direct assignments
-            expect(result).to include("window['testAttr']")
+            expect(result).to include('window["testAttr"]')
           end
 
           # Link and prefetch strategies use dynamic assignment via function calls
@@ -266,7 +269,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         it 'handles empty string window attributes' do
           result = detector.generate_for_strategy(:preload, template_name, '', nonce)
 
-          expect(result).to include("window['']")
+          expect(result).to include('window[""]')
         end
       end
     end

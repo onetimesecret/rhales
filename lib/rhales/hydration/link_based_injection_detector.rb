@@ -3,7 +3,9 @@
 # frozen_string_literal: true
 
 require 'strscan'
+require 'erb'
 require_relative 'safe_injection_validator'
+require_relative '../utils/json_serializer'
 
 module Rhales
   # Generates link-based hydration strategies that use browser resource hints
@@ -47,12 +49,14 @@ module Rhales
 
     def generate_basic_link(template_name, window_attr, nonce)
       endpoint_url = "#{@api_endpoint_path}/#{template_name}"
+      window_attr_html = ERB::Util.html_escape(window_attr)
+      window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
 
       link_tag = %(<link href="#{endpoint_url}" type="application/json">)
 
       script_tag = <<~HTML.strip
-        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
-        // Load hydration data for #{window_attr}
+        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
+        // Load hydration data
         window.__rhales__ = window.__rhales__ || {};
         if (!window.__rhales__.loadData) {
           window.__rhales__.loadData = function(target, url) {
@@ -61,7 +65,7 @@ module Rhales
               .then(data => window[target] = data);
           };
         }
-        window.__rhales__.loadData('#{window_attr}', '#{endpoint_url}');
+        window.__rhales__.loadData(#{window_attr_js}, '#{endpoint_url}');
         </script>
       HTML
 
@@ -71,12 +75,14 @@ module Rhales
     def generate_prefetch_link(template_name, window_attr, nonce)
       endpoint_url = "#{@api_endpoint_path}/#{template_name}"
       crossorigin_attr = @crossorigin_enabled ? ' crossorigin' : ''
+      window_attr_html = ERB::Util.html_escape(window_attr)
+      window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
 
       link_tag = %(<link rel="prefetch" href="#{endpoint_url}" as="fetch"#{crossorigin_attr}>)
 
       script_tag = <<~HTML.strip
-        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
-        // Prefetch hydration data for #{window_attr}
+        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
+        // Prefetch hydration data
         window.__rhales__ = window.__rhales__ || {};
         if (!window.__rhales__.loadPrefetched) {
           window.__rhales__.loadPrefetched = function(target, url) {
@@ -85,7 +91,7 @@ module Rhales
               .then(data => window[target] = data);
           };
         }
-        window.__rhales__.loadPrefetched('#{window_attr}', '#{endpoint_url}');
+        window.__rhales__.loadPrefetched(#{window_attr_js}, '#{endpoint_url}');
         </script>
       HTML
 
@@ -95,19 +101,21 @@ module Rhales
     def generate_preload_link(template_name, window_attr, nonce)
       endpoint_url = "#{@api_endpoint_path}/#{template_name}"
       crossorigin_attr = @crossorigin_enabled ? ' crossorigin' : ''
+      window_attr_html = ERB::Util.html_escape(window_attr)
+      window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
 
       link_tag = %(<link rel="preload" href="#{endpoint_url}" as="fetch"#{crossorigin_attr}>)
 
       script_tag = <<~HTML.strip
-        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
+        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
         // Preload strategy - high priority fetch
         fetch('#{endpoint_url}')
           .then(r => r.json())
           .then(data => {
-            window['#{window_attr}'] = data;
+            window[#{window_attr_js}] = data;
             // Dispatch ready event
             window.dispatchEvent(new CustomEvent('rhales:hydrated', {
-              detail: { target: '#{window_attr}', data: data }
+              detail: { target: #{window_attr_js}, data: data }
             }));
           })
           .catch(err => console.error('Rhales hydration error:', err));
@@ -119,18 +127,20 @@ module Rhales
 
     def generate_modulepreload_link(template_name, window_attr, nonce)
       endpoint_url = "#{@api_endpoint_path}/#{template_name}.js"
+      window_attr_html = ERB::Util.html_escape(window_attr)
+      window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
 
       link_tag = %(<link rel="modulepreload" href="#{endpoint_url}">)
 
       script_tag = <<~HTML.strip
-        <script type="module"#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}">
+        <script type="module"#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
         // Module preload strategy
         import data from '#{endpoint_url}';
-        window['#{window_attr}'] = data;
+        window[#{window_attr_js}] = data;
 
         // Dispatch ready event
         window.dispatchEvent(new CustomEvent('rhales:hydrated', {
-          detail: { target: '#{window_attr}', data: data }
+          detail: { target: #{window_attr_js}, data: data }
         }));
         </script>
       HTML
@@ -141,10 +151,12 @@ module Rhales
     def generate_lazy_loading(template_name, window_attr, nonce)
       endpoint_url = "#{@api_endpoint_path}/#{template_name}"
       mount_selector = @hydration_config.lazy_mount_selector || '#app'
+      window_attr_html = ERB::Util.html_escape(window_attr)
+      window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
 
       # No link tag for lazy loading - purely script-driven
       script_tag = <<~HTML.strip
-        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr}" data-lazy-src="#{endpoint_url}">
+        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}" data-lazy-src="#{endpoint_url}">
         // Lazy loading strategy with intersection observer
         window.__rhales__ = window.__rhales__ || {};
         window.__rhales__.initLazyLoading = function() {
@@ -160,9 +172,9 @@ module Rhales
                 fetch('#{endpoint_url}')
                   .then(r => r.json())
                   .then(data => {
-                    window['#{window_attr}'] = data;
+                    window[#{window_attr_js}] = data;
                     window.dispatchEvent(new CustomEvent('rhales:hydrated', {
-                      detail: { target: '#{window_attr}', data: data }
+                      detail: { target: #{window_attr_js}, data: data }
                     }));
                   })
                   .catch(err => console.error('Rhales lazy hydration error:', err));

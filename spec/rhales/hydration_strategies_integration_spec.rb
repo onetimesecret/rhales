@@ -270,8 +270,8 @@ RSpec.describe 'Hydration Strategies Integration' do
 
         # Should have immediate fetch scripts
         expect(result).to include('fetch(\'/api/hydration/react_app\')')
-        expect(result).to include("window['userData'] = data;")
-        expect(result).to include("window['appConfig'] = data;")
+        expect(result).to include('window["userData"] = data;')
+        expect(result).to include('window["appConfig"] = data;')
 
         # Should include nonce for CSP compliance
         expect(result).to include('nonce="test-nonce-abc123"')
@@ -319,8 +319,8 @@ RSpec.describe 'Hydration Strategies Integration' do
         expect(result).to include('<link rel="modulepreload" href="/api/hydration/react_app.js">')
         expect(result).to include('type="module"')
         expect(result).to include('import data from \'/api/hydration/react_app.js\';')
-        expect(result).to include("window['userData'] = data;")
-        expect(result).to include("window['appConfig'] = data;")
+        expect(result).to include('window["userData"] = data;')
+        expect(result).to include('window["appConfig"] = data;')
       end
     end
 
@@ -359,8 +359,8 @@ RSpec.describe 'Hydration Strategies Integration' do
 
         expect(result).to include('<link href="/api/hydration/vue_app" type="application/json">')
         expect(result).to include('loadData')  # Manual loading function
-        expect(result).to include('window.__rhales__.loadData(\'userData\', \'/api/hydration/vue_app\');')  # Calls load function
-        expect(result).to include('window.__rhales__.loadData(\'appConfig\', \'/api/hydration/vue_app\');')  # Calls load function
+        expect(result).to include('window.__rhales__.loadData("userData", \'/api/hydration/vue_app\');')  # Calls load function
+        expect(result).to include('window.__rhales__.loadData("appConfig", \'/api/hydration/vue_app\');')  # Calls load function
         expect(result).not_to include('window.userData = data;')  # No automatic assignment
       end
     end

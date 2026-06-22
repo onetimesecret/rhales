@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Validate the schema `window` attribute against a JavaScript identifier pattern
+  (`/\A[a-zA-Z_][a-zA-Z0-9_]*\z/`) at parse time; invalid names raise
+  `RueDocument::ParseError` (#57).
+- Escape the window name at every hydration render site as defense in depth:
+  HTML-escape it in `data-window` / `data-hydration-target` attributes and
+  JSON-encode it (`JSONSerializer.dump_html_safe`) in `window[...]` script
+  contexts, in both `View` and `LinkBasedInjectionDetector`. Previously an
+  unescaped window name could break out of the HTML attribute or JS string (#57).
+- Stop logging the raw CSP nonce value. `CSP.generate_nonce` and
+  `CSP#build_header` now log only length/entropy/usage metadata, never the
+  per-response secret itself (#57).
+
 ## [0.7.0] - 2026-06-21
 
 ### Security

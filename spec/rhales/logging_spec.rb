@@ -233,21 +233,24 @@ RSpec.describe 'Rhales Logging' do
       config.csp_enabled = true
     end
 
-    it 'logs nonce generation' do
-      Rhales::CSP.generate_nonce
+    it 'logs nonce generation metadata without the nonce value' do
+      nonce = Rhales::CSP.generate_nonce
 
       expect(logger).to have_received(:debug).with(
-        a_string_matching(/CSP nonce generated: nonce=\w+/),
+        a_string_matching(/CSP nonce generated: length=\d+ entropy_bits=\d+/),
       )
+      # The raw nonce is a per-response secret and must never be logged (issue #57)
+      expect(logger).not_to have_received(:debug).with(a_string_including(nonce))
     end
 
-    it 'logs CSP header generation' do
-      csp = Rhales::CSP.new(config, nonce: 'test-nonce')
+    it 'logs CSP header generation without the nonce value' do
+      csp = Rhales::CSP.new(config, nonce: 'test-nonce-secret')
       csp.build_header
 
       expect(logger).to have_received(:debug).with(
         a_string_matching(/CSP header generated: nonce_used=true/),
       )
+      expect(logger).not_to have_received(:debug).with(a_string_including('test-nonce-secret'))
     end
   end
 
