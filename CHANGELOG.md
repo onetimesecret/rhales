@@ -27,6 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lazy `mount_selector` (JSON-encoded in `document.querySelector(...)`), so a
   single/double quote in those config values can no longer break out of its
   context (#59 review).
+- Validate template names in `View#resolve_template_path` to prevent path
+  traversal. Names may still use forward slashes for subdirectories, but
+  parent-directory references (`..`), embedded null bytes, and absolute paths
+  are rejected with `View::TemplateNotFoundError`. This matters because
+  `HydrationEndpoint` is designed to be wired to an API route, so a
+  request-derived template name can no longer escape the configured template
+  directories to read arbitrary files (#22).
+
+### Performance
+- `MountPointDetector#detect` now scans the rendered HTML a single time using
+  one combined alternation pattern built from all selectors, instead of
+  re-scanning the whole document once per selector. Results are memoized per
+  detector instance keyed by `[template_html, selectors]`, and `View` reuses a
+  single detector, so repeated detection on identical HTML reuses the prior
+  result and its `SafeInjectionValidator` work. Selection semantics
+  (selector-priority tie-breaking, earliest safe position) are unchanged (#22).
 
 ## [0.7.0] - 2026-06-21
 

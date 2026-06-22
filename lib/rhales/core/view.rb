@@ -229,6 +229,8 @@ module Rhales
 
     # Resolve template path
     def resolve_template_path(template_name)
+      validate_template_name!(template_name)
+
       # Check configured template paths first
       if config && config.template_paths && !config.template_paths.empty?
         config.template_paths.each do |path|
@@ -251,6 +253,28 @@ module Rhales
         File.join(config.template_paths.first, "#{template_name}.rue")
       else
         web_path
+      end
+    end
+
+    # Guard against path-traversal in template names.
+    #
+    # Template names may contain forward slashes to address subdirectories
+    # (e.g. "web/homepage"), but must not reference parent directories, embed
+    # null bytes, or be absolute paths. HydrationEndpoint exposes template
+    # names to API callers, so a name derived from request input must never be
+    # able to escape the configured template directories and read arbitrary
+    # files off disk.
+    def validate_template_name!(template_name)
+      unless template_name.is_a?(String) && !template_name.empty?
+        raise TemplateNotFoundError, "Invalid template name: #{template_name.inspect}"
+      end
+
+      absolute  = template_name.start_with?('/') || template_name.match?(/\A[a-zA-Z]:[\\\/]/)
+      null_byte = template_name.bytes.include?(0)
+      traversal = template_name.split(%r{[\\/]}).include?('..')
+
+      if absolute || null_byte || traversal
+        raise TemplateNotFoundError, "Unsafe template name: #{template_name.inspect}"
       end
     end
 
@@ -317,8 +341,14 @@ module Rhales
       return nil unless config&.hydration
 
       custom_selectors = config.hydration.mount_point_selectors || []
-      detector = MountPointDetector.new
-      detector.detect(template_html, custom_selectors)
+      mount_point_detector.detect(template_html, custom_selectors)
+    end
+
+    # Memoized mount point detector. Reusing one instance lets its per-instance
+    # result cache avoid rebuilding a SafeInjectionValidator and re-scanning
+    # identical rendered HTML across calls within this view's lifetime.
+    def mount_point_detector
+      @mount_point_detector ||= MountPointDetector.new
     end
 
     # Build view composition for the given template

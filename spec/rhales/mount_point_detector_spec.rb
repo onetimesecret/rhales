@@ -188,5 +188,45 @@ RSpec.describe Rhales::MountPointDetector do
         expect(result[:selector]).to eq('#app')
       end
     end
+
+    context 'caching and single-pass scanning' do
+      it 'memoizes the result and builds the validator only once per input' do
+        html = '<div id="app"></div>'
+        expect(Rhales::SafeInjectionValidator).to receive(:new).once.and_call_original
+
+        first  = detector.detect(html)
+        second = detector.detect(html)
+
+        expect(second).to eq(first)
+        expect(second[:selector]).to eq('#app')
+      end
+
+      it 'computes separately when selectors differ' do
+        html = '<div class="widget" id="app"></div>'
+        expect(Rhales::SafeInjectionValidator).to receive(:new).twice.and_call_original
+
+        detector.detect(html)
+        detector.detect(html, ['.widget'])
+      end
+
+      it 'finds the earliest mount point in one pass across many selectors' do
+        html = '<section data-mount></section><div id="app"></div>'
+        result = detector.detect(html, ['.foo', '[data-bar]'])
+
+        expect(result[:selector]).to eq('[data-mount]')
+        expect(result[:position]).to eq(0)
+      end
+
+      it 'breaks position ties by selector priority, not document order' do
+        # Both selectors match the same tag (same tag-start position); the
+        # higher-priority default (#app) must win even though its attribute
+        # appears after the lower-priority one in the tag text.
+        html = '<div data-mount id="app"></div>'
+        result = detector.detect(html)
+
+        expect(result[:position]).to eq(0)
+        expect(result[:selector]).to eq('#app')
+      end
+    end
   end
 end
