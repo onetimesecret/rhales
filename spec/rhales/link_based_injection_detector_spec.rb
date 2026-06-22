@@ -64,7 +64,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('<link rel="preload" href="/api/hydration/test_template" as="fetch" crossorigin>')
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
-        expect(result).to include('fetch(\'/api/hydration/test_template\')')
+        expect(result).to include('fetch("/api/hydration/test_template")')
         expect(result).to include('window["myData"] = data')
         expect(result).to include('rhales:hydrated')
       end
@@ -84,7 +84,7 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('type="module"')
         expect(result).to include('data-hydration-target="myData"')
         expect(result).to include('nonce="test-nonce-123"')
-        expect(result).to include('import data from \'/api/hydration/test_template.js\'')
+        expect(result).to include('import data from "/api/hydration/test_template.js"')
         expect(result).to include('window["myData"] = data')
         expect(result).to include('rhales:hydrated')
       end
@@ -105,14 +105,14 @@ RSpec.describe Rhales::LinkBasedInjectionDetector do
         expect(result).to include('data-lazy-src="/api/hydration/test_template"')
         expect(result).to include('nonce="test-nonce-123"')
         expect(result).to include('IntersectionObserver')
-        expect(result).to include('document.querySelector(\'#app\')')
+        expect(result).to include('document.querySelector("#app")')
       end
 
       it 'respects configured mount selector' do
         hydration_config.lazy_mount_selector = '#main-content'
         result = detector.generate_for_strategy(:lazy, template_name, window_attr, nonce)
 
-        expect(result).to include('document.querySelector(\'#main-content\')')
+        expect(result).to include('document.querySelector("#main-content")')
       end
 
       it 'handles DOM ready states' do

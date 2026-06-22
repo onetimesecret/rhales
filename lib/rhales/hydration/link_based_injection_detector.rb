@@ -51,8 +51,10 @@ module Rhales
       endpoint_url = "#{@api_endpoint_path}/#{template_name}"
       window_attr_html = ERB::Util.html_escape(window_attr)
       window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+      endpoint_url_html = ERB::Util.html_escape(endpoint_url)
+      endpoint_url_js   = JSONSerializer.dump_html_safe(endpoint_url)
 
-      link_tag = %(<link href="#{endpoint_url}" type="application/json">)
+      link_tag = %(<link href="#{endpoint_url_html}" type="application/json">)
 
       script_tag = <<~HTML.strip
         <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
@@ -65,7 +67,7 @@ module Rhales
               .then(data => window[target] = data);
           };
         }
-        window.__rhales__.loadData(#{window_attr_js}, '#{endpoint_url}');
+        window.__rhales__.loadData(#{window_attr_js}, #{endpoint_url_js});
         </script>
       HTML
 
@@ -77,8 +79,10 @@ module Rhales
       crossorigin_attr = @crossorigin_enabled ? ' crossorigin' : ''
       window_attr_html = ERB::Util.html_escape(window_attr)
       window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+      endpoint_url_html = ERB::Util.html_escape(endpoint_url)
+      endpoint_url_js   = JSONSerializer.dump_html_safe(endpoint_url)
 
-      link_tag = %(<link rel="prefetch" href="#{endpoint_url}" as="fetch"#{crossorigin_attr}>)
+      link_tag = %(<link rel="prefetch" href="#{endpoint_url_html}" as="fetch"#{crossorigin_attr}>)
 
       script_tag = <<~HTML.strip
         <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
@@ -91,7 +95,7 @@ module Rhales
               .then(data => window[target] = data);
           };
         }
-        window.__rhales__.loadPrefetched(#{window_attr_js}, '#{endpoint_url}');
+        window.__rhales__.loadPrefetched(#{window_attr_js}, #{endpoint_url_js});
         </script>
       HTML
 
@@ -103,13 +107,15 @@ module Rhales
       crossorigin_attr = @crossorigin_enabled ? ' crossorigin' : ''
       window_attr_html = ERB::Util.html_escape(window_attr)
       window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+      endpoint_url_html = ERB::Util.html_escape(endpoint_url)
+      endpoint_url_js   = JSONSerializer.dump_html_safe(endpoint_url)
 
-      link_tag = %(<link rel="preload" href="#{endpoint_url}" as="fetch"#{crossorigin_attr}>)
+      link_tag = %(<link rel="preload" href="#{endpoint_url_html}" as="fetch"#{crossorigin_attr}>)
 
       script_tag = <<~HTML.strip
         <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
         // Preload strategy - high priority fetch
-        fetch('#{endpoint_url}')
+        fetch(#{endpoint_url_js})
           .then(r => r.json())
           .then(data => {
             window[#{window_attr_js}] = data;
@@ -129,13 +135,15 @@ module Rhales
       endpoint_url = "#{@api_endpoint_path}/#{template_name}.js"
       window_attr_html = ERB::Util.html_escape(window_attr)
       window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+      endpoint_url_html = ERB::Util.html_escape(endpoint_url)
+      endpoint_url_js   = JSONSerializer.dump_html_safe(endpoint_url)
 
-      link_tag = %(<link rel="modulepreload" href="#{endpoint_url}">)
+      link_tag = %(<link rel="modulepreload" href="#{endpoint_url_html}">)
 
       script_tag = <<~HTML.strip
         <script type="module"#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}">
         // Module preload strategy
-        import data from '#{endpoint_url}';
+        import data from #{endpoint_url_js};
         window[#{window_attr_js}] = data;
 
         // Dispatch ready event
@@ -153,23 +161,26 @@ module Rhales
       mount_selector = @hydration_config.lazy_mount_selector || '#app'
       window_attr_html = ERB::Util.html_escape(window_attr)
       window_attr_js   = JSONSerializer.dump_html_safe(window_attr)
+      endpoint_url_html = ERB::Util.html_escape(endpoint_url)
+      endpoint_url_js   = JSONSerializer.dump_html_safe(endpoint_url)
+      mount_selector_js = JSONSerializer.dump_html_safe(mount_selector)
 
       # No link tag for lazy loading - purely script-driven
       script_tag = <<~HTML.strip
-        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}" data-lazy-src="#{endpoint_url}">
+        <script#{nonce_attribute(nonce)} data-hydration-target="#{window_attr_html}" data-lazy-src="#{endpoint_url_html}">
         // Lazy loading strategy with intersection observer
         window.__rhales__ = window.__rhales__ || {};
         window.__rhales__.initLazyLoading = function() {
-          const mountElement = document.querySelector('#{mount_selector}');
+          const mountElement = document.querySelector(#{mount_selector_js});
           if (!mountElement) {
-            console.warn('Rhales: Mount element "#{mount_selector}" not found for lazy loading');
+            console.warn('Rhales: Mount element ' + #{mount_selector_js} + ' not found for lazy loading');
             return;
           }
 
           const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
               if (entry.isIntersecting) {
-                fetch('#{endpoint_url}')
+                fetch(#{endpoint_url_js})
                   .then(r => r.json())
                   .then(data => {
                     window[#{window_attr_js}] = data;

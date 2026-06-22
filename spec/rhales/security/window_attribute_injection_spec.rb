@@ -132,6 +132,42 @@ RSpec.describe 'window attribute injection (issue #57)' do
     end
   end
 
+  describe 'config-value escaping in link_based_injection_detector.rb (#59 review)' do
+    let(:hydration_config) do
+      cfg = Rhales::HydrationConfiguration.new
+      cfg.api_endpoint_path = '/api/hydration'
+      cfg
+    end
+    let(:detector) { Rhales::LinkBasedInjectionDetector.new(hydration_config) }
+
+    it 'JSON-encodes endpoint_url (built from template_name) in JS string contexts' do
+      malicious_template = "tpl'];alert(1);//"
+      result = detector.generate_for_strategy(:preload, malicious_template, 'data', nil)
+
+      endpoint_url = "/api/hydration/#{malicious_template}"
+      encoded = Rhales::JSONSerializer.dump_html_safe(endpoint_url)
+      expect(result).to include("fetch(#{encoded})")
+      expect(result).not_to include("fetch('#{endpoint_url}')")
+    end
+
+    it 'HTML-escapes endpoint_url in the link href attribute' do
+      hydration_config.api_endpoint_path = '/api/h"x'
+      result = detector.generate_for_strategy(:preload, 'tpl', 'data', nil)
+
+      expect(result).not_to include('href="/api/h"x/tpl"')
+      expect(result).to include('href="/api/h&quot;x/tpl"')
+    end
+
+    it 'JSON-encodes mount_selector in document.querySelector' do
+      hydration_config.lazy_mount_selector = "[data-app='main']"
+      result = detector.generate_for_strategy(:lazy, 'tpl', 'data', nil)
+
+      encoded = Rhales::JSONSerializer.dump_html_safe("[data-app='main']")
+      expect(result).to include("document.querySelector(#{encoded})")
+      expect(result).not_to include("document.querySelector('[data-app='main']')")
+    end
+  end
+
   describe 'CSP nonce is not written to the debug log (L-1)' do
     let(:logger) { instance_double(Logger, debug: nil, info: nil, warn: nil, error: nil) }
 

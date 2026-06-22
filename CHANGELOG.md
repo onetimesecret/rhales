@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stop logging the raw CSP nonce value. `CSP.generate_nonce` and
   `CSP#build_header` now log only length/entropy/usage metadata, never the
   per-response secret itself (#57).
+- Escape the remaining interpolated config values in `LinkBasedInjectionDetector`
+  for the same reason: `endpoint_url` / `template_name` (HTML-escaped in `href` /
+  `data-lazy-src`, JSON-encoded in `fetch(...)` / `import` / loader calls) and the
+  lazy `mount_selector` (JSON-encoded in `document.querySelector(...)`), so a
+  single/double quote in those config values can no longer break out of its
+  context (#59 review).
 
 ## [0.7.0] - 2026-06-21
 
