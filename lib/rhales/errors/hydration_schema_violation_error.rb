@@ -21,10 +21,6 @@ module Rhales
       super(build_message)
     end
 
-    def message
-      build_message
-    end
-
     private
 
     def build_message

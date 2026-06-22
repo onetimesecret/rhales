@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `properties`, array `items`, typed `additionalProperties` records, and local
   `$ref`/`$defs` — dropping or reporting undeclared keys at any depth. It is
   deliberately conservative: anything it cannot interpret (`anyOf`/`oneOf`/
-  `allOf`, unresolvable/cyclic `$ref`, primitives) is passed through unchanged.
+  `allOf`, unresolvable/cyclic `$ref`, primitives) is passed through unchanged,
+  and an untyped `additionalProperties: true` is treated as stricter-than-schema
+  (undeclared keys still dropped) rather than widening the allowlist.
   Projection runs only when a reliable generated JSON Schema exists for the
   template (`rake rhales:schema:generate`); it never projects from the regex
   fallback and never drops a field it cannot verify. Full type validation of the

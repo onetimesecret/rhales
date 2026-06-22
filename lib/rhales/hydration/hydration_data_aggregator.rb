@@ -287,7 +287,7 @@ module Rhales
 
       # Project client data through the schema allowlist (no-op unless
       # schema_projection is enabled and a reliable JSON Schema is available).
-      processed_data = project_client_data(template_name, @context.client)
+      processed_data = project_client_data(template_name, client_data)
 
       # Check for collisions only if the data is not empty
       if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
@@ -531,7 +531,10 @@ module Rhales
     # - Object schemas (with `properties`) keep declared keys and recurse; keys
     #   absent from `properties` are dropped, unless the schema has a typed
     #   `additionalProperties` (a record/catchall), in which case extra keys are
-    #   kept and recursed through it.
+    #   kept and recursed through it. An untyped `additionalProperties: true`
+    #   (open-ended object) is intentionally treated as stricter-than-schema:
+    #   extras are still dropped, so projection never widens the allowlist based
+    #   on an open schema.
     # - Array schemas (with `items`) map each element through the item schema.
     # - Anything the walker does not recognize (primitives, `anyOf`/`oneOf`/
     #   `allOf`, unresolvable `$ref`) is returned unchanged, so projection never
