@@ -297,8 +297,11 @@ end
 
 Projection only runs when a **generated JSON Schema** exists for the template
 (`rake rhales:schema:generate`). It never projects from the unreliable regex
-fallback, and never drops a declared field it cannot verify. Step 1 projects
-top-level keys only; nested projection and full type validation are tracked in
+fallback, and never drops a declared field it cannot verify. Projection follows
+the schema's full nested structure — object `properties`, array `items`, typed
+`additionalProperties` records, and local `$ref` — dropping (or, in `:strict`,
+reporting by dotted path) undeclared keys at any depth. Full *type* validation
+of the projected payload is tracked as a follow-up in
 [`docs/rfc/0001-schema-as-security-boundary.md`](../rfc/0001-schema-as-security-boundary.md).
 
 ## Tilt Integration

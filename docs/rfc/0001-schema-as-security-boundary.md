@@ -91,12 +91,29 @@ JSON Schema). That already closes the most dangerous case — an undeclared
 top-level field such as `password` or `api_key` leaking wholesale. Nested
 projection is deferred to Step 2.
 
-### Step 2 — Real server-side validation and deep projection
+### Step 2a — Deep (nested) projection (done)
 
-Use `json_schemer` against the generated JSON Schema to validate the payload's
-*types*, not just key names, and to project nested structures. This replaces the
-regex fallback for any enforcing decision and lets `:strict` mean "the payload
-conforms to the contract," not merely "no undeclared top-level keys."
+Projection follows the generated JSON Schema's full structure instead of
+stopping at top-level keys: object `properties` are recursed, array `items` are
+mapped, typed `additionalProperties` (records/catchalls) are preserved and their
+values projected, and local `$ref`/`$defs` are resolved. Undeclared keys are
+dropped (`:strip`) or reported by dotted path (`:strict`) at any depth.
+
+The walk stays purely structural (no `json_schemer` needed) and is deliberately
+conservative: anything it cannot positively interpret — primitives,
+`anyOf`/`oneOf`/`allOf`, unresolvable or cyclic `$ref` — is passed through
+unchanged so projection never drops data it cannot account for. Projection is
+intentionally *stricter* than the schema for an untyped `additionalProperties:
+true`: such extra keys are dropped (security-favoring), while typed
+`additionalProperties` (a schema) are kept and projected.
+
+### Step 2b — Real server-side type validation (next)
+
+Use `json_schemer` (already a dependency) against the generated JSON Schema to
+validate the projected payload's *types*, not just its key shape, before it is
+serialized. This lets `:strict` mean "the payload conforms to the contract,"
+not merely "no undeclared keys," and moves the existing middleware's post-render
+check earlier (fail before the data is ever in the HTML).
 
 ### Step 3 — One hardened serialization choke point, fuzzed
 
