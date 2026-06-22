@@ -14,7 +14,7 @@
 ## Workflow: Feature Implementation
 
 ### 1. Research & Planning Phase
-IMPORTANT: Always research and plan before coding. Use "think" or "think hard" for complex features.
+IMPORTANT: Always research and plan before coding. Spend extra planning effort on complex or security-sensitive features.
 
 - Read relevant files and documentation WITHOUT writing code yet
 - Understand the two-layer data system (app, props)
@@ -53,7 +53,7 @@ Follow test-driven development when possible:
 For complex features requiring parallel work:
 - Use git worktrees for independent components
 - Keep adapter changes separate from core changes
-- Use /clear between unrelated tasks to optimize context
+- Start a fresh session/context between unrelated tasks to keep context focused
 - Document progress in CHANGELOG.md
 
 ## Project-Specific Notes
@@ -87,3 +87,25 @@ For complex features requiring parallel work:
 - Test all three context layers independently
 - Verify template caching behavior
 - Check false/nil handling explicitly
+
+## Resuming work
+
+Returning after a break? Re-orient with **Map → Mail → Mess**, then act on the
+first hit:
+
+1. **Map — what's planned.** Read the first `todo` in the active RFD
+   (`docs/rfd/`), the `Status:` of any `docs/adr/`, and `CHANGELOG.md`
+   `[Unreleased]`.
+2. **Mail — what's waiting on me.** Open PRs: red CI, unresolved review threads,
+   and each PR description's `## Next` section. Note what merged while you were
+   away.
+3. **Mess — what's half-done locally.** `git fetch`, then
+   `git branch --show-current`, `git status`, `git stash list`, and
+   `git log --oneline -10`.
+
+Pick the next step as the first that fires: a PR waiting on you → a roadmap
+`todo` → reconciling local half-finished work.
+
+**Before you stop**, leave a breadcrumb so the next session is reading, not
+reconstructing: flip a step's status in the RFD, update the PR's `## Next`
+section, or add a `TODO(next):` note in the final commit.

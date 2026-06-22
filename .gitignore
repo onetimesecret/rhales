@@ -48,7 +48,7 @@ bin/rspec
 [A-Z]*.ts
 [A-Z]*.md
 
-!CLAUDE.md
+!AGENTS.md
 
 # Environment files
 .env*
