@@ -90,8 +90,7 @@ For complex features requiring parallel work:
 
 ## Resuming work
 
-Returning after a break? Re-orient with **Map → Mail → Mess**, then act on the
-first hit:
+Returning after a break? Re-orient with **Map → Mail → Mess**:
 
 1. **Map — what's planned.** Read the first `todo` in the active RFD
    (`docs/rfd/`), the `Status:` of any `docs/adr/`, and `CHANGELOG.md`
