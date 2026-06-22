@@ -91,9 +91,22 @@ module Rhales
 
     def matched_group_index(scanner, count)
       count.times { |index| return index if scanner[index + 1] }
-      0
+
+      # Unreachable in normal operation: after a successful scan_until against
+      # combined_pattern exactly one wrapped selector group has captured. If
+      # none has, a build_pattern sub-pattern introduced its own capturing
+      # group and shifted the numbering, so fail loudly rather than silently
+      # attributing the match to the first selector.
+      raise 'MountPointDetector: no selector capture group matched; ' \
+            'build_pattern sub-patterns must not contain capturing groups'
     end
 
+    # Build the regex fragment that matches a single selector.
+    #
+    # INVARIANT: sub-patterns must not contain capturing groups. combined_pattern
+    # wraps each fragment in exactly one capture group and maps that group's
+    # index back to a selector, so any stray `(...)` here would shift the
+    # numbering and misattribute matches. Use non-capturing groups `(?:...)`.
     def build_pattern(selector)
       case selector
       when /^#(.+)$/
