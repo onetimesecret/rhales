@@ -278,7 +278,7 @@ view = Rhales::View.new(request,
 
 ### Opt-in: make the schema a mechanical filter (`schema_projection`)
 
-As of RFC 0001 (Step 1), the schema can be turned into a real allowlist instead
+As of RFD-001 (Steps 1–2a), the schema can be turned into a real allowlist instead
 of an advisory one. Set `schema_projection` in configuration:
 
 ```ruby
@@ -297,9 +297,12 @@ end
 
 Projection only runs when a **generated JSON Schema** exists for the template
 (`rake rhales:schema:generate`). It never projects from the unreliable regex
-fallback, and never drops a declared field it cannot verify. Step 1 projects
-top-level keys only; nested projection and full type validation are tracked in
-[`docs/rfc/0001-schema-as-security-boundary.md`](../rfc/0001-schema-as-security-boundary.md).
+fallback, and never drops a declared field it cannot verify. Projection follows
+the schema's full nested structure — object `properties`, array `items`, typed
+`additionalProperties` records, and local `$ref` — dropping (or, in `:strict`,
+reporting by dotted path) undeclared keys at any depth. Full *type* validation
+of the projected payload is tracked as a follow-up in
+[`docs/rfd/rfd-001-schema-as-security-boundary.md`](../rfd/rfd-001-schema-as-security-boundary.md).
 
 ## Tilt Integration
 

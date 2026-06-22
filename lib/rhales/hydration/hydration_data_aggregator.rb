@@ -490,17 +490,17 @@ module Rhales
     #
     # Returns the data unchanged when schema_projection is :off, when the data
     # is not a hash, or when no reliable JSON Schema is available to project
-    # against. In :strip mode, undeclared top-level keys are dropped; in :strict
-    # mode their presence raises HydrationSchemaViolationError. Projection is
-    # deliberately top-level only and reliable-source only (never the regex
-    # fallback). See docs/rfc/0001-schema-as-security-boundary.md.
+    # against. In :strip mode, undeclared keys are dropped at every level of the
+    # structure; in :strict mode their presence raises
+    # HydrationSchemaViolationError. Projection is reliable-source only (never
+    # the regex fallback). See docs/adr/adr-001-schema-projection.md.
     def project_client_data(template_name, client_data)
       mode = schema_projection_mode
       return client_data if mode == :off
       return client_data unless client_data.is_a?(Hash)
 
-      allowed = reliable_expected_keys(template_name)
-      if allowed.nil?
+      schema = projectable_schema(template_name)
+      if schema.nil?
         log_with_metadata(Rhales.logger, :warn, 'schema_projection skipped: no generated JSON Schema',
           template: template_name, mode: mode,
           hint: 'run `rake rhales:schema:generate` so the schema can act as an allowlist'
@@ -508,34 +508,123 @@ module Rhales
         return client_data
       end
 
-      allowed_names = allowed.map(&:to_s)
-      undeclared    = client_data.keys.reject { |key| allowed_names.include?(key.to_s) }
+      dropped   = []
+      projected = project_through_schema(client_data, schema, schema, [], dropped)
 
-      if undeclared.any? && mode == :strict
-        raise ::Rhales::HydrationSchemaViolationError.new(template_name, undeclared.map(&:to_s))
+      if dropped.any? && mode == :strict
+        raise ::Rhales::HydrationSchemaViolationError.new(template_name, dropped)
       end
 
-      if undeclared.any?
+      if dropped.any?
         log_with_metadata(Rhales.logger, :info, 'schema_projection dropped undeclared keys',
-          template: template_name, dropped_keys: undeclared.map(&:to_s)
+          template: template_name, dropped_keys: dropped
         )
       end
 
-      client_data.select { |key, _| allowed_names.include?(key.to_s) }
+      projected
+    end
+
+    # Recursively project +data+ through a JSON Schema node, keeping only data
+    # that the schema declares and recording the dotted path of every dropped
+    # key in +dropped+.
+    #
+    # - Object schemas (with `properties`) keep declared keys and recurse; keys
+    #   absent from `properties` are dropped, unless the schema has a typed
+    #   `additionalProperties` (a record/catchall), in which case extra keys are
+    #   kept and recursed through it.
+    # - Array schemas (with `items`) map each element through the item schema.
+    # - Anything the walker does not recognize (primitives, `anyOf`/`oneOf`/
+    #   `allOf`, unresolvable `$ref`) is returned unchanged, so projection never
+    #   drops data it cannot positively account for.
+    def project_through_schema(data, schema, root, path, dropped)
+      schema = resolve_ref(schema, root)
+      return data unless schema.is_a?(Hash)
+
+      properties      = schema['properties']
+      additional      = schema['additionalProperties']
+      additional_hash = additional.is_a?(Hash) ? additional : nil
+      items           = schema['items']
+
+      if properties.is_a?(Hash) && data.is_a?(Hash)
+        result = {}
+        data.each do |key, value|
+          key_s = key.to_s
+          if properties.key?(key_s)
+            result[key] = project_through_schema(value, properties[key_s], root, path + [key_s], dropped)
+          elsif additional_hash
+            result[key] = project_through_schema(value, additional_hash, root, path + [key_s], dropped)
+          else
+            dropped << (path + [key_s]).join('.')
+          end
+        end
+        result
+      elsif additional_hash && data.is_a?(Hash)
+        # Record / catchall object: every value validated by one schema.
+        result = {}
+        data.each do |key, value|
+          result[key] = project_through_schema(value, additional_hash, root, path + [key.to_s], dropped)
+        end
+        result
+      elsif items.is_a?(Hash) && data.is_a?(Array)
+        data.each_index.map do |index|
+          project_through_schema(data[index], items, root, path + [index.to_s], dropped)
+        end
+      else
+        data
+      end
+    end
+
+    # The raw generated JSON Schema document for a template, or nil when no
+    # reliable schema exists. The full document is returned (not a dereferenced
+    # node) so it can serve as the root for nested `$ref` resolution during the
+    # projection walk.
+    def projectable_schema(template_name)
+      schema = load_schema_cached(template_name)
+      schema.is_a?(Hash) ? schema : nil
+    end
+
+    # Follow a local JSON Pointer `$ref` (e.g. "#/$defs/User") against the schema
+    # root. Returns the original node when there is no ref, the ref is non-local
+    # or unresolvable, or a reference cycle is detected (so the caller falls back
+    # to conservative pass-through rather than looping).
+    def resolve_ref(schema, root, seen = [])
+      return schema unless schema.is_a?(Hash)
+
+      ref = schema['$ref']
+      return schema unless ref.is_a?(String)
+      return schema if seen.include?(ref)
+
+      target = lookup_pointer(root, ref)
+      return schema unless target.is_a?(Hash)
+
+      resolve_ref(target, root, seen + [ref])
+    end
+
+    def lookup_pointer(root, ref)
+      return nil unless ref.start_with?('#/')
+
+      tokens = ref.delete_prefix('#/').split('/').map do |token|
+        token.gsub('~1', '/').gsub('~0', '~')
+      end
+
+      tokens.reduce(root) do |node, token|
+        return nil unless node.is_a?(Hash)
+
+        node[token]
+      end
     end
 
     # Top-level property names from a generated JSON Schema, or nil when none is
     # available. Deliberately does NOT consult the regex fallback: projection
     # must never drop a declared field just because the unreliable regex missed
-    # it. An empty-but-present schema returns [] (project to nothing).
+    # it.
     def reliable_expected_keys(template_name)
-      schema = load_schema_cached(template_name)
-      return nil unless schema.is_a?(Hash)
+      root = projectable_schema(template_name)
+      return nil unless root
 
-      properties = schema['properties']
-      return nil unless properties.is_a?(Hash)
-
-      properties.keys
+      schema     = resolve_ref(root, root)
+      properties = schema.is_a?(Hash) ? schema['properties'] : nil
+      properties.is_a?(Hash) ? properties.keys : nil
     end
 
     def schema_projection_mode

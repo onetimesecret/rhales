@@ -8,22 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Schema projection (RFC 0001, Step 1)**: the `<schema>` can now act as a
+- **Schema projection (RFD-001, Steps 1 & 2a)**: the `<schema>` can now act as a
   mechanical allowlist for client data instead of an advisory one. New
   `config.schema_projection` mode:
   - `:off` (default) — unchanged behavior; the entire `client:` hash is
     serialized and the schema is advisory.
-  - `:strip` — the client payload is projected to the schema's declared
-    top-level keys before serialization; undeclared keys are dropped.
+  - `:strip` — the client payload is projected to the schema's declared keys
+    before serialization; undeclared keys are dropped.
   - `:strict` — like `:strip`, but undeclared keys raise the new
-    `Rhales::HydrationSchemaViolationError`.
+    `Rhales::HydrationSchemaViolationError` (with the dotted path of each).
 
+  Projection follows the generated JSON Schema's full nested structure — object
+  `properties`, array `items`, typed `additionalProperties` records, and local
+  `$ref`/`$defs` — dropping or reporting undeclared keys at any depth. It is
+  deliberately conservative: anything it cannot interpret (`anyOf`/`oneOf`/
+  `allOf`, unresolvable/cyclic `$ref`, primitives) is passed through unchanged.
   Projection runs only when a reliable generated JSON Schema exists for the
   template (`rake rhales:schema:generate`); it never projects from the regex
-  fallback and never drops a declared field it cannot verify. Top-level keys
-  only in this step — see `docs/rfc/0001-schema-as-security-boundary.md` for the
-  full roadmap (deep projection and type validation via `json_schemer` are
-  sequenced next).
+  fallback and never drops a field it cannot verify. Full type validation of the
+  projected payload via `json_schemer` is sequenced next — see
+  `docs/rfd/rfd-001-schema-as-security-boundary.md`.
 
 ### Fixed
 - `HydrationDataAggregator` now honors `config.schemas_dir` when locating
