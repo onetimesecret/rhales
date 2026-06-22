@@ -276,6 +276,31 @@ view = Rhales::View.new(request,
 )
 ```
 
+### Opt-in: make the schema a mechanical filter (`schema_projection`)
+
+As of RFC 0001 (Step 1), the schema can be turned into a real allowlist instead
+of an advisory one. Set `schema_projection` in configuration:
+
+```ruby
+Rhales.configure do |config|
+  config.schema_projection = :strict  # :off (default) | :strip | :strict
+end
+```
+
+- `:off` (default) — the advisory behavior described above; the entire `client:`
+  hash is serialized.
+- `:strip` — the client payload is projected to the schema's declared top-level
+  keys before serialization; undeclared keys are dropped.
+- `:strict` — like `:strip`, but undeclared keys raise
+  `HydrationSchemaViolationError` so the mistake is caught instead of silently
+  dropped or silently emitted.
+
+Projection only runs when a **generated JSON Schema** exists for the template
+(`rake rhales:schema:generate`). It never projects from the unreliable regex
+fallback, and never drops a declared field it cannot verify. Step 1 projects
+top-level keys only; nested projection and full type validation are tracked in
+[`docs/rfc/0001-schema-as-security-boundary.md`](../rfc/0001-schema-as-security-boundary.md).
+
 ## Tilt Integration
 
 ### Default Behavior: Everything Serialized

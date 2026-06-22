@@ -7,3 +7,7 @@
 
 !architecture/
 !architecture/README.md
+
+# Track design RFCs (durable records), like architecture/ above
+!rfc/
+!rfc/*.md

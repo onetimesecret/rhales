@@ -36,3 +36,4 @@ end
 
 # Load specific error classes
 require_relative 'errors/hydration_collision_error'
+require_relative 'errors/hydration_schema_violation_error'

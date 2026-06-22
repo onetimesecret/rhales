@@ -29,7 +29,8 @@ module Rhales
       @window_attributes = {}
       @merged_data = {}
       @schema_cache = {}
-      @schemas_dir = File.join(Dir.pwd, 'public/schemas')
+      # @schemas_dir is resolved lazily from configuration on first use so it
+      # honors Rhales.config.schemas_dir (see #schemas_dir).
     end
 
     # Aggregate all hydration data from the view composition
@@ -284,8 +285,9 @@ module Rhales
         end
       end
 
-      # Direct serialization of client data (no template interpolation)
-      processed_data = @context.client
+      # Project client data through the schema allowlist (no-op unless
+      # schema_projection is enabled and a reliable JSON Schema is available).
+      processed_data = project_client_data(template_name, @context.client)
 
       # Check for collisions only if the data is not empty
       if @window_attributes.key?(window_attr) && merge_strategy.nil? && !empty_data?(processed_data)
@@ -445,7 +447,7 @@ module Rhales
     # Load and cache JSON schema from disk
     def load_schema_cached(template_name)
       @schema_cache[template_name] ||= begin
-        schema_path = File.join(@schemas_dir, "#{template_name}.json")
+        schema_path = File.join(schemas_dir, "#{template_name}.json")
         return nil unless File.exist?(schema_path)
 
         JSON.parse(File.read(schema_path))
@@ -482,6 +484,76 @@ module Rhales
         schema_preview: schema_content[0..100]
       )
       []
+    end
+
+    # Project the client payload through the schema allowlist.
+    #
+    # Returns the data unchanged when schema_projection is :off, when the data
+    # is not a hash, or when no reliable JSON Schema is available to project
+    # against. In :strip mode, undeclared top-level keys are dropped; in :strict
+    # mode their presence raises HydrationSchemaViolationError. Projection is
+    # deliberately top-level only and reliable-source only (never the regex
+    # fallback). See docs/rfc/0001-schema-as-security-boundary.md.
+    def project_client_data(template_name, client_data)
+      mode = schema_projection_mode
+      return client_data if mode == :off
+      return client_data unless client_data.is_a?(Hash)
+
+      allowed = reliable_expected_keys(template_name)
+      if allowed.nil?
+        log_with_metadata(Rhales.logger, :warn, 'schema_projection skipped: no generated JSON Schema',
+          template: template_name, mode: mode,
+          hint: 'run `rake rhales:schema:generate` so the schema can act as an allowlist'
+        )
+        return client_data
+      end
+
+      allowed_names = allowed.map(&:to_s)
+      undeclared    = client_data.keys.reject { |key| allowed_names.include?(key.to_s) }
+
+      if undeclared.any? && mode == :strict
+        raise ::Rhales::HydrationSchemaViolationError.new(template_name, undeclared.map(&:to_s))
+      end
+
+      if undeclared.any?
+        log_with_metadata(Rhales.logger, :info, 'schema_projection dropped undeclared keys',
+          template: template_name, dropped_keys: undeclared.map(&:to_s)
+        )
+      end
+
+      client_data.select { |key, _| allowed_names.include?(key.to_s) }
+    end
+
+    # Top-level property names from a generated JSON Schema, or nil when none is
+    # available. Deliberately does NOT consult the regex fallback: projection
+    # must never drop a declared field just because the unreliable regex missed
+    # it. An empty-but-present schema returns [] (project to nothing).
+    def reliable_expected_keys(template_name)
+      schema = load_schema_cached(template_name)
+      return nil unless schema.is_a?(Hash)
+
+      properties = schema['properties']
+      return nil unless properties.is_a?(Hash)
+
+      properties.keys
+    end
+
+    def schema_projection_mode
+      return :off unless Rhales.config.respond_to?(:schema_projection)
+
+      Rhales.config.schema_projection || :off
+    end
+
+    # Directory of generated JSON Schemas, honoring Rhales.config.schemas_dir.
+    def schemas_dir
+      @schemas_dir ||= resolve_schemas_dir
+    end
+
+    def resolve_schemas_dir
+      configured = (Rhales.config.schemas_dir if Rhales.config.respond_to?(:schemas_dir))
+      return File.join(Dir.pwd, 'public/schemas') if configured.nil? || configured.to_s.empty?
+
+      File.expand_path(configured.to_s, Dir.pwd)
     end
   end
 end
