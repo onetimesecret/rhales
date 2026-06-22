@@ -7,8 +7,8 @@ title: "ADR-001: Schema projection as a mechanical client-data allowlist"
 ## Status
 Proposed
 
-<!-- Flips to Accepted when PRs #62 and #63 merge. Originates from RFC-001
-     (docs/rfc/rfc-001-schema-as-security-boundary.md), Steps 1 and 2a. -->
+<!-- Flips to Accepted when PRs #62 and #63 merge. Originates from RFD-001
+     (docs/rfd/rfd-001-schema-as-security-boundary.md), Steps 1 and 2a. -->
 
 ## Date
 2026-06-22
@@ -61,11 +61,11 @@ and its client data meet, so it can project per window attribute.
 - The guarantee is only as strong as the generated JSON Schema; with no schema it
   is a deliberate no-op and the boundary stays advisory.
 - Type conformance is not yet enforced pre-serialization (the middleware still
-  validates post-render); that is RFC-001 Step 2b.
+  validates post-render); that is RFD-001 Step 2b.
 
 ## Implementation Notes
 
 ### Initial implementation (2026-06-22)
 Step 1 (top-level projection, config, error class, `schemas_dir` honored) landed
 in PR #62; Step 2a (deep/nested projection) in PR #63. `schema_projection`
-defaults to `:off`; full suite green. See RFC-001 for the surrounding roadmap.
+defaults to `:off`; full suite green. See RFD-001 for the surrounding roadmap.

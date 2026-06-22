@@ -1,31 +1,35 @@
 ---
 id: "001"
-status: proposed
-title: "RFC-001: The schema as a mechanical security boundary"
+state: discussion
+title: "RFD-001: The schema as a mechanical security boundary"
+authors: [Rhales maintainers]
+discussion: https://github.com/onetimesecret/rhales/pull/63
+labels: [security, hydration, schema]
 ---
 
-<!-- Read "Modification rules" before editing. See docs/rfc/README.md. -->
+<!-- Read "Modification rules" before editing. See docs/rfd/README.md. -->
 
-## Status
-Proposed
+## State
+discussion
 
 ## Date
 Created: 2026-06-22 · Last updated: 2026-06-22
 
 ## Modification rules
 
-This RFC follows the repository's RFC modification rules (`docs/rfc/README.md`).
-In short: Summary, Motivation, and each step's **ID + Goal** are **frozen**;
-Resulting decisions and Change log are **append-only**; per-step **Status**
-markers and Unresolved questions are **living**. Track progress by the Status
-markers and Resulting decisions, not by rewriting prose. Step IDs are permanent.
+This RFD follows the repository's RFD modification rules (`docs/rfd/README.md`).
+In short: from `discussion` onward, Summary, Motivation, and each step's **ID +
+Goal** are **frozen**; Resulting decisions and Change log are **append-only**;
+the document State, per-step **Status** markers, and Unresolved questions are
+**living**. Track progress by the Status markers and Resulting decisions, not by
+rewriting prose. Step IDs are permanent.
 
 ## Summary
 
 *(Frozen.)* Rhales' headline security promise is that "only data declared in the
 `<schema>` section reaches the client." Today that promise is **advisory**: the
 entire `client:` hash is serialized to the browser, and the schema is used only
-to validate and to log mismatches. This RFC proposes turning the schema into a
+to validate and to log mismatches. This RFD proposes turning the schema into a
 **mechanical** boundary — the schema becomes the allowlist the client payload is
 projected through — and sequences that change across small, reviewable,
 backward-compatible steps.
@@ -57,7 +61,7 @@ must independently "get escaping right."
 
 ## Proposal
 
-Each step is its own PR. A step's ID and Goal are frozen; Status is living.
+Each step is its own PR. A step's ID and Goal are frozen; its Status is living.
 
 ### Step 1 — Mechanical allowlist projection · Status: `done`
 **Goal** *(frozen)*: add an opt-in `schema_projection` mode (`:off` default,
@@ -99,7 +103,7 @@ declared schema and the exact data that will cross to the client.
 
 - Changing the template-side data model (templates keep full server context; the
   boundary is server→client).
-- Removing the injection-strategy machinery. This RFC is about the data boundary.
+- Removing the injection-strategy machinery. This RFD is about the data boundary.
 
 ## Alternatives considered
 
@@ -134,5 +138,5 @@ declared schema and the exact data that will cross to the client.
 
 *(Append-only.)*
 
-- 2026-06-22: Created (Proposed). Steps 1 and 2a implemented (PRs #62, #63);
+- 2026-06-22: Created (discussion). Steps 1 and 2a implemented (PRs #62, #63);
   recorded as ADR-001 (Proposed).

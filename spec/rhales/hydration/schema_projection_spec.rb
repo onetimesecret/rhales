@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-# RFC-001 Step 1: the <schema> can act as a mechanical allowlist for client
+# RFD-001 Step 1: the <schema> can act as a mechanical allowlist for client
 # data via the schema_projection config. These tests exercise the projection
 # logic in isolation (load_schema_cached is stubbed to stand in for a generated
 # JSON Schema file).

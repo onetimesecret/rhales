@@ -40,10 +40,10 @@ Don't write ADRs for:
 - Implementation details within a single component
 - Non-contentious or standard practice decisions
 
-### Relationship to RFCs
+### Relationship to RFDs
 
 ADRs record a **single, settled decision** and are immutable once accepted. When
 a decision emerges from a broader, evolving proposal, that proposal lives as an
-**RFC** (see `../rfc/`). RFCs are forward-looking and mutable and may span
+**RFD** (see `../rfd/`). RFDs are forward-looking and mutable and may span
 several steps; each settled step is crystallized here as its own ADR, which
-links back up to the originating RFC.
+links back up to the originating RFD.

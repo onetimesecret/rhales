@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Schema projection (RFC 0001, Steps 1 & 2a)**: the `<schema>` can now act as a
+- **Schema projection (RFD-001, Steps 1 & 2a)**: the `<schema>` can now act as a
   mechanical allowlist for client data instead of an advisory one. New
   `config.schema_projection` mode:
   - `:off` (default) — unchanged behavior; the entire `client:` hash is
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   template (`rake rhales:schema:generate`); it never projects from the regex
   fallback and never drops a field it cannot verify. Full type validation of the
   projected payload via `json_schemer` is sequenced next — see
-  `docs/rfc/0001-schema-as-security-boundary.md`.
+  `docs/rfd/rfd-001-schema-as-security-boundary.md`.
 
 ### Fixed
 - `HydrationDataAggregator` now honors `config.schemas_dir` when locating
