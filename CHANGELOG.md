@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-06-22
+
 ### Security
 - Validate the schema `window` attribute against a JavaScript identifier pattern
   (`/\A[a-zA-Z_][a-zA-Z0-9_]*\z/`) at parse time; invalid names raise
