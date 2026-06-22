@@ -3,7 +3,7 @@ id: "001"
 state: discussion
 title: "RFD-001: The schema as a mechanical security boundary"
 authors: [Rhales maintainers]
-discussion: https://github.com/onetimesecret/rhales/pull/63
+discussion: https://github.com/onetimesecret/rhales/pull/62
 labels: [security, hydration, schema]
 ---
 
