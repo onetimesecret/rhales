@@ -47,10 +47,10 @@ module Rhales
 
       header = policy_directives.join('; ')
 
-      # Log CSP header generation for security audit
+      # Log CSP header generation for security audit. The nonce is a per-response
+      # secret, so log only whether one was used, never its value (issue #57).
       log_with_metadata(Rhales.logger, :debug, "CSP header generated",
         nonce_used: nonce_used,
-        nonce: @nonce,
         directive_count: policy_directives.size,
         header_length: header.length
       )
@@ -62,8 +62,9 @@ module Rhales
     def self.generate_nonce
       nonce = SecureRandom.hex(16)
 
-      # Log nonce generation for security audit trail
-      Rhales.logger.debug("CSP nonce generated: nonce=#{nonce} length=#{nonce.length} entropy_bits=#{nonce.length * 4}")
+      # Log nonce generation for security audit trail. Never log the nonce value
+      # itself — it is a per-response secret (issue #57).
+      Rhales.logger.debug("CSP nonce generated: length=#{nonce.length} entropy_bits=#{nonce.length * 4}")
 
       nonce
     end

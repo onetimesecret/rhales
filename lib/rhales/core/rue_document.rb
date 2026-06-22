@@ -41,6 +41,11 @@ module Rhales
     # Known schema section attributes
     KNOWN_SCHEMA_ATTRIBUTES = %w[lang version envelope window merge layout extends src].freeze
 
+    # The window attribute names a global JavaScript property and is interpolated
+    # into HTML attribute and <script> contexts during hydration. Restrict it to a
+    # valid JavaScript identifier so it cannot break out of either context (issue #57).
+    WINDOW_ATTRIBUTE_PATTERN = /\A[a-zA-Z_][a-zA-Z0-9_]*\z/
+
     attr_reader :content, :file_path, :grammar, :ast
 
     def initialize(content, file_path = nil)
@@ -289,6 +294,7 @@ module Rhales
         validate_schema_attributes!
         # Set default window attribute for schema section
         @schema_attributes['window'] ||= 'data'
+        validate_window_attribute!
 
         # Schema sections require lang attribute
         unless @schema_attributes['lang']
@@ -303,6 +309,15 @@ module Rhales
       unknown_attributes.each do |attr|
         warn_unknown_schema_attribute(attr)
       end
+    end
+
+    def validate_window_attribute!
+      window = @schema_attributes['window']
+      return if window.is_a?(String) && window.match?(WINDOW_ATTRIBUTE_PATTERN)
+
+      raise ParseError,
+        "Invalid window attribute #{window.inspect}: must be a valid JavaScript " \
+        "identifier matching #{WINDOW_ATTRIBUTE_PATTERN.source}"
     end
 
     def warn_unknown_schema_attribute(attribute)

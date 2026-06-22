@@ -213,7 +213,7 @@ RSpec.describe Rhales::HydrationInjector do
 
         expect(result).to include('<link rel="modulepreload" href="/api/hydration/test_template.js">')
         expect(result).to include('type="module"')
-        expect(result).to include('import data from \'/api/hydration/test_template.js\'')
+        expect(result).to include('import data from "/api/hydration/test_template.js"')
       end
     end
 
@@ -247,7 +247,7 @@ RSpec.describe Rhales::HydrationInjector do
         expect(result).to include('data-hydration-target="apiData"')
 
         # Should have multiple fetch calls
-        expect(result.scan(/fetch\('\/api\/hydration\/test_template'\)/).length).to eq(3)
+        expect(result.scan(/fetch\("\/api\/hydration\/test_template"\)/).length).to eq(3)
       end
     end
   end
