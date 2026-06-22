@@ -21,43 +21,92 @@ module Rhales
   #
   # Default selectors are checked: ['#app', '#root', '[data-rsfc-mount]', '[data-mount]']
   # Custom selectors can be added via configuration and are combined with defaults.
+  #
+  # ## Performance
+  #
+  # Detection scans the HTML a single time using one combined alternation
+  # pattern built from all selectors, rather than re-scanning the whole
+  # document once per selector. Results are memoized per instance keyed by
+  # [template_html, selectors], so repeated detection on the same rendered
+  # HTML (e.g. across renders that reuse the detector) reuses the prior result
+  # and its SafeInjectionValidator work instead of recomputing.
   class MountPointDetector
     DEFAULT_SELECTORS = ['#app', '#root', '[data-rsfc-mount]', '[data-mount]'].freeze
 
+    def initialize
+      @cache = {}
+    end
+
     def detect(template_html, custom_selectors = [])
       selectors = (DEFAULT_SELECTORS + Array(custom_selectors)).uniq
-      scanner = StringScanner.new(template_html)
-      validator = SafeInjectionValidator.new(template_html)
-      mount_points = []
+      cache_key = [template_html, selectors]
+      return @cache[cache_key] if @cache.key?(cache_key)
 
-      selectors.each do |selector|
-        scanner.pos = 0
-        pattern = build_pattern(selector)
-
-        while scanner.scan_until(pattern)
-          # Calculate position where the full tag starts
-          tag_start_pos = find_tag_start(scanner, template_html)
-
-          # Only include mount points that are safe for injection
-          safe_position = find_safe_injection_position(validator, tag_start_pos)
-
-          if safe_position
-            mount_points << {
-              selector: selector,
-              position: safe_position,
-              original_position: tag_start_pos,
-              matched: scanner.matched
-            }
-          end
-        end
-      end
-
-      # Return earliest mount point by position
-      mount_points.min_by { |mp| mp[:position] }
+      @cache[cache_key] = compute_detection(template_html, selectors)
     end
 
     private
 
+    def compute_detection(template_html, selectors)
+      validator = SafeInjectionValidator.new(template_html)
+      pattern   = combined_pattern(selectors)
+      scanner   = StringScanner.new(template_html)
+      matches   = []
+
+      # Single pass over the HTML: the combined alternation finds every
+      # selector occurrence in document order, and the matching capture-group
+      # index tells us which selector produced it.
+      while scanner.scan_until(pattern)
+        selector  = selectors[matched_group_index(scanner, selectors.length)]
+        tag_start = find_tag_start(scanner, template_html)
+
+        # Only include mount points that are safe for injection
+        safe_position = find_safe_injection_position(validator, tag_start)
+        next unless safe_position
+
+        matches << {
+          selector: selector,
+          position: safe_position,
+          original_position: tag_start,
+          matched: scanner.matched,
+        }
+      end
+
+      # Preserve the original selection semantics: matches are considered in
+      # selector-priority order (then document order within a selector), and
+      # the earliest injection position wins. Ordering the matches this way
+      # before min_by reproduces the previous per-selector tie-breaking.
+      ordered = selectors.flat_map { |selector| matches.select { |mp| mp[:selector] == selector } }
+      ordered.min_by { |mp| mp[:position] }
+    end
+
+    # Build one alternation pattern from all selectors. Each selector's
+    # sub-pattern is wrapped in a capture group so the matched group index
+    # identifies which selector matched. None of the sub-patterns introduce
+    # their own capture groups, so group N corresponds to selector N-1.
+    def combined_pattern(selectors)
+      union = selectors.map { |selector| "(#{build_pattern(selector).source})" }.join('|')
+      Regexp.new(union, Regexp::IGNORECASE)
+    end
+
+    def matched_group_index(scanner, count)
+      count.times { |index| return index if scanner[index + 1] }
+
+      # Unreachable in normal operation: after a successful scan_until against
+      # combined_pattern exactly one wrapped selector group has captured. If
+      # none has, a build_pattern sub-pattern introduced its own capturing
+      # group and shifted the numbering, so fail loudly rather than silently
+      # attributing the match to the first selector.
+      raise 'MountPointDetector: no selector capture group matched; ' \
+            'build_pattern sub-patterns must not contain capturing groups'
+    end
+
+    # Build the regex fragment that matches a single selector.
+    #
+    # INVARIANT: sub-patterns must not contain capturing groups. combined_pattern
+    # wraps each fragment in exactly one capture group and maps that group's
+    # index back to a selector, so any stray `(...)` here would shift the
+    # numbering and misattribute matches. Use non-capturing groups `(?:...)`.
     def build_pattern(selector)
       case selector
       when /^#(.+)$/

@@ -4,6 +4,17 @@ on:
   pull_request:
     types: [opened, synchronize, labeled]
   workflow_dispatch:
+    inputs:
+      model:
+        description: "Claude model for this run (overrides the CLAUDE_MODEL repo variable)"
+        type: choice
+        required: false
+        default: claude-opus-4-6
+        options:
+          - claude-opus-4-6
+          - claude-opus-4-8
+          - claude-sonnet-4-6
+          - claude-haiku-4-5-20251001
 
 jobs:
   claude-review:
@@ -27,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 1
 
@@ -37,9 +48,12 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Fall back to a current model when the action's default model id is
-          # unavailable (the previous default 404s: "model: claude-sonnet-4-20250514")
-          fallback_model: "claude-sonnet-4-6"
+          # Primary model precedence: the workflow_dispatch "model" input (manual
+          # runs) -> the CLAUDE_MODEL repo variable -> this built-in default.
+          # Pinning a current id avoids the action's frozen default, which 404s
+          # ("model: claude-sonnet-4-20250514"). Fall back to Sonnet on overload.
+          model: "${{ inputs.model || vars.CLAUDE_MODEL || 'claude-opus-4-6' }}"
+          fallback_model: "${{ vars.CLAUDE_FALLBACK_MODEL || 'claude-sonnet-4-6' }}"
 
           # Direct prompt for automated review (no @claude mention needed)
           direct_prompt: |
@@ -50,7 +64,7 @@ jobs:
             - Security concerns
             - Test coverage
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            Use the repository's CLAUDE.md or AGENTS.md for guidance on style and conventions. Be constructive and helpful in your feedback.
 
           # Use sticky comments to reuse the same comment on subsequent pushes to the same PR
           use_sticky_comment: true
@@ -58,7 +72,7 @@ jobs:
       - name: Remove claude-review label
         # Remove label whether success or failure - prevents getting stuck
         if: always() && github.event.action != 'opened'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             try {
