@@ -148,6 +148,17 @@ module Rhales
     # Schema validation settings
     attr_accessor :enable_schema_validation, :fail_on_validation_error, :schemas_dir
 
+    # Schema projection mode (see docs/adr/adr-001-schema-projection.md).
+    # Controls whether the <schema> acts as a mechanical allowlist for client
+    # data before it is serialized to the browser:
+    #   :off    - (default) emit the entire client hash; schema is advisory only
+    #   :strip  - project client data to schema-declared top-level keys, dropping
+    #             undeclared keys (only when a reliable generated JSON Schema exists)
+    #   :strict - like :strip, but raise HydrationSchemaViolationError on undeclared keys
+    attr_reader :schema_projection
+
+    VALID_SCHEMA_PROJECTION_MODES = [:off, :strip, :strict].freeze
+
     # JSON response settings
     attr_accessor :enable_json_responder, :json_responder_include_metadata
 
@@ -182,6 +193,7 @@ module Rhales
       @enable_schema_validation = true
       @fail_on_validation_error = false # Set by environment in middleware
       @schemas_dir              = './public/schemas' # Default to implementing project's public directory
+      @schema_projection        = :off # Advisory by default; opt in to mechanical allowlist projection
 
       # JSON responder defaults
       @enable_json_responder            = true
@@ -201,6 +213,16 @@ module Rhales
 
       # Yield to block for configuration if provided
       yield(self) if block_given?
+    end
+
+    # Validate and set the schema projection mode
+    def schema_projection=(mode)
+      mode = mode.to_sym if mode.respond_to?(:to_sym)
+      unless VALID_SCHEMA_PROJECTION_MODES.include?(mode)
+        raise ArgumentError,
+          "Invalid schema_projection: #{mode.inspect}. Valid options: #{VALID_SCHEMA_PROJECTION_MODES.join(', ')}"
+      end
+      @schema_projection = mode
     end
 
     # Build API base URL from site configuration
@@ -312,7 +334,8 @@ module Rhales
           hydration_mismatch_format: configuration.hydration_mismatch_format,
           hydration_authority: configuration.hydration_authority,
           enable_schema_validation: configuration.enable_schema_validation,
-          fail_on_validation_error: configuration.fail_on_validation_error
+          fail_on_validation_error: configuration.fail_on_validation_error,
+          schema_projection: configuration.schema_projection
         )
       end
 

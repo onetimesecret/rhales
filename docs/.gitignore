@@ -7,3 +7,9 @@
 
 !architecture/
 !architecture/README.md
+
+# Track design RFDs and ADRs (durable records), like architecture/ above
+!rfd/
+!rfd/*.md
+!adr/
+!adr/*.md

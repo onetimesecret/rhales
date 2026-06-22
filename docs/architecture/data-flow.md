@@ -276,6 +276,41 @@ view = Rhales::View.new(request,
 )
 ```
 
+### Opt-in: make the schema a mechanical filter (`schema_projection`)
+
+As of RFD-001 (Steps 1–2a), the schema can be turned into a real allowlist instead
+of an advisory one. Set `schema_projection` in configuration:
+
+```ruby
+Rhales.configure do |config|
+  config.schema_projection = :strict  # :off (default) | :strip | :strict
+end
+```
+
+- `:off` (default) — the advisory behavior described above; the entire `client:`
+  hash is serialized.
+- `:strip` — the client payload is projected to the schema's declared shape (at
+  every nesting level) before serialization; undeclared keys are dropped.
+- `:strict` — like `:strip`, but undeclared keys raise
+  `HydrationSchemaViolationError` so the mistake is caught instead of silently
+  dropped or silently emitted.
+
+Projection only runs when a **generated JSON Schema** exists for the template
+(`rake rhales:schema:generate`). It never projects from the unreliable regex
+fallback, and never drops a declared field it cannot verify. Projection follows
+the schema's full nested structure — object `properties`, array `items`, typed
+`additionalProperties` records, and local `$ref` — dropping (or, in `:strict`,
+reporting by dotted path) undeclared keys at any depth. Full *type* validation
+of the projected payload is tracked as a follow-up in
+[`docs/rfd/rfd-001-schema-as-security-boundary.md`](../rfd/rfd-001-schema-as-security-boundary.md).
+
+> **Conservative `additionalProperties`:** a *typed* `additionalProperties` (a
+> record/catchall schema) keeps and validates extra keys, but an untyped
+> `additionalProperties: true` is treated as *stricter* than the schema —
+> undeclared keys are still dropped in `:strip`/`:strict`. Projection never
+> widens the allowlist based on an open-ended schema; declare a typed record
+> schema when extra keys must survive.
+
 ## Tilt Integration
 
 ### Default Behavior: Everything Serialized
