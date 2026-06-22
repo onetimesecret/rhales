@@ -54,23 +54,27 @@ and the mutable, evolving working document is the **Internet-Draft**. A mutable
 Internet-Draft). "RFD" (Request for **Discussion**, Oxide's term) is purpose-built
 for an explicitly living proposal and sidesteps that collision.
 
-### Avoiding game-of-telephone across sessions
+### Modification rules
 
 An RFD is mutable, but a long roadmap touched by many contiguous sessions (human
-or agent) will drift if every editor is free to rewrite the spine. The template's
-**Modification rules** are the guard and are mandatory once an RFD reaches
-`discussion`:
+or agent) will drift if every editor is free to rewrite the spine. These rules
+are the guard and are mandatory once an RFD reaches `discussion`. They are
+canonical here; an RFD carries only a short copy plus a pointer back to this
+section.
 
-- The **spine is frozen**: Summary, Motivation, and each step's ID and Goal.
-  Material changes are not edits — supersede with a new RFD or append a dated
-  amendment. **Step IDs are permanent**; never renumber or repurpose them.
-- **Progress is append-only and single-sourced**: state lives in the per-step
-  Status markers and Resulting decisions (ADR links), updated by appending to the
-  Change log — never by rewriting narrative. An editor *reads* state from those
-  two places and *records* it by flipping a marker and appending.
+- **Frozen — do not rewrite**: Summary, Motivation, and each step's ID and Goal.
+  A material change is not an edit — supersede with a new RFD or append a dated
+  amendment to Change log. **Step IDs are permanent**; never renumber or repurpose
+  them, and to drop a step set its Status to `withdrawn` in place.
+- **Append-only — add, never rewrite or delete**: Resulting decisions, Change log.
+- **Living — may change in place**: the document State, per-step Status markers,
+  Unresolved questions, and the "Last updated" date.
 
-The effect: each session leaves an auditable trail instead of overwriting the
-last one's account of where things stand.
+Progress is single-sourced in the per-step Status markers and Resulting decisions
+(ADR links), recorded by appending to the Change log — never by rewriting
+narrative. An editor *reads* state from those two places and *records* it by
+flipping a marker and appending. The effect: each session leaves an auditable
+trail instead of overwriting the last one's account of where things stand.
 
 ### Local conventions
 

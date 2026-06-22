@@ -21,35 +21,23 @@ RFD that has reached `discussion`. -->
 ## State
 [prediscussion | ideation | discussion | published | committed | abandoned]
 
-<!--
-  prediscussion - just created, not yet ready for feedback
-  ideation      - topic raised but not fully formed; early input welcome
-  discussion    - ready for full review (PR open)
-  published     - merged; the direction is finalized
-  committed     - actively being implemented / in production
-  abandoned     - no longer pursued (a replacement RFD should reference this one)
--->
+<!-- State meanings: see docs/rfd/README.md (### State). -->
 
 ## Date
 Created: YYYY-MM-DD · Last updated: YYYY-MM-DD
 
 ## Modification rules
 
-While an RFD is in `prediscussion` or `ideation` it may be freely reshaped. Once
-it reaches `discussion` it is being acted on by others, so the record must stop
-drifting. From `discussion` onward:
+Canonical rules and rationale: `docs/rfd/README.md` (### Modification rules). In
+short, once this RFD reaches `discussion`:
 
-- **Frozen — do not rewrite**: Summary, Motivation, and each step's **ID** and
-  **Goal**. A material change is not an edit: open a new RFD that supersedes this
-  one, or append a dated amendment to Change log. Step IDs are permanent — never
-  renumber or repurpose one; to drop a step, set its Status to `withdrawn` in place.
-- **Append-only — add, never rewrite or delete**: Resulting decisions, Change log.
-- **Living — may change in place**: the document **State**, per-step **Status**
-  markers, Unresolved questions, and the "Last updated" date.
+- **Frozen** (supersede or append an amendment instead of rewriting): Summary,
+  Motivation, and each step's ID and Goal. Step IDs are permanent.
+- **Append-only**: Resulting decisions, Change log.
+- **Living**: State, per-step Status markers, Unresolved questions, Last updated.
 
-Progress is tracked by the per-step Status markers and Resulting decisions (ADR
-links), recorded by appending to Change log — never by rewriting prose. Read those
-to learn the current state; append to record a change.
+Track progress with the Status markers and Resulting decisions, not by rewriting
+prose.
 
 ## Summary
 *(Frozen once `discussion`.)* One paragraph that stands on its own: what this
