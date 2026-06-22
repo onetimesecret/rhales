@@ -493,7 +493,7 @@ module Rhales
     # against. In :strip mode, undeclared keys are dropped at every level of the
     # structure; in :strict mode their presence raises
     # HydrationSchemaViolationError. Projection is reliable-source only (never
-    # the regex fallback). See docs/rfc/0001-schema-as-security-boundary.md.
+    # the regex fallback). See docs/adr/adr-001-schema-projection.md.
     def project_client_data(template_name, client_data)
       mode = schema_projection_mode
       return client_data if mode == :off

@@ -148,7 +148,7 @@ module Rhales
     # Schema validation settings
     attr_accessor :enable_schema_validation, :fail_on_validation_error, :schemas_dir
 
-    # Schema projection mode (see docs/rfc/0001-schema-as-security-boundary.md).
+    # Schema projection mode (see docs/adr/adr-001-schema-projection.md).
     # Controls whether the <schema> acts as a mechanical allowlist for client
     # data before it is serialized to the browser:
     #   :off    - (default) emit the entire client hash; schema is advisory only

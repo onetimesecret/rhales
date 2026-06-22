@@ -8,6 +8,8 @@
 !architecture/
 !architecture/README.md
 
-# Track design RFCs (durable records), like architecture/ above
+# Track design RFCs and ADRs (durable records), like architecture/ above
 !rfc/
 !rfc/*.md
+!adr/
+!adr/*.md

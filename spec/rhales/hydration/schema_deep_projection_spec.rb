@@ -4,7 +4,7 @@
 
 require 'spec_helper'
 
-# Step 2 of RFC 0001: projection follows the generated JSON Schema's nested
+# RFC-001 Step 2a: projection follows the generated JSON Schema's nested
 # structure (objects, arrays, records, $ref) instead of stopping at top-level
 # keys. load_schema_cached is stubbed to stand in for a generated schema file.
 RSpec.describe 'Rhales::HydrationDataAggregator deep schema projection' do
