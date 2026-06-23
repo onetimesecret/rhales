@@ -14,7 +14,7 @@
 ## Workflow: Feature Implementation
 
 ### 1. Research & Planning Phase
-IMPORTANT: Always research and plan before coding. Use "think" or "think hard" for complex features.
+IMPORTANT: Always research and plan before coding. Spend extra planning effort on complex or security-sensitive features.
 
 - Read relevant files and documentation WITHOUT writing code yet
 - Understand the two-layer data system (app, props)
@@ -53,7 +53,7 @@ Follow test-driven development when possible:
 For complex features requiring parallel work:
 - Use git worktrees for independent components
 - Keep adapter changes separate from core changes
-- Use /clear between unrelated tasks to optimize context
+- Start a fresh session/context between unrelated tasks to keep context focused
 - Document progress in CHANGELOG.md
 
 ## Project-Specific Notes
@@ -87,3 +87,20 @@ For complex features requiring parallel work:
 - Test all three context layers independently
 - Verify template caching behavior
 - Check false/nil handling explicitly
+
+## Resuming work
+
+Re-orient with **Map → Mail → Mess**:
+
+1. **Map — the plan.** First `todo` in the active RFD (`docs/rfd/`), any
+   `docs/adr/` `Status:`, and `CHANGELOG.md` `[Unreleased]`.
+2. **Mail — what's waiting.** Open PRs: red CI, unresolved review threads, each
+   PR's `## Next`. Note what merged or closed since.
+3. **Mess — local state.** `git fetch`, then `git branch --show-current`,
+   `git status`, `git stash list`, `git log --oneline -10`.
+
+Next step is the first that fires: a PR waiting on you → a roadmap `todo` →
+local half-finished work.
+
+Before stopping, leave a breadcrumb: flip a step's `Status:` in the RFD, update
+the PR's `## Next`, or add a `TODO(next):` to the final commit.
