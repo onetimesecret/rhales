@@ -17,14 +17,18 @@ on:
 
 permissions:
   contents: read
-  # Required to upload coverage data to GitHub Code Quality.
-  code-quality: write
 
 jobs:
   test:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     name: Tests (Ruby ${{ matrix.ruby }})
+    # Scope code-quality:write to the only job that uploads coverage, rather
+    # than granting it to every job in the workflow.
+    permissions:
+      contents: read
+      # Required to upload coverage data to GitHub Code Quality.
+      code-quality: write
     strategy:
       fail-fast: true
       matrix:
@@ -33,9 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Check out the PR head commit (not the merge commit) so coverage
-          # line numbers map correctly to the diff for GitHub Code Quality.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Only the coverage-generating version checks out the PR head commit
+          # (not the merge commit), so coverage line numbers map correctly to
+          # the diff for GitHub Code Quality. Other versions check out the
+          # default merge commit so they still catch merge-conflict-induced
+          # failures.
+          ref: ${{ matrix.ruby == '3.4' && (github.event.pull_request.head.sha || github.sha) || '' }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
