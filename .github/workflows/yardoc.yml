@@ -6,8 +6,11 @@ on:
       - main
     paths:
       - 'lib/**/*'
+      - 'docs/**/*'
       - 'README.md'
       - 'CHANGELOG.md'
+      - 'CHANGELOG.rst'
+      - 'LICENSE.txt'
       - '.yardopts'
       - '.github/workflows/yardoc.yml'
   workflow_dispatch:
@@ -17,8 +20,9 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# Allow only one concurrent deployment, skipping runs queued between the run
+# in-progress and latest queued. Do NOT cancel in-progress runs so production
+# deployments can complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -31,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
 
@@ -41,55 +45,33 @@ jobs:
           ruby-version: '3.4'
           bundler-cache: true
 
-      - name: Configure YARD documentation parameters
-        run: |
-          # Create comprehensive .yardopts configuration
-          cat > .yardopts << 'EOF'
-          --protected
-          --private
-          --markup markdown
-          --markup-provider kramdown
-          --output-dir doc
-          --readme README.md
-          --files CHANGELOG.md,LICENSE.txt
-          --exclude spec/**/*
-          --exclude demo/**/*
-          --exclude examples/**/*
-          --exclude apps/**/*
-          lib/**/*.rb
-          -
-          README.md
-          CHANGELOG.md
-          EOF
-
-      - name: Generate comprehensive documentation
+      - name: Generate documentation
+        # Uses the repository's committed .yardopts as the single source of
+        # truth for the output dir, includes/excludes, markup, and tags.
         run: |
           echo "::group::YARD Documentation Generation"
-          bundle exec yard stats --list-undoc
+          bundle exec yard stats --list-undoc || true
           bundle exec yard doc
           echo "::endgroup::"
 
-      - name: Validate documentation completeness
+      - name: Disable Jekyll processing
+        # YARD emits files and directories that begin with underscores; the
+        # .nojekyll marker stops GitHub Pages from stripping them.
+        run: touch doc/.nojekyll
+
+      - name: Validate documentation output
         run: |
           echo "::group::Documentation Validation"
           if [ ! -d "doc" ]; then
-            echo "Error: Documentation directory not generated"
+            echo "Error: documentation directory 'doc' was not generated." >&2
+            echo "Ensure .yardopts sets '--output-dir doc'." >&2
             exit 1
           fi
-
-          # Check for essential files
-          required_files=("index.html" "file.README.html" "file.CHANGELOG.html")
-          for file in "${required_files[@]}"; do
-            if [ ! -f "doc/$file" ]; then
-              echo "Warning: Expected file doc/$file not found"
-            fi
-          done
-
-          # Display documentation statistics
-          echo "Generated documentation files:"
-          find doc -name "*.html" | wc -l
-          echo "Total documentation size:"
-          du -sh doc/
+          if [ ! -f "doc/index.html" ]; then
+            echo "Warning: doc/index.html not found"
+          fi
+          echo "Generated HTML files: $(find doc -name '*.html' | wc -l)"
+          echo "Total documentation size: $(du -sh doc/ | cut -f1)"
           echo "::endgroup::"
 
       - name: Setup GitHub Pages configuration
@@ -107,6 +89,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build-docs
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Deploy to GitHub Pages
