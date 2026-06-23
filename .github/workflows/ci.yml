@@ -17,6 +17,8 @@ on:
 
 permissions:
   contents: read
+  # Required to upload coverage data to GitHub Code Quality.
+  code-quality: write
 
 jobs:
   test:
@@ -30,6 +32,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Check out the PR head commit (not the merge commit) so coverage
+          # line numbers map correctly to the diff for GitHub Code Quality.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -38,10 +44,23 @@ jobs:
           bundler-cache: true
 
       - name: Run RSpec tests
+        # Generate a Cobertura coverage report on a single Ruby version only.
+        env:
+          COVERAGE: ${{ matrix.ruby == '3.4' && 'true' || '' }}
         run: bundle exec rspec
 
       - name: Run Rhales-specific tests
         run: bundle exec rake rhales:test
+
+      - name: Upload coverage report
+        # Only the coverage-generating version uploads; skip forked PRs, which
+        # cannot write Code Quality data.
+        if: matrix.ruby == '3.4' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage/coverage.xml
+          language: Ruby
+          label: code-coverage/rspec
 
   gem-build:
     timeout-minutes: 10

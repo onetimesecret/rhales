@@ -9,6 +9,7 @@ group :development, :test do
   gem 'reek', '~> 6.5'
   gem 'rspec', '~> 3.12'
   gem 'simplecov', '~> 0.22'
+  gem 'simplecov-cobertura', '~> 3.2' # Cobertura XML output for GitHub Code Quality
 end
 
 group :development do

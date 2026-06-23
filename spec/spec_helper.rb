@@ -3,6 +3,21 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
+
+# Generate a code coverage report when COVERAGE is set. CI sets this on a
+# single Ruby version and uploads the resulting Cobertura XML to GitHub Code
+# Quality. SimpleCov must start before 'rhales' is required so every file in
+# lib/ is tracked.
+if ENV['COVERAGE'] == 'true'
+  require 'simplecov'
+  require 'simplecov-cobertura'
+
+  SimpleCov.start do
+    add_filter '/spec/'
+    formatter SimpleCov::Formatter::CoberturaFormatter
+  end
+end
+
 require 'rhales'
 
 # Configure Rhales for testing
