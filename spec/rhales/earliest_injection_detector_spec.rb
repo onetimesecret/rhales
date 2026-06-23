@@ -289,12 +289,12 @@ RSpec.describe Rhales::EarliestInjectionDetector do
         1000.times { |i| large_html += "<meta name=\"test#{i}\" content=\"value#{i}\">" }
         large_html += "<link rel=\"stylesheet\" href=\"final.css\"></head><body><div id=\"app\"></div></body></html>"
 
-        start_time = Time.now
         position = detector.detect(large_html)
-        end_time = Time.now
 
+        # No wall-clock timing assertion: it is too flaky on shared CI runners,
+        # especially under SimpleCov instrumentation on the coverage job. Just
+        # verify the detector handles a large document and finds a position.
         expect(position).not_to be_nil
-        expect(end_time - start_time).to be < 0.1  # Should complete within 100ms
       end
     end
 

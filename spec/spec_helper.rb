@@ -14,7 +14,14 @@ if ENV['COVERAGE'] == 'true'
 
   SimpleCov.start do
     add_filter '/spec/'
-    formatter SimpleCov::Formatter::CoberturaFormatter
+    # Keep both reports: the HTML report for browsing coverage locally and the
+    # Cobertura XML that CI uploads to GitHub Code Quality.
+    formatter SimpleCov::Formatter::MultiFormatter.new(
+      [
+        SimpleCov::Formatter::HTMLFormatter,
+        SimpleCov::Formatter::CoberturaFormatter,
+      ]
+    )
   end
 end
 
